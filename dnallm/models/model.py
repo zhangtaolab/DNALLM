@@ -42,6 +42,7 @@ from .head import (
     EVOForSeqClsHead,
 )
 from .losses import FocalLoss
+from .registry import RegistryEntry, try_resolve
 
 
 logger = get_logger("dnallm.models.model")
@@ -1564,50 +1565,123 @@ def clear_model_cache(source: str = "huggingface"):
         logger.info(f"No cache directory found at {cache_dir}. Nothing to clear.")
 
 
+_TASK_TYPE_ALIASES = {
+    "binary_classification": "binary",
+    "multi_class_classification": "multiclass",
+    "multi_label_classification": "multilabel",
+    "token_classification": "token",
+}
+
+_PATCH_FIELDS = ("num_labels", "label_names", "threshold")
+
+
+def _check_task_type(entry: RegistryEntry, task_config: TaskConfig) -> None:
+    """Validate that the configured task type matches the entry's registered one.
+
+    The configured side is normalized through the long-form aliases (mirroring
+    ``TaskConfig.model_post_init``); the registered side is compared verbatim.
+
+    Args:
+        entry: The resolved registry entry.
+        task_config: The caller's task configuration.
+
+    Raises:
+        ValueError: If the normalized configured task type differs from the
+            entry's registered task type.
+    """
+    configured = _TASK_TYPE_ALIASES.get(task_config.task_type, task_config.task_type)
+    registered = entry.task.task_type
+    if configured != registered:
+        raise ValueError(
+            f"Model '{entry.name}' was trained for '{registered}' tasks, but your "
+            f"configuration says '{configured}'. These do not match — check the "
+            "task_type setting in your config."
+        )
+
+
+def _patched_task_config(task_config: TaskConfig, entry: RegistryEntry) -> TaskConfig:
+    """Copy the caller's TaskConfig with registry values patched in.
+
+    Only fields whose registry value is present and differs from the configured
+    value are patched, each announced by one info log. The caller's object is
+    never mutated, and the copy is built with ``model_copy`` so
+    ``model_post_init`` never re-runs — a revalidation round-trip would clobber
+    registry ``label_names`` back to the regression default.
+
+    Args:
+        task_config: The caller's task configuration.
+        entry: The resolved registry entry.
+
+    Returns:
+        A patched copy of ``task_config``, or the caller's object itself when
+        nothing differs.
+    """
+    update = {}
+    for field in _PATCH_FIELDS:
+        entry_value = getattr(entry.task, field)
+        if entry_value is None:
+            continue
+        configured_value = getattr(task_config, field)
+        if configured_value == entry_value:
+            continue
+        logger.info(
+            f"Registry preset overrides {field}: "
+            f"configured {configured_value} -> registry {entry_value}"
+        )
+        update[field] = entry_value
+    if not update:
+        return task_config
+    return task_config.model_copy(update=update)
+
+
 def load_preset_model(model_name: str, task_config: TaskConfig) -> tuple[Any, Any] | int:
     """Load a preset model and tokenizer based on the task configuration.
 
-    This function loads models from the preset model registry, which contains
-    pre-configured models for various DNA analysis tasks.
+    A lookup name is resolved in two tiers: the packaged model registry first
+    (exact entry-name match, then exact repo-id match), then the legacy
+    ``MODEL_INFO`` family table. When a name is both a registry entry and a
+    family key, the registry entry wins. A name found in neither tier returns 0.
+
+    For a resolved registry entry, ``task_type`` is validated (never patched):
+    a mismatch raises ``ValueError``. The remaining head fields (``num_labels``,
+    ``label_names``, ``threshold``) are copied verbatim from the entry into a
+    copy of ``task_config`` — the caller's object is never mutated.
 
     Args:
-        model_name: Name or path of the model
-                task_config: Task configuration object containing task type and
-            label information
+        model_name: Entry name, repo id, or family name of the preset model.
+        task_config: Task configuration object containing task type and
+            label information.
 
     Returns:
-        Tuple containing (model, tokenizer) if successful, 0 if model not found
+        Tuple containing (model, tokenizer) if successful, 0 if the model is
+        not found.
 
-    Note:
-                If the model is not found in preset models,
-            the function will print a warning
-                and
-            return 0. Use `load_model_and_tokenizer` function for custom model
-            loading.
+    Raises:
+        ValueError: If a resolved registry entry was trained for a task type
+            that does not match the configured one.
     """
     from .modeling_auto import MODEL_INFO
 
     source = "modelscope"
     use_mirror = False
 
-    # Load model and tokenizer
-    try:
-        preset_models = [
-            preset
-            for model in MODEL_INFO
-            for preset in MODEL_INFO[model].get("preset", [])  # type: ignore
-        ]
-    except (KeyError, TypeError):
-        preset_models = []
+    # Registry first: exact entry name, then repo id.
+    entry = try_resolve(model_name)
+    if entry is not None:
+        _check_task_type(entry, task_config)
+        patched = _patched_task_config(task_config, entry)
+        if entry.kind == "finetuned" and entry.base_model:
+            logger.info(f"Loading preset model '{entry.name}' trained on base {entry.base_model}")
+        return load_model_and_tokenizer(entry.model, patched, source, use_mirror)
+
+    # Family-table fallback: use the family's default repo id.
     if model_name in MODEL_INFO:
         model_info = MODEL_INFO[model_name]
         model_name = model_info["default"]  # ty: ignore[invalid-assignment]
-    elif model_name in preset_models:
-        pass
     else:
         logger.debug(
-            f"Model {model_name} not found in preset models. "
-            "Please check the model name or use "
+            f"Model {model_name} not found in the packaged model registry or the "
+            "preset model family table. Please check the model name or use "
             "`load_model_and_tokenizer` function."
         )
         return 0

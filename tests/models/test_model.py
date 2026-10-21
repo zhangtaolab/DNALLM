@@ -1681,21 +1681,30 @@ class TestLoadPresetModel:
 
             assert result == 0
 
-    def test_load_preset_model_preset_name(self):
-        """Test loading preset model by preset name."""
-        task_config = TaskConfig(task_type="mask", num_labels=None)
+    def test_load_preset_model_registry_entry_name_patches_config(self):
+        """Tracer: a real registry entry name loads with registry values patched into a copy."""
+        task_config = TaskConfig(task_type="binary", threshold=0.9)
 
         with patch(
-            "dnallm.models.modeling_auto.MODEL_INFO",
-            {"test-model": {"preset": ["preset1", "preset2"]}},
-        ):
-            with patch(
-                "dnallm.models.model.load_model_and_tokenizer",
-                return_value=("model", "tokenizer"),
-            ):
-                result = load_preset_model("preset1", task_config)
+            "dnallm.models.model.load_model_and_tokenizer",
+            return_value=("model", "tokenizer"),
+        ) as loader_mock:
+            result = load_preset_model("PlantHelixSeek CRE", task_config)
 
-                assert result == ("model", "tokenizer")
+        assert result == ("model", "tokenizer")
+        assert loader_mock.call_count == 1
+        args = loader_mock.call_args.args
+        assert args[0] == "zhangtaolab/PlantHelixSeek-CRE"
+        assert args[2] == "modelscope"
+        assert args[3] is False
+        patched = args[1]
+        assert patched.num_labels == 2
+        assert patched.label_names == ["Not CRE", "CRE"]
+        assert patched.threshold == 0.5
+        # The caller's TaskConfig is never mutated.
+        assert task_config.num_labels == 2
+        assert task_config.label_names == ["negative", "positive"]
+        assert task_config.threshold == 0.9
 
     def test_load_preset_model_key_error(self):
         """Test loading preset model with KeyError in MODEL_INFO."""
@@ -1706,14 +1715,12 @@ class TestLoadPresetModel:
 
             assert result == 0
 
-    def test_load_preset_model_malformed_registry_returns_zero(self):
-        """A malformed MODEL_INFO registry degrades to preset_models=[]."""
+    def test_load_preset_model_registry_and_family_miss_returns_zero(self):
+        """A name in neither the packaged registry nor MODEL_INFO returns 0."""
         task_config = TaskConfig(task_type="mask", num_labels=None)
 
-        # A list registry makes MODEL_INFO[model] raise TypeError internally,
-        # which degrades to preset_models=[]; a non-member name then misses.
-        with patch("dnallm.models.modeling_auto.MODEL_INFO", ["entry"]):
-            result = load_preset_model("missing", task_config)
+        with patch("dnallm.models.modeling_auto.MODEL_INFO", {}):
+            result = load_preset_model("no-such-preset-anywhere", task_config)
 
             assert result == 0
 
