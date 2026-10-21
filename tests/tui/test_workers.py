@@ -583,6 +583,26 @@ async def test_a_cancelled_on_demand_probe_delivers_nothing(monkeypatch) -> None
     assert app.availability_events == []
 
 
+async def test_a_failed_on_demand_probe_reads_plainly(monkeypatch) -> None:
+    """WR-05: a raising probe posts readable copy instead of staying silent.
+
+    Every other worker has this guard; without it the row the user pressed
+    ``p`` on would stay on "probing…" forever with nothing else on screen.
+    """
+    import dnallm.preflight.availability as availability_module
+
+    _raising(monkeypatch, availability_module, "probe_availability", "probe_availability")
+    app = _Harness()
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await _run(pilot, app, lambda: app.probe_availability_worker("owner/model"))
+
+    assert app.availability_events == []
+    assert len(app.worker_failures) == 1
+    assert "could not work out which models fit" in app.worker_failures[0]
+    assert "RuntimeError" not in app.worker_failures[0]
+
+
 async def test_a_download_with_no_downloader_resolves_the_chosen_hub(monkeypatch) -> None:
     """With no explicit downloader the seam picks a hub and resolves its client."""
     resolved: list[Hub] = []

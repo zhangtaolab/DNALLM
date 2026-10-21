@@ -536,10 +536,19 @@ class PreflightWorkers:
                 production: the core's own ``probe_availability`` is used.
         """
         worker = get_current_worker()
-        from ..preflight.availability import probe_availability
+        try:
+            from ..preflight.availability import probe_availability
 
-        effective_prober = prober if prober is not None else probe_availability
-        availability = probe_availability(model, prober=effective_prober)
+            effective_prober = prober if prober is not None else probe_availability
+            availability = probe_availability(model, prober=effective_prober)
+        except Exception as exc:
+            # Details go to the log; the user reads plain words, never a class
+            # name. Without this guard a raise would be swallowed by Textual
+            # and the pressed row would stay on "probing…" forever (WR-05).
+            logger.error(f"probe_availability failed inside the TUI worker: {exc!r}")
+            if not worker.is_cancelled:
+                self.post_message(WorkerFailed(SUITABILITY_FAILED))
+            return
         if worker.is_cancelled:
             return
         self.post_message(AvailabilityUpdated(model, availability))
