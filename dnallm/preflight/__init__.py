@@ -34,7 +34,7 @@ files, or any cache:
    and matplotlib out of ``sys.modules`` — enforced by the subprocess
    marker test in ``tests/test_package_facade.py``.
 5. Not a root-facade member: import from ``dnallm.preflight`` directly —
-   the root ``dnallm`` package stays torch-heavy by design.
+   the root ``dnallm`` facade does not re-export it.
 
 Example:
     from dnallm.preflight import check_compatibility, generate_config, validate_data
