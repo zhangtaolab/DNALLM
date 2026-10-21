@@ -5,16 +5,16 @@ milestone_name: Pre-flight UX & Registry-as-Truth-Source
 current_phase: 25
 current_phase_name: Terminal UI — Pre-flight Wizard & `tui` Extra
 status: executing
-stopped_at: Phase 25 context gathered
-last_updated: "2026-10-21T11:34:56.483Z"
+stopped_at: Completed 25-12-PLAN.md
+last_updated: "2026-10-21T12:49:23.797Z"
 last_activity: 2026-10-21
-last_activity_desc: Phase 25 execution started
-state_head: c5982663708c11632aef1392e3de11ef1736bddb
+last_activity_desc: Phase 25 plan 25-12 complete
+state_head: 57bfde15d517c3327f0af87f4b28049006aa8de9
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 19
-  completed_plans: 8
+  total_plans: 20
+  completed_plans: 20
   percent: 60
 ---
 
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 
 ## Current Position
 
-Phase: 25 (Terminal UI — Pre-flight Wizard & `tui` Extra) — READY TO EXECUTE
-Plan: 1 of 10
-Status: Ready to execute
-Last activity: 2026-10-21 — Phase 25 execution started
+Phase: 25 (Terminal UI — Pre-flight Wizard & `tui` Extra) — plan 12 complete
+Plan: 12 of 12
+Status: All plans complete; ready for verification
+Last activity: 2026-10-21 — 25-12 gap closure (G-25-4, G-25-4b, G-25-4c) executed
 
 Progress: [██████░░░░] 60% (3 of 5 v1.4 phases)
 
@@ -56,6 +56,7 @@ Progress: [██████░░░░] 60% (3 of 5 v1.4 phases)
 | Phase 23 P05 | 6 min | 2 tasks | 3 files |
 | Phase 24 P01 | 12 min | 3 tasks | 2 files |
 | Phase 24 P01 | 12 min | 3 tasks | 2 files |
+| Phase 25 P12 | 22 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -96,6 +97,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 23]: docstring-facade drift guard added — every public name documented in the package docstring must sit in __all__ (probe-verified red)
 - [Phase 24]: [Phase 24] 24-01: OQ-1 STRICT — registry entries with task_type='classification' (6 PlantCAD2, third-party) are intentionally unloadable by name under D-05; documented known limitation, pinned by a real-entry test; registry data fix out of scope — Smallest reading of locked D-05; all six entries sit outside every zhangtaolab flow, and widening the mismatch definition to alias entry-side 'classification' would silently change D-05's contract
 - [Phase 24]: [Phase 24] 24-01: patched preset configs are built with model_copy(update=...) only — never model_validate/reconstruction (model_post_init regression branch would clobber registry label_names to ['value']); caller's TaskConfig never mutated; returned un-copied when no field differs — Research Pitfall 2 reproduced against live data: 42 regression entries carry descriptive one-element label_names that a revalidation round-trip would destroy
+- [Phase 25]: 25-12: task-type vocabulary lives copy-side in TASK_TYPE_GLOSSES; a drift test reads the live TaskConfig schema pattern so the core stays untouched
+- [Phase 25]: 25-12: the eight-value suitability explanation is a static legend inside #suitability-body, not a placeholder that vanishes on typing
+- [Phase 25]: 25-12: the LoRA target-modules hint is pinned at 226 characters, the measured 80x24 form-viewport ceiling; navigation sentences interpolate the destination screens' own constants
 
 ### Pending Todos
 
@@ -135,9 +139,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-21T06:44:31.084Z
-Stopped at: Phase 25 context gathered
-Resume file: .planning/phases/25-terminal-ui-pre-flight-wizard-tui-extra/25-CONTEXT.md
+Last session: 2026-10-21T12:49:23.652Z
+Stopped at: Completed 25-12-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

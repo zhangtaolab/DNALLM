@@ -165,7 +165,7 @@ Plans:
   4. Select-to-download runs `download_model` sequentially with visible progress and working cancel; all blocking work runs in thread workers so the event loop never freezes
   5. The TUI is tested Pilot-functional only — no snapshot/golden infrastructure — and a panel→core-function table test proves screens contain no domain logic; per-module coverage ≥96% with no omit entries
 
-**Plans**: 11/12 plans executed
+**Plans**: 12/12 plans executed
 
 Plans:
 **Wave 1**
@@ -198,7 +198,7 @@ Plans:
 - [x] 25-11-PLAN.md — Copy-layer gap closure (D-10): plain-language validation errors with the raw core message on demand, plus plain glosses for every ML term in config labels and hints (TUI-06/TUI-08)
 
 **Wave 10** *(gap closure after UAT round 2, blocked on Wave 9)*
-- [ ] 25-12-PLAN.md — Copy-layer gap closure (D-10): one shared eight-value task-type vocabulary across every task-type string plus a static suitability legend, LoRA target-module provenance, and anchored navigation sentences (TUI-05/TUI-06/TUI-08)
+- [x] 25-12-PLAN.md — Copy-layer gap closure (D-10): one shared eight-value task-type vocabulary across every task-type string plus a static suitability legend, LoRA target-module provenance, and anchored navigation sentences (TUI-05/TUI-06/TUI-08)
 
 **UI hint**: yes
 **Note**: `--research-phase` suggested — worker-seam shape (message types vs `call_from_thread`), download cancel semantics (cooperative vs abandon+resume), `tui`-extra membership vs `full`-alias removal ordering, Pilot test-batch wall-time budget (Pilot-in-this-gate is documented but unproven in this repo)
@@ -227,5 +227,5 @@ Phases execute in numeric order: 22 → 23 → 24 → 25 → 26
 | 22. Registry Foundation | 2/2 | Complete    | 2026-10-20 |
 | 23. Pre-flight Core | 5/5 | Complete    | 2026-10-21 |
 | 24. Preset Loading | 1/1 | Complete    | 2026-10-21 |
-| 25. Terminal UI & tui Extra | 11/11 | In Progress | - |
+| 25. Terminal UI & tui Extra | 12/12 | In Progress | - |
 | 26. MCP Consistency | 0/TBD | Not started | - |

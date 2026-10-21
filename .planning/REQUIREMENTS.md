@@ -33,10 +33,10 @@ Scope pinned by owner 2026-10-20: Track A only; Track B (dnallmmark TUI substrat
 - [ ] **TUI-02**: `dnallm preflight` click subcommand launches the wizard via lazy import with a friendly `pip install dnallm[tui]` error when the extra is absent
 - [ ] **TUI-03**: Environment panel shows device/VRAM/library versions/disk from the core (no logic in screens)
 - [ ] **TUI-04**: Data panel renders the `validate_data()` report (stats + per-rule failures with counts and reason codes)
-- [ ] **TUI-05**: Suitability panel renders `check_compatibility()`/availability verdicts with lineage routing and lab-first ordering; model selection feeds the next step
-- [ ] **TUI-06**: Config panel generates or edits an existing YAML with live collect-all validation (absorbs survey R4) and emits the validated config
+- [x] **TUI-05**: Suitability panel renders `check_compatibility()`/availability verdicts with lineage routing and lab-first ordering; model selection feeds the next step
+- [x] **TUI-06**: Config panel generates or edits an existing YAML with live collect-all validation (absorbs survey R4) and emits the validated config
 - [ ] **TUI-07**: Select-to-download runs `download_model` sequentially with progress and cancel; all blocking work runs in thread workers so the event loop never freezes (worker seam lands before any panel)
-- [ ] **TUI-08**: TUI tested via Pilot functional tests (no snapshot infrastructure); a panel→core-function table test proves screens contain no domain logic; per-module coverage ≥96% with no omit entries
+- [x] **TUI-08**: TUI tested via Pilot functional tests (no snapshot infrastructure); a panel→core-function table test proves screens contain no domain logic; per-module coverage ≥96% with no omit entries
 
 ### MCP Consistency (Phase 26)
 
@@ -94,10 +94,10 @@ Scope pinned by owner 2026-10-20: Track A only; Track B (dnallmmark TUI substrat
 | TUI-02 | Phase 25 | Pending |
 | TUI-03 | Phase 25 | Pending |
 | TUI-04 | Phase 25 | Pending |
-| TUI-05 | Phase 25 | Pending |
-| TUI-06 | Phase 25 | Pending |
+| TUI-05 | Phase 25 | Complete |
+| TUI-06 | Phase 25 | Complete |
 | TUI-07 | Phase 25 | Pending |
-| TUI-08 | Phase 25 | Pending |
+| TUI-08 | Phase 25 | Complete |
 | PKG-01 | Phase 25 | Complete |
 | MCP-01 | Phase 26 | Pending |
 | MCP-02 | Phase 26 | Pending |
