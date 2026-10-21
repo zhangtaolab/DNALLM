@@ -70,16 +70,19 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
     #env-versions-heading { margin-top: 1; }
     #env-continue { margin: 1 2; width: auto; }
     #env-quit-hint { padding: 0 2; }
-    #data-body { height: 1fr; padding: 1 2; }
+    #data-body { height: 1fr; padding: 0 2; }
     #data-title { text-style: bold; }
     #data-actions { height: auto; }
     #data-check { width: auto; }
     #data-skip { width: auto; margin-left: 2; }
-    #data-status { margin-top: 1; }
-    #data-summary-heading { margin-top: 1; text-style: bold; }
-    #data-charset-heading { margin-top: 1; }
-    #data-findings-heading { margin-top: 1; text-style: bold; }
+    #data-status { text-style: italic; }
+    #data-splits { height: auto; }
+    #data-charset { height: auto; }
+    #data-summary-heading { text-style: bold; }
+    #data-charset-heading { text-style: bold; }
+    #data-findings-heading { text-style: bold; }
     #data-findings { max-height: 14; }
+    #data-no-findings { text-style: italic; }
     #data-quit-hint { padding: 0 2; }
     """
 

@@ -9,7 +9,8 @@ network or torch; only a small CSV in ``tmp_path`` is read.
 
 from __future__ import annotations
 
-from textual.widgets import DataTable, Input, Static
+from textual.containers import VerticalScroll
+from textual.widgets import Button, DataTable, Input, Static
 
 from dnallm.preflight import validate_data
 from dnallm.tui import copy
@@ -180,3 +181,112 @@ async def test_reentering_after_a_skip_shows_the_no_data_state(monkeypatch) -> N
     assert copy.NO_DATA_PROVIDED in text
     assert copy.DATA_SKIP_NOTE in text
     assert table_hidden
+
+
+async def test_a_clean_report_shows_an_explicit_all_clear_row(tmp_path) -> None:
+    """Zero findings is a stated result, never an empty table to interpret."""
+    data_file = tmp_path / "clean.csv"
+    data_file.write_text(_CLEAN_CSV)
+    expected = validate_data(str(data_file))
+    assert expected.findings == []
+    assert expected.splits[0].findings == []
+
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_data_screen(app, pilot)
+        screen.query_one("#data-path", Input).value = str(data_file)
+        await pilot.click("#data-check")
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+        text = _rendered_text(screen)
+        no_findings = screen.query_one("#data-no-findings", Static)
+        table = screen.query_one("#data-findings", DataTable)
+        cleared_row = copy.NO_FINDINGS in text and no_findings.display
+        row_count = table.row_count
+
+    assert cleared_row
+    assert row_count == 0
+
+
+async def test_a_pickle_path_renders_the_refusal_row_with_its_code(tmp_path) -> None:
+    """A .pkl path becomes a plain row naming UNSUPPORTED_FORMAT_PKL; no raise."""
+    pickle_file = tmp_path / "labels.pkl"
+    pickle_file.write_bytes(b"not really a pickle")
+
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_data_screen(app, pilot)
+        # Handed straight to the worker: this proves the CORE's refusal row is
+        # what renders, not a screen-side file-type check.
+        app.validate_data_worker(str(pickle_file))
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+        rows = _table_rows(screen.query_one("#data-findings", DataTable))
+        stored = app.state.data_report
+        failure = app.last_failure
+
+    assert failure is None
+    assert stored is not None
+    assert stored.findings[0].reason_code == "UNSUPPORTED_FORMAT_PKL"
+    assert rows[0][1] == "UNSUPPORTED_FORMAT_PKL"
+    assert rows[0][0] == "error"
+    assert rows[0][2] == stored.findings[0].message
+
+
+async def test_a_missing_path_becomes_a_plain_language_row(tmp_path) -> None:
+    """A path that does not exist never produces a traceback on screen."""
+    missing = tmp_path / "nowhere.csv"
+
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_data_screen(app, pilot)
+        app.validate_data_worker(str(missing))
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+        text = _rendered_text(screen)
+        failure = app.last_failure
+
+    assert failure is not None
+    assert failure in text
+    assert "could not read this data" in text
+    assert "ValueError" not in text
+    assert "Traceback" not in text
+
+
+async def test_the_panel_is_usable_at_80x24(tmp_path) -> None:
+    """The action and the first findings row are on screen at the smallest size."""
+    data_file = tmp_path / "found.csv"
+    data_file.write_text(_FINDINGS_CSV)
+    expected = validate_data(str(data_file))
+    expected_codes = [finding.reason_code for finding in expected.findings]
+    expected_codes += [finding.reason_code for finding in expected.splits[0].findings]
+
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        screen = await _open_data_screen(app, pilot)
+        screen.query_one("#data-path", Input).value = str(data_file)
+        await pilot.click("#data-check")
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+
+        body = screen.query_one("#data-body", VerticalScroll).region
+        check_button = screen.query_one("#data-check", Button).region
+        table = screen.query_one("#data-findings", DataTable)
+        table_region = table.region
+        header_height = table.header_height
+        first_row = _table_rows(table)[0]
+        height = app.size.height
+
+    # The action is inside the visible page.
+    assert check_button.bottom <= body.bottom <= height
+    # The table is inside the page, tall enough for header + one finding, and
+    # that first finding row sits above the bottom of the page.
+    assert table_region.bottom <= body.bottom
+    assert table_region.height >= header_height + 1
+    assert table_region.y + header_height + 1 <= body.bottom
+    # And that first row really is the core's first finding.
+    assert first_row[1] == expected_codes[0]

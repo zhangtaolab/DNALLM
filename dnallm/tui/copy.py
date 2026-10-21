@@ -36,6 +36,7 @@ __all__ = [
     "ENV_VERSIONS_SECTION",
     "INSTALL_HINT",
     "NO_DATA_PROVIDED",
+    "NO_FINDINGS",
     "QUIT_HINT",
 ]
 
@@ -101,6 +102,9 @@ DATA_SUMMARY_HEADING = "What is in your data"
 DATA_CHARSET_HEADING = "Characters used"
 
 DATA_FINDINGS_HEADING = "Problems and notes"
+
+# Shown in place of the findings table when the core reported nothing at all.
+NO_FINDINGS = "No problems found in this data."
 
 # Column labels for the findings table; the reason code column stays verbatim.
 DATA_FINDINGS_COLUMNS = ("How serious", "Reason code", "What this means", "Rows affected")

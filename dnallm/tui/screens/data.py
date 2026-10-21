@@ -51,6 +51,7 @@ _REPORT_AREA_SELECTORS = (
     f"#{_CHARSET_CONTAINER_ID}",
     "#data-findings-heading",
     f"#{_FINDINGS_TABLE_ID}",
+    "#data-no-findings",
 )
 
 
@@ -78,6 +79,7 @@ class DataScreen(Screen):
             yield Container(id=_CHARSET_CONTAINER_ID)
             yield Static(copy.DATA_FINDINGS_HEADING, id="data-findings-heading")
             yield DataTable(id=_FINDINGS_TABLE_ID)
+            yield Static("", markup=False, id="data-no-findings")
         yield Static(copy.QUIT_HINT, id="data-quit-hint")
         yield Footer()
 
@@ -197,7 +199,8 @@ class DataScreen(Screen):
                     )
                 )
 
-        for finding in _findings_in_order(data_report):
+        findings = _findings_in_order(data_report)
+        for finding in findings:
             table.add_row(
                 _cell(finding.severity.value),
                 _cell(finding.reason_code),
@@ -206,6 +209,11 @@ class DataScreen(Screen):
                     copy.DATA_COUNT_NOT_APPLICABLE if finding.count is None else str(finding.count)
                 ),
             )
+        # A report with nothing to say gets an explicit all-clear row instead of
+        # an empty table the user would have to interpret.
+        no_findings = self.query_one("#data-no-findings", Static)
+        no_findings.update("" if findings else copy.NO_FINDINGS)
+        no_findings.display = not findings
 
 
 def _findings_in_order(data_report: DataReport) -> list[Finding]:
