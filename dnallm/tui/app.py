@@ -119,7 +119,9 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
     #config-heading-inference, #config-heading-lora { text-style: bold; }
     #config-facts-note { text-style: italic; }
     #config-errors-heading { text-style: bold; }
-    #config-errors { max-height: 14; }
+    #config-errors { max-height: 14; overflow-y: auto; }
+    #config-error-details { width: auto; margin: 1 0; }
+    .config-hint { color: $text-muted; }
     #config-preview-heading { text-style: bold; margin-top: 1; }
     #config-preview { max-height: 24; }
     #config-kept-as-is-heading { text-style: bold; margin-top: 1; }

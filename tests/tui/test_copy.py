@@ -286,3 +286,47 @@ def test_a_bad_task_type_reports_a_dotted_field_and_maps_to_a1() -> None:
     error = generated.errors[0]
     assert (error.section, error.field) == ("task", "task.task_type")
     assert copy.config_error_message(error.section, error.field, error.message) == A1
+
+
+# ── Gloss inventory (GAP B, D-10) ──────────────────────────────────────────
+
+# Every term the UAT named as unexplained. The inventory is exact: adding a
+# hint means adding it here, so the phase-end copy review stays one read.
+_HINTED_FIELDS = (
+    ("task", "task_type"),
+    ("task", "threshold"),
+    ("finetune", "num_train_epochs"),
+    ("finetune", "per_device_train_batch_size"),
+    ("finetune", "learning_rate"),
+    ("finetune", "weight_decay"),
+    ("finetune", "warmup_ratio"),
+    ("inference", "device"),
+    ("lora", "r"),
+    ("lora", "lora_alpha"),
+    ("lora", "lora_dropout"),
+    ("lora", "target_modules"),
+)
+
+
+def test_every_glossed_field_has_a_plain_hint() -> None:
+    """The hint table is exactly the inventory, and every sentence is non-empty."""
+    assert set(copy.CONFIG_FIELD_HINTS) == set(_HINTED_FIELDS)
+    assert all(copy.CONFIG_FIELD_HINTS[key].strip() for key in _HINTED_FIELDS)
+
+
+def test_the_glossed_headings_and_the_inference_batch_label() -> None:
+    """The two headings the UAT named carry their gloss; inference batch does too."""
+    assert copy.CONFIG_SECTION_INFERENCE.endswith("(making predictions)")
+    assert copy.CONFIG_SECTION_LORA.endswith("(lightweight fine-tuning)")
+    assert copy.CONFIG_FIELD_LABELS["inference", "batch_size"] == (
+        "Sequences read at once when predicting"
+    )
+
+
+def test_the_task_type_hint_explains_its_examples() -> None:
+    """The prompt names what binary, multiclass and token actually mean."""
+    prompt = copy.SUITABILITY_TASK_PROMPT
+    assert "Binary is a yes/no answer" in prompt
+    assert "multiclass is one of several classes" in prompt
+    assert "token is a label for each DNA letter" in prompt
+    assert "Leave it empty if you are not sure." in prompt

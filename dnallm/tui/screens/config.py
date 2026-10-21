@@ -275,6 +275,14 @@ class ConfigScreen(Screen):
                                 copy.CONFIG_FIELD_LABELS.get((section, spec.name), spec.name),
                                 id=f"config-label-{section}-{spec.name}",
                             )
+                            hint = copy.CONFIG_FIELD_HINTS.get((section, spec.name))
+                            if hint is not None:
+                                yield Static(
+                                    hint,
+                                    markup=False,
+                                    id=f"config-hint-{section}-{spec.name}",
+                                    classes="config-hint",
+                                )
                             yield Input(
                                 id=_field_id(section, spec.name),
                                 disabled=spec.readonly,

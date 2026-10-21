@@ -950,6 +950,113 @@ async def test_the_details_control_is_off_while_the_config_is_clean() -> None:
     assert pane == ""
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Config panel glosses (GAP B, 25-11 Task 2): one plain hint per named term,
+# with the config keys and values still verbatim.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+async def test_every_glossed_field_renders_its_hint_and_keys_stay_verbatim() -> None:
+    """Each named term carries its sentence; typing a value keeps the raw key."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, model=CONFIG_FINETUNED_REPO)
+        await _settle_config(pilot, app)
+        rendered = {
+            key: str(screen.query_one(f"#config-hint-{key[0]}-{key[1]}", Static).content)
+            for key in copy.CONFIG_FIELD_HINTS
+        }
+        headings = {
+            section: str(screen.query_one(f"#config-heading-{section}", Static).content)
+            for section in ("task", "model", "finetune", "inference", "lora")
+        }
+        unglossed = list(screen.query("#config-hint-model-name"))
+        epochs_label = str(
+            screen.query_one("#config-label-finetune-num_train_epochs", Static).content
+        )
+        screen.query_one("#config-field-finetune-num_train_epochs", Input).value = "5"
+        await _settle_config(pilot, app)
+        preview = str(screen.query_one("#config-preview", Static).content)
+
+    assert rendered == dict(copy.CONFIG_FIELD_HINTS)
+    assert headings["inference"] == copy.CONFIG_SECTION_INFERENCE
+    assert headings["lora"] == copy.CONFIG_SECTION_LORA
+    assert headings["inference"].endswith("(making predictions)")
+    assert headings["lora"].endswith("(lightweight fine-tuning)")
+    assert unglossed == []
+    assert epochs_label == "Epochs"
+    assert "num_train_epochs: 5" in preview
+
+
+async def test_the_suitability_task_prompt_explains_its_examples() -> None:
+    """The suitability screen's placeholder carries the glossed prompt."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        placeholder = screen.query_one("#suitability-task-type", Input).placeholder
+
+    assert placeholder == copy.SUITABILITY_TASK_PROMPT
+    assert "Binary is a yes/no answer" in str(placeholder)
+
+
+async def test_the_hinted_form_stays_legible_at_80x24() -> None:
+    """The UAT's Test 2 condition, re-proven with twelve hint lines present.
+
+    Clean leg: the five headings, the read-only facts note, the preview and an
+    enabled save are all there, the form scrolls, and the last LoRA hint is
+    reachable by scrolling rather than clipped. Broken leg: the save-disabled
+    reason stays on screen at 24 rows while the task-type hint still renders.
+    """
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        screen = await _open_config_screen(app, pilot, model=CONFIG_FINETUNED_REPO)
+        await _settle_config(pilot, app)
+        headings = [
+            str(screen.query_one(f"#config-heading-{section}", Static).content)
+            for section in ("task", "model", "finetune", "inference", "lora")
+        ]
+        facts = str(screen.query_one("#config-facts-note", Static).content)
+        preview = str(screen.query_one("#config-preview", Static).content)
+        save_enabled = not screen.query_one("#config-save", Button).disabled
+        form = screen.query_one("#config-form", VerticalScroll)
+        last_hint = "config-hint-lora-target_modules"
+        screen.scroll_to_widget(screen.query_one(f"#{last_hint}", Static), animate=False)
+        await pilot.pause()
+        hint = screen.query_one(f"#{last_hint}", Static)
+        hint_text = str(hint.content)
+        hint_reachable = form.region.contains_region(hint.region)
+        scrollable = form.max_scroll_y > 0
+
+        screen.query_one("#config-field-task-task_type", Input).value = "not-a-task"
+        await _settle_config(pilot, app)
+        save_disabled = screen.query_one("#config-save", Button).disabled
+        reason = str(screen.query_one("#config-save-reason", Static).content)
+        reason_bottom = screen.query_one("#config-save-reason", Static).region.bottom
+        height = app.size.height
+        task_hint = str(screen.query_one("#config-hint-task-task_type", Static).content)
+
+    assert headings == [
+        copy.CONFIG_SECTION_TASK,
+        copy.CONFIG_SECTION_MODEL,
+        copy.CONFIG_SECTION_FINETUNE,
+        copy.CONFIG_SECTION_INFERENCE,
+        copy.CONFIG_SECTION_LORA,
+    ]
+    assert facts == copy.CONFIG_READONLY_FACTS_NOTE
+    assert "task_type: binary" in preview
+    assert save_enabled
+    assert scrollable
+    assert hint_text == copy.CONFIG_FIELD_HINTS["lora", "target_modules"]
+    assert hint_reachable
+    assert save_disabled
+    assert reason == copy.CONFIG_SAVE_DISABLED_REASON
+    assert reason_bottom <= height
+    assert task_hint == copy.CONFIG_FIELD_HINTS["task", "task_type"]
+
+
 async def test_the_preview_widget_is_read_only_text() -> None:
     """No raw-YAML editor: the preview is rendered text, never an input."""
     app = DNALLMPreflightApp(collector=FakeCollector())

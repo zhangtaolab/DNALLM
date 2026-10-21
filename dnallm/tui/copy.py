@@ -28,6 +28,7 @@ __all__ = [
     "CONFIG_ERROR_GENERIC",
     "CONFIG_ERROR_LINE",
     "CONFIG_ERROR_MESSAGES",
+    "CONFIG_FIELD_HINTS",
     "CONFIG_FIELD_LABELS",
     "CONFIG_HAS_ERRORS",
     "CONFIG_KEPT_AS_IS_HEADING",
@@ -249,7 +250,9 @@ SUITABILITY_INTENT_FINETUNE = "Fine-tune a base model on my data"
 SUITABILITY_INTENT_PREDICT = "Predict now with a ready-made model"
 
 SUITABILITY_TASK_PROMPT = (
-    "Task type, when you already know it (for example binary, multiclass or token)."
+    "Task type, when you already know it. Binary is a yes/no answer, multiclass is "
+    "one of several classes, and token is a label for each DNA letter. Leave it "
+    "empty if you are not sure."
 )
 
 SUITABILITY_MODELS_PROMPT = (
@@ -413,9 +416,9 @@ CONFIG_SECTION_MODEL = "Model"
 
 CONFIG_SECTION_FINETUNE = "Training"
 
-CONFIG_SECTION_INFERENCE = "Inference"
+CONFIG_SECTION_INFERENCE = "Inference (making predictions)"
 
-CONFIG_SECTION_LORA = "LoRA"
+CONFIG_SECTION_LORA = "LoRA (lightweight fine-tuning)"
 
 # Field labels, keyed by (section, raw key). Keys not listed show their own
 # name verbatim — the core's spelling is the file's spelling.
@@ -433,12 +436,53 @@ CONFIG_FIELD_LABELS = {
     ("finetune", "warmup_ratio"): "Warm-up share",
     ("finetune", "seed"): "Random seed",
     ("inference", "max_length"): "Longest sequence the model reads",
-    ("inference", "batch_size"): "Inference batch size",
+    ("inference", "batch_size"): "Sequences read at once when predicting",
     ("inference", "device"): "Device",
     ("lora", "r"): "LoRA rank",
     ("lora", "lora_alpha"): "LoRA alpha",
     ("lora", "lora_dropout"): "LoRA dropout",
     ("lora", "target_modules"): "LoRA target modules",
+}
+
+# One plain sentence under a field whose label still carries an ML term (GAP B,
+# D-10). Keyed like CONFIG_FIELD_LABELS; a field with no entry renders no hint.
+# These explain the SETTING — the key and its value stay verbatim in the
+# preview, so what the file says is never rewritten by a label.
+CONFIG_FIELD_HINTS = {
+    ("task", "task_type"): (
+        "What the model should do. Binary is a yes/no answer, multiclass is one of "
+        "several classes, and token is a label for each DNA letter."
+    ),
+    ("task", "threshold"): (
+        "The cut-off for calling a sequence positive: 0.5 means an even chance."
+    ),
+    ("finetune", "num_train_epochs"): (
+        "One epoch is one full pass over your training data. More passes can fit "
+        "better but take longer."
+    ),
+    ("finetune", "per_device_train_batch_size"): (
+        "How many sequences the model learns from in one step."
+    ),
+    ("finetune", "learning_rate"): (
+        "How big each learning step is. Smaller values learn more slowly but can be steadier."
+    ),
+    ("finetune", "weight_decay"): (
+        "How strongly the model is kept simple, so it memorizes less and generalizes more."
+    ),
+    ("finetune", "warmup_ratio"): (
+        "The share of training spent gently raising the learning rate at the start."
+    ),
+    ("inference", "device"): ("Which processor runs the model: cpu, or cuda for a graphics card."),
+    ("lora", "r"): ("How much detail the add-on weights can learn. Larger means more capacity."),
+    ("lora", "lora_alpha"): (
+        "How strongly the add-on weights are applied. Twice the rank is a common choice."
+    ),
+    ("lora", "lora_dropout"): (
+        "The share of add-on weights ignored in each step, to avoid memorizing the data."
+    ),
+    ("lora", "target_modules"): (
+        "Which parts of the model receive the add-on weights, for example query, value."
+    ),
 }
 
 
