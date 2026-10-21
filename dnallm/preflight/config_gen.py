@@ -220,13 +220,31 @@ def _dump_yaml(config: dict, output_path: str | Path) -> None:
     itself comes from :func:`render_yaml`, so the file is byte-identical to
     what a caller can preview.
 
+    The document is serialized BEFORE the destination is opened, and written
+    through a sibling temporary file that replaces the target atomically.
+    Opening the destination with ``"w"`` first would truncate the user's
+    config before a serialization error could be raised, destroying the file
+    the failed run was supposed to leave untouched (WR-04).
+
     Args:
         config: The config mapping to serialize.
         output_path: The exact destination path.
     """
+    # May raise (e.g. RepresenterError); nothing has been touched yet.
+    text = render_yaml(config)
     path = os.path.expanduser(str(output_path))
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(render_yaml(config))
+    tmp = f"{path}.tmp-{os.getpid()}"
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        # Never leave a scratch file beside the destination on failure.
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def generate_config(

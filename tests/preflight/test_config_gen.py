@@ -648,6 +648,28 @@ class TestRawMappingAndRenderYaml:
         assert generated.errors == []
         assert out_path.read_text(encoding="utf-8") == render_yaml(result.raw)
 
+    def test_a_serialization_failure_leaves_the_existing_file_untouched(self, tmp_path):
+        """WR-04: the destination is replaced atomically, never truncated first.
+
+        The old writer opened the target with "w" (truncating it) before
+        serializing, so an unserializable value destroyed the user's config.
+        Now the document is rendered first, and the target keeps its bytes —
+        with no scratch file left beside it.
+        """
+        out_path = tmp_path / "config.yaml"
+        out_path.write_text("task:\n  task_type: binary\n", encoding="utf-8")
+        before = out_path.read_bytes()
+
+        with pytest.raises(yaml.representer.RepresenterError):
+            edit_config(
+                {"task": {"task_type": "binary"}, "model": {"path": Path("/tmp/x")}},
+                {},
+                output_path=out_path,
+            )
+
+        assert out_path.read_bytes() == before
+        assert sorted(path.name for path in tmp_path.iterdir()) == ["config.yaml"]
+
     def test_render_yaml_keeps_the_mapping_key_order(self):
         """Keys stay where the mapping put them (sort_keys=False)."""
         text = render_yaml({"model": {"name": "x"}, "task": {"task_type": "binary"}})
