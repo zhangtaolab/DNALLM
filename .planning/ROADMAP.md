@@ -165,7 +165,7 @@ Plans:
   4. Select-to-download runs `download_model` sequentially with visible progress and working cancel; all blocking work runs in thread workers so the event loop never freezes
   5. The TUI is tested Pilot-functional only — no snapshot/golden infrastructure — and a panel→core-function table test proves screens contain no domain logic; per-module coverage ≥96% with no omit entries
 
-**Plans**: 4/10 plans executed
+**Plans**: 5/10 plans executed
 
 Plans:
 **Wave 1**
@@ -177,7 +177,7 @@ Plans:
 - [x] 25-04-PLAN.md — `dnallm/utils/env_info.py` core collector (versions/device/disk, torch inside the body, degrade-never-raise); sequenced after 25-03, whose lazy facades its import-purity proof depends on
 
 **Wave 3** *(blocked on Wave 2)*
-- [ ] 25-05-PLAN.md — `dnallm preflight` CLI + app shell + wizard state + copy module + env panel with worker-filled rows (TUI-02/TUI-03)
+- [x] 25-05-PLAN.md — `dnallm preflight` CLI + app shell + wizard state + copy module + env panel with worker-filled rows (TUI-02/TUI-03)
 
 **Wave 4** *(blocked on Wave 3)*
 - [ ] 25-06-PLAN.md — Data panel rendering the `validate_data()` report + optional-data (skip) path (TUI-04)
@@ -221,5 +221,5 @@ Phases execute in numeric order: 22 → 23 → 24 → 25 → 26
 | 22. Registry Foundation | 2/2 | Complete    | 2026-10-20 |
 | 23. Pre-flight Core | 5/5 | Complete    | 2026-10-21 |
 | 24. Preset Loading | 1/1 | Complete    | 2026-10-21 |
-| 25. Terminal UI & tui Extra | 4/10 | In Progress | - |
+| 25. Terminal UI & tui Extra | 5/10 | In Progress | - |
 | 26. MCP Consistency | 0/TBD | Not started | - |
