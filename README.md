@@ -626,10 +626,10 @@ dnallm preflight --config my.yaml   # or jump straight to editing a config
 
 The wizard walks through seven screens — environment, entry, your data, model
 suitability, config editing with live validation, an optional model download,
-and a summary with the exact file that was saved:
+and a summary with the exact file that was saved (animated walkthrough, loops):
 
 <p align="center">
-  <img src="docs/pic/tui/summary.svg" alt="Pre-flight wizard summary screen" width="720">
+  <img src="docs/pic/tui/wizard.svg" alt="Pre-flight wizard — animated walkthrough of all seven screens" width="720">
 </p>
 
 Every OK / WARN / FAIL verdict comes from the core pre-flight checks
