@@ -57,10 +57,14 @@ Shipped in Phase 2 (Suite Hygiene & Known-Bug Fixes, 2026-09-30):
 
 - [ ] Pre-flight validation & suitability API — `validate_data` / `check_compatibility` / `generate_config` pure functions with availability dimension (v1.4)
 - [ ] Pre-flight TUI — env/data/suitability/config panels over the API core, Textual behind a `tui` extra (v1.4)
-- [ ] MCP per-model config consistency-checked against the registry (v1.4; the loading-chain half shipped in Phase 24)
 - [ ] ModelScope-first downloads on the pre-flight critical path, lab models (`zhangtaolab/*`) prioritized in the UX (v1.4)
 
 ### Validated — v1.4 partial
+
+Shipped in Phase 26 (MCP Consistency — Registry-Keyed Check & Honest Listing, 2026-10-22):
+
+- ✓ MCP-01/MCP-03 — `check_config_registry_consistency()`: read-only, repo-id-keyed comparison of every per-model MCP YAML (plus server-config reference integrity) against the packaged registry — tiered findings (four hard fields strict-fatal; source/max_length/unknown-repo WARN; description INFO; unreadable/invalid/dangling ERROR fatal in both modes), collect-all in one pass, CI gate test over the committed `dnallm/mcp/configs/` green on every lane via existing testpaths (98% module coverage)
+- ✓ MCP-02 — `get_all_available_models` serves the full 236-entry registry listing lab-first with configured/enabled/loaded overlay, `server_config_key` on configured rows, and `unmatched_configured` visibility (issue #64's registry-consumption half; client surface pinned by 73 unedited SDK tests)
 
 Shipped in Phase 24 (Preset Loading — `load_preset_model` Registry Rewire, 2026-10-21):
 
@@ -269,4 +273,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-21 after Phase 24 (Preset Loading shipped — LOAD-01 validated)*
+*Last updated: 2026-10-22 after Phase 26 (MCP consistency checker + honest registry listing shipped — MCP-01/02/03 validated; v1.4 23/23 plans)*

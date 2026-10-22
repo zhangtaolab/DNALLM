@@ -21,10 +21,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-21)
+See: .planning/PROJECT.md (updated 2026-10-22)
 
 **Core value:** One terminal flow takes a user from their own data to a validated, model-compatible config, with the model registry as the runtime single source of truth (Track A first) — suite, coverage gate, and CI honest-green throughout.
-**Current focus:** Phase 26 — MCP Consistency — Registry-Keyed Check & Honest Listing
+**Current focus:** v1.4 milestone complete — all 5 phases (22–26) verified; next: milestone close
 
 ## Current Position
 
@@ -33,7 +33,7 @@ Plan: Not started
 Status: All phases complete
 Last activity: 2026-10-22 — Phase 26 complete
 
-Progress: [██████████] 100% (3 of 5 v1.4 phases)
+Progress: [██████████████] 100% (5 of 5 v1.4 phases)
 
 ## Performance Metrics
 
@@ -114,7 +114,7 @@ Carried open ledger items from the v1.1/v1.2 handoffs (owner-scoped, outside act
 
 ### Blockers/Concerns
 
-- [Phase 24 review WR-01, deferred] 24 third-party family names now resolve upstream repo ids via hardcoded `source="modelscope"` (hosting unprobed — research A2); surface to Phase 25 TUI / Phase 26 MCP before exposing those names in the UX (24-REVIEW-DISPOSITION.md)
+- [Phase 24 review WR-01, deferred] 24 third-party family names resolve repo ids via hardcoded `source="modelscope"` (hosting unprobed — research A2); Phase 26's MCP listing surfaces the names neutrally (repo_id/task_type/overlay only, no hosting claim) — the unprobed-source concern itself remains open for any future UX that names a download hub
 
 Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/v1.1-MILESTONE-AUDIT.md`. v1.3 known gaps carried in the WINDOWS ledger: #25 PyPI trusted-publisher registration, #27 Windows KDA smoke, #26 pip-side alias resolve.
 
