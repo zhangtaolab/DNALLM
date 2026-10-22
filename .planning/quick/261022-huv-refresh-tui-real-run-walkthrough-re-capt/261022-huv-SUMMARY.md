@@ -12,6 +12,15 @@ date: 2026-10-22
   runs — morning 10:50 first-run (live ~1 GB ModelScope transfer) and 14:34 re-run
   (FungiHelixSeek cached: cache-detection column lights up, download panel verifies
   cache in ~2 s, summary now shows the model path).
+- **Owner follow-up (14:58): fool-proofing + data-sample display added.** New
+  subsection 「防呆实测」: real captures of bad-data-path rejection (plain-language
+  error) and unknown-model lookup (honest `fail / MODEL_NOT_IN_REGISTRY` row), plus
+  8 representative fool-proofing tests run live (6+2 passed) and two honestly
+  recorded non-blocking boundaries (task-type typo falls back silently; config-edit
+  route does not registry-check model names). New subsection 「测试数据长什么样」:
+  verbatim truncated CSV head + stats (24 rows, 12/12, 183–260 bp, pure ACGT,
+  randomly generated — explains the 0.50 coin-flip downstream). §7 now 13 figures
+  + 3 code blocks.
 - **Execution loop closed**: added the wizard-generated `dnallm_config.yaml` verbatim
   (9 lines) and a real inference run driven by it (14.1 s total on GB10/CUDA,
   24 sequences). Untrained-head accuracy 0.50 reported as coin-flip, not dressed up.

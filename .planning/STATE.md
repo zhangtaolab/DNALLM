@@ -128,7 +128,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/
 | 261022-tta | Registry task-type audit: 236 entries swept; 6 PlantCAD2 classification→binary + 3 empty-labels→null (f94c50f); lab 189/189 task types verified vs ModelScope model code; hub-side cleanup list recorded | 2026-10-22 | f94c50f | [261022-tta](./quick/261022-tta/) |
 | 4 | Append Part 5 addendum to 261020-gk4 TUI survey (pre-flight cluster + merge-or-build verdicts per owner directives 2026-10-20) | 2026-10-20 | e60303f | — |
 | 261020-kwt | Registry data-layer fix: +15 pretrained variants, DNAGPT/EVO task-class fixes, base_model 187/187, aDNA typo (12 tests) | 2026-10-20 | f0b8302 | [261020-kwt-registry-data-layer-fix-add-15-missing-p](./quick/261020-kwt-registry-data-layer-fix-add-15-missing-p/) |
-| 261022-huv | Refresh TUI real-run walkthrough: §7 re-captured on current tree (2 real runs, 11 figs), config-file + real inference blocks added, dead -i flag recorded as tech debt #13 | 2026-10-22 | e06b587 | [261022-huv-refresh-tui-real-run-walkthrough-re-capt](./quick/261022-huv-refresh-tui-real-run-walkthrough-re-capt/) |
+| 261022-huv | Refresh TUI real-run walkthrough: §7 re-captured on current tree (2 real runs, 11 figs), config-file + real inference blocks added, dead -i flag recorded as tech debt #13; owner follow-up: fool-proofing demo (2 figs + 8 live tests) + data-sample block added | 2026-10-22 | e06b587 | [261022-huv-refresh-tui-real-run-walkthrough-re-capt](./quick/261022-huv-refresh-tui-real-run-walkthrough-re-capt/) |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
