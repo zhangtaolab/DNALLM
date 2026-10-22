@@ -1,6 +1,6 @@
 ---
 phase: 23-pre-flight-core-pure-validation-suitability-config-api
-verified: 2026-10-20T18:34:02Z
+verified: 2026-10-22T03:25:00Z
 status: passed
 score: 5/5 must-haves verified
 covered_files:
@@ -28,7 +28,7 @@ covered_files:
   - tests/preflight/test_reader_parity.py
   - tests/preflight/test_structure.py
   - tests/preflight/test_validation.py
-covered_digest: "v3:sha256:c6d4ba6e7df4eeba7b697ba4d6513f3f820cfcd3610c84a95dc0d0323c11dee4"
+covered_digest: v3:sha256:fefe4b2d2ab95eb988db5bb45e55055ff4450ecee3bfc0581563f55e8715b835
 behavior_unverified: 0
 overrides_applied: 0
 deferred:

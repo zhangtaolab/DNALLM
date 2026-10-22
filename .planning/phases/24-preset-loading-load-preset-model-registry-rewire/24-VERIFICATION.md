@@ -1,6 +1,6 @@
 ---
 phase: 24-preset-loading-load-preset-model-registry-rewire
-verified: 2026-10-21T02:26:00Z
+verified: 2026-10-22T03:25:00Z
 status: passed
 score: 10/10 must-haves verified
 covered_files:
@@ -8,7 +8,7 @@ covered_files:
   - .planning/phases/24-preset-loading-load-preset-model-registry-rewire/24-01-SUMMARY.md
   - dnallm/models/model.py
   - tests/models/test_model.py
-covered_digest: v3:sha256:cbcab1e85b89d711500b1c2becb933050e11b0daad7af03bd24345143f04cb3e
+covered_digest: v3:sha256:49189bcb439f9fa829eb599782d3f246b8336b0a0eb95e5180fb2fa0d52a9191
 ---
 
 # Phase 24 Verification: Preset Loading — `load_preset_model` Registry Rewire
@@ -68,3 +68,18 @@ None required — every deliverable is proven by green network-free tests (SUMMA
 ## Verdict
 
 **PASSED** — Phase 24 achieved its goal. The registry is now the runtime truth source for preset names with family behavior provably unchanged; the dead branch is deleted; all gates green.
+
+## Re-verification 2026-10-22 (stale-digest refresh, #4682)
+
+Covered source changed after the original verifier ran (later phases' edits to shared
+files, plus the 2026-10-22 task-type audit's registry data fix `f94c50f` for phase 22's
+covered model_info.yaml). Fresh evidence on the current tree this run; must-have verdicts
+above re-checked and unchanged:
+
+- Phase 22: tests/models/test_registry.py (42, +1 new task-type guard) +
+  tests/models/test_model_info_registry.py green in the 290-test model-lane run;
+  the nine data-layer fixes are pinned by the new permanent guard test.
+- Phase 23: tests/preflight lane 214 passed (fresh run this date).
+- Phase 24: preset-model test class 26 passed (fresh run this date).
+
+Status remains **passed**; covered_digest regenerated below at the new tree state.

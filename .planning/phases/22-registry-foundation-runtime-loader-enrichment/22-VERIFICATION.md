@@ -1,6 +1,6 @@
 ---
 phase: 22-registry-foundation-runtime-loader-enrichment
-verified: 2026-10-20T12:40:44Z
+verified: 2026-10-22T03:25:00Z
 status: passed
 score: 17/18 must-haves verified
 covered_files:
@@ -13,7 +13,7 @@ covered_files:
   - dnallm/models/registry.py
   - tests/models/test_model_info_registry.py
   - tests/models/test_registry.py
-covered_digest: "v3:sha256:e1d8dd90203891bd5a36165c7ab56bee8256d615195f755329c46c2cdcdb052f"
+covered_digest: v3:sha256:624296f330cf153b44428f9aaeb65f6a975aa2ba206c4460c114ed350093e99d
 behavior_unverified: 0 # No PRESENT_BEHAVIOR_UNVERIFIED truths — every behavior-dependent truth has a passing behavioral test
 overrides_applied: 0
 gaps: []
