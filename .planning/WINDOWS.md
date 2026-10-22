@@ -2,9 +2,9 @@
 schema_version: 1
 open_count: 6
 waived_count: 3
-fixed_count: 18
-total_count: 27
-last_updated: 2026-10-14T15:49:25.972Z
+fixed_count: 19
+total_count: 28
+last_updated: 2026-10-22T07:35:00.000Z
 ---
 
 # Broken Windows Ledger
@@ -396,6 +396,19 @@ last_updated: 2026-10-14T15:49:25.972Z
     "recorded_at": "2026-10-14T15:49:25.972Z",
     "resolved_at": null,
     "milestone": "v1.3"
+  },
+  {
+    "id": 28,
+    "kind": "deviation",
+    "phase": "post-v1.3",
+    "file": "example/notebooks/plant_helixseek_cre/plant_helixseek_cre.ipynb",
+    "line": null,
+    "description": "First Windows GPU full-suite census (2026-10-19, dnallm-cuda env, RTX 5080, 2498P/120F/32S) surfaced the last unguarded bedtools-ecosystem surface: CRE notebook cell 16's presentation-only zoom figure invokes the pgt CLI (pygenometracks), which pyproject gates platform_system != 'Windows' (line 56, matplotlib-cap rationale) — compute path (cell 11 jaccard numpy dispatch) was already platform-split by 16-01. Disposition: sys.platform == 'win32' seam at the render call only (POSIX branch byte-preserved, data-file writes unguarded, committed outputs kept as the Linux-execution record), docs mirror synced byte-identical. census residue taxonomy: ~92 failures were VRAM-exhaustion cascade (monolithic full-suite run on 16GB vs CI's D-07 staged-serial discipline — not a code defect; affected files re-ran green on the freed GPU), 25 were scikit-allel missing from the owner env (installed per pyproject constraint scikit-allel>=1.3.13,<2; test_vep 56P/5S green), this 1 was the real surface gap. Follow-up: 6 residual failures re-run exclusive-GPU fresh-process — 5 were CUDA-context poisoning from the first real OOM (4 re-verified green standalone: ia3 roundtrip, with_config_file, both TestUnload; mcp_functionality excluded from Windows scope per owner directive 2026-10-19 — MCP not tested on this box, same convention family as the ollama disposition); the one genuine >16GB task is test_ia3_training_mamba (mambapy pscan pure-torch scan, modeling_mamba.py:306 slow_forward → pscan.py:169) — dispositioned as a Windows-GPU-only typed skip at test head (sys.platform=='win32' and cuda available → pytest.skip environment-unavailable, 0.37s verified 2026-10-19); Linux nightly (GB10) and Windows CPU runs still execute it unchanged. Also noted: check_docs_sync gives a false DIFFER on Windows autocrlf=true checkouts (git blobs identical; normalize EOL before trusting a local red).",
+    "status": "fixed",
+    "reason": "",
+    "recorded_at": "2026-10-19T09:40:00.000Z",
+    "resolved_at": null,
+    "milestone": null
   }
 ]
 ````

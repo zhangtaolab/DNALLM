@@ -13,9 +13,11 @@ key-files:
     - dnallm/models/model_info.yaml
     - dnallm/models/modeling_auto.py
 decisions:
-  - Corrected the plan's joined-title grep gate from bare `aDNA` to `whether aDNA` — bare
+  - >-
+    Corrected the plan's joined-title grep gate from bare `aDNA` to `whether aDNA` — bare
     `aDNA` is a substring of HyenaDNA/megaDNA (16 HEAD hits) and could never reach 0.
-  - Lineage backfill done as scripted text insertion keyed on unique finetuned
+  - >-
+    Lineage backfill done as scripted text insertion keyed on unique finetuned
     `model: "<repo>"` lines (164 added / 0 modified-deleted lines), never a yaml.dump
     round-trip — provenance comment block and the 23 pre-existing base_model values
     byte-unchanged.

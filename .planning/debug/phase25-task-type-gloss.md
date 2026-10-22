@@ -1,3 +1,8 @@
+---
+status: resolved
+updated: 2026-10-22
+---
+
 # Debug: G-25-4 — task-type copy explains 3 of the 8 allowed values
 
 - **Bug class:** Bohrbug (deterministic copy defect; reproducible by reading the strings)
