@@ -156,7 +156,7 @@ def _check_one_model_config(path: Path) -> list[Finding]:
 
     try:
         doc = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except (OSError, yaml.YAMLError) as e:
+    except (OSError, UnicodeDecodeError, yaml.YAMLError) as e:
         logger.warning(f"Config {path.name} could not be read or parsed: {e}")
         return [
             Finding(
@@ -342,7 +342,7 @@ def _check_one_server_config(path: Path, config_dir: Path) -> list[Finding]:
 
     try:
         doc = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except (OSError, yaml.YAMLError) as e:
+    except (OSError, UnicodeDecodeError, yaml.YAMLError) as e:
         logger.warning(f"Server config {path.name} could not be read or parsed: {e}")
         return [
             Finding(

@@ -243,6 +243,17 @@ class TestMalformedConfigs:
         assert report.findings[0].severity == Severity.ERROR
         assert report.passed is False
 
+    def test_undecodable_bytes_are_unreadable_not_crash(self, tmp_path):
+        """Non-UTF-8 config bytes yield CONFIG_UNREADABLE; the scan continues (never raises)."""
+        (tmp_path / "binary_inference_config.yaml").write_bytes(b"task: \xff\xfe garbage \x80")
+        config_dir = _drifted_config(tmp_path, lambda d: d["task"].__setitem__("threshold", 0.7))
+        report = check_config_registry_consistency(config_dir)
+        assert [finding.reason_code for finding in report.findings] == [
+            CONFIG_UNREADABLE,
+            THRESHOLD_MISMATCH,
+        ]
+        assert report.passed is False
+
 
 class TestNeverWrites:
     """The checker is a read path: inputs stay byte-identical and the source has no writer."""
