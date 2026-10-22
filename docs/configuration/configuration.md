@@ -114,9 +114,10 @@ Where `task_type` takes effect:
 
 - **Trainer branching** — `dnallm/finetune/trainer.py` switches metric computation and
   data handling on `regression` vs `mask`/`generation`/`embedding`.
-- **Task heads and metrics** — `dnallm/tasks/task.py` (`TaskType` enum, `TaskHead`,
-  `compute_metrics`: binary → accuracy/F1, multiclass → accuracy/macro-F1/weighted-F1,
-  regression → MSE/R²).
+- **Task heads and metrics** — `dnallm/tasks/task.py` (`TaskType` enum and the
+  `compute_metrics` dispatch: binary → accuracy/F1, multiclass → accuracy/macro-F1/weighted-F1,
+  regression → MSE/R²). The prediction heads themselves (`BasicMLPHead`, `BasicCNNHead`,
+  `BasicLSTMHead`, `BasicUNet1DHead`, family-specific heads) live in `dnallm/models/head.py`.
 - **Benchmark datasets** — each `DatasetConfig` in a benchmark YAML carries its own
   `task` string (e.g. `binary_classification`); see the
   [Benchmark Configuration Guide](../user_guide/benchmark/configuration.md).
