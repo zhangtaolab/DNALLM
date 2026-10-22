@@ -10,6 +10,8 @@
 
 **Stats:** 3 days (2026-10-20 → 2026-10-22) · git range `94c9819..close` (228 commits, 170 files, +38,911/−328) · closeout audit `tech_debt` verdict with 0 critical gaps (23/23 requirements, 7/7 integration seams, 3/3 E2E flows — see `milestones/v1.4-MILESTONE-AUDIT.md`) · Known verification overrides: 0 newly acknowledged, 10 carried forward from a prior close (see STATE.md Deferred Items)
 
+**Post-archive addendum (2026-10-22, commits b35f64d/eb901ca/365e0cb):** v1.4 feature documentation landed — TUI wizard user guide with 7 headless-captured screen walkthroughs (`docs/user_guide/tui/preflight_wizard.md` + `docs/pic/tui/`), preset-loading guide (`docs/user_guide/preset_loading.md`), README/quick-start/architecture/configuration doc refresh; full docs accuracy audit swept 159 files / 830 claims (1 failure — phantom `TaskHead` reference — fixed at both doc and root-cause docstring level, tests/tasks 192 passed).
+
 **Key accomplishments:**
 - Cached read-only typed registry loader (sole parser of model_info.yaml, 236 entries) with exact name/repo/task_type/base_model lookups, lab-first helpers, and base_model-chain inheritance — born read-only behind four probe-verified structure guards.
 - tokenizer_type / max_length enrichment committed for all 49 pretrained entries from one-time ModelScope-first metadata probes (never weights), 14 external-based plantcad entries pinned at 8192, inheritance live for 187/187 finetuned — landed as 122-line insertion-only text with both provenance blocks byte-preserved and 12 new enforcing tests.
