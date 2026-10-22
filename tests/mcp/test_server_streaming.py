@@ -18,11 +18,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
+from dnallm.mcp.config_validators import ModelEntryConfig
 from dnallm.mcp.server import DNALLMMCPServer
+from dnallm.models.registry import all_entries, sort_key_lab_first
 
 
 @pytest.fixture
@@ -601,23 +604,79 @@ class TestBasicToolBodies:
         )
 
     @pytest.mark.asyncio
-    async def test_get_all_available_models(self, mock_server):
-        """get_all_available_models reports every configured model."""
+    async def test_get_all_available_models_lists_full_registry(self, mock_server):
+        """With no server config at all, the listing still serves every registry entry."""
+        mock_server.config_manager = MagicMock()
+        mock_server.config_manager.get_server_config.return_value = None
         mock_server.model_manager = MagicMock()
-        mock_server.model_manager.get_all_models_info.return_value = {"m1": {"task_type": "binary"}}
+        mock_server.model_manager.get_loaded_models.return_value = []
         result = await mock_server._get_all_available_models()
-        assert result["total_models"] == 1
-        assert result["models"] == {"m1": {"task_type": "binary"}}
+        entries = sorted(all_entries(), key=sort_key_lab_first)
+        assert "isError" not in result
+        assert result["total_models"] == len(all_entries())
+        assert result["total_models"] > 200
+        assert set(result["models"]) == {entry.name for entry in all_entries()}
+        assert all(
+            not row["configured"] and not row["enabled"] and not row["loaded"]
+            for row in result["models"].values()
+        )
+        first_name, first_row = next(iter(result["models"].items()))
+        assert first_name == entries[0].name
+        assert first_row["is_lab"] is True
+        first_line = result["content"][0]["text"].splitlines()[0]
+        assert first_line.startswith(f"{first_name} | ")
+
+    @pytest.mark.asyncio
+    async def test_get_all_available_models_overlay_configured_enabled(self, mock_server):
+        """A configured enabled model carries its overlay flags and server key."""
+        mock_server.config_manager = MagicMock()
+        mock_server.config_manager.get_server_config.return_value = SimpleNamespace(
+            models={
+                "promoter_model": ModelEntryConfig(
+                    name="promoter_model",
+                    model_name="Plant DNABERT BPE promoter",
+                    config_path="./promoter_inference_config.yaml",
+                    enabled=True,
+                    priority=1,
+                )
+            }
+        )
+        mock_server.config_manager.model_configs = {
+            "promoter_model": SimpleNamespace(
+                model=SimpleNamespace(path="zhangtaolab/plant-dnabert-BPE-promoter")
+            )
+        }
+        mock_server.model_manager = MagicMock()
+        mock_server.model_manager.get_loaded_models.return_value = []
+        result = await mock_server._get_all_available_models()
+        row = result["models"]["Plant DNABERT BPE promoter"]
+        assert row["configured"] is True
+        assert row["enabled"] is True
+        assert row["loaded"] is False
+        assert row["server_config_key"] == "promoter_model"
+        assert result["configured_count"] == 1
+        assert result["loaded_count"] == 0
+        assert result["unmatched_configured"] == []
+        assert result["total_models"] == len(all_entries())
+        line = next(
+            line
+            for line in result["content"][0]["text"].splitlines()
+            if line.startswith("Plant DNABERT BPE promoter | ")
+        )
+        assert line.endswith("| enabled")
 
     @pytest.mark.asyncio
     async def test_get_all_available_models_exception_returns_error_dict(self, mock_server):
-        """A raised inventory error is caught with the verbatim message."""
+        """A raised listing error is caught with the verbatim message."""
+        mock_server.config_manager = MagicMock()
+        mock_server.config_manager.get_server_config.return_value = None
         mock_server.model_manager = MagicMock()
-        mock_server.model_manager.get_all_models_info.side_effect = RuntimeError("x")
+        mock_server.model_manager.get_loaded_models.side_effect = RuntimeError("x")
         result = await mock_server._get_all_available_models()
         assert result["content"][0]["text"] == (
             "Failed to get available models. See server logs for details."
         )
+        assert result["isError"] is True
 
     @pytest.mark.asyncio
     async def test_health_check_reports_counts(self, mock_server):
