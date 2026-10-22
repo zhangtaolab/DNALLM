@@ -1775,20 +1775,31 @@ class TestLoadPresetModel:
 
         loader_mock.assert_not_called()
 
-    def test_load_preset_model_strict_classification_entry_raises(self):
-        """OQ-1 strict call: the real PlantCAD2 'classification' entry never matches."""
+    def test_load_preset_model_plantcad_on_off_entries_load_as_binary(self):
+        """The former 'classification' PlantCAD2 on/off entries now load as binary.
+
+        The 2026-10-22 task-type audit canonicalised the six 'cross species leaf
+        on/off' entries to 'binary' — their own num_labels=2 / label_names
+        ["off","on"] said so all along — retiring the Phase-24 OQ-1 strict-mismatch
+        pin this test used to be.
+        """
         task_config = TaskConfig(task_type="binary")
 
-        with patch("dnallm.models.model.load_model_and_tokenizer") as loader_mock:
-            with pytest.raises(
-                ValueError,
-                match=r"trained for 'classification' tasks.*configuration says 'binary'",
+        with patch(
+            "dnallm.models.model.load_model_and_tokenizer",
+            return_value=("model", "tokenizer"),
+        ) as loader_mock:
+            for name in (
+                "PlantCAD2 cross species leaf on off expression small",
+                "PlantCAD2 cross species leaf on off expression medium",
+                "PlantCAD2 cross species leaf on off expression large",
+                "PlantCAD2 cross species leaf on off translation small",
+                "PlantCAD2 cross species leaf on off translation medium",
+                "PlantCAD2 cross species leaf on off translation large",
             ):
-                load_preset_model(
-                    "PlantCAD2 cross species leaf on off expression small", task_config
-                )
+                assert load_preset_model(name, task_config) == ("model", "tokenizer")
 
-        loader_mock.assert_not_called()
+        assert loader_mock.call_count == 6
 
     def test_load_preset_model_alias_normalized_match_loads(self):
         """A long-form alias compares as its short form and passes the check."""

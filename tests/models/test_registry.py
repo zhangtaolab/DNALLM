@@ -677,3 +677,70 @@ def test_external_based_entries_carry_explicit_max_length() -> None:
     for e in external:
         assert e.max_length == 8192, e.model
         assert registry.effective_max_length(e) == e.max_length, e.model
+
+
+def test_registry_task_types_are_loadable_and_structurally_consistent() -> None:
+    """REG-audit-2026-10-22: every entry's task_type is TaskConfig vocabulary.
+
+    Guards the shapes the 2026-10-22 task-type audit fixed at the data layer and
+    never wants back: out-of-vocabulary task types (six PlantCAD2 on/off entries
+    were recorded as 'classification' and thus unloadable by name), head-field
+    inconsistencies (three cell-type entries carried label_names == [] against
+    num_labels == 92 — an empty list is "zero labels", not "names unrecorded",
+    which is null), and supervised task types inside the pretrained section.
+    """
+    canonical = {
+        "embedding",
+        "mask",
+        "generation",
+        "binary",
+        "multiclass",
+        "multilabel",
+        "regression",
+        "token",
+    }
+    aliases = {
+        "binary_classification": "binary",
+        "multi_class_classification": "multiclass",
+        "multi_label_classification": "multilabel",
+        "token_classification": "token",
+    }
+    for entry in registry.all_entries():
+        task = entry.task
+        assert task.task_type in canonical | set(aliases), (
+            f"{entry.name}: task_type {task.task_type!r} is outside the TaskConfig "
+            "vocabulary — the entry is unloadable by name"
+        )
+        canonical_type = aliases.get(task.task_type, task.task_type)
+        if canonical_type == "binary":
+            assert task.num_labels == 2, f"{entry.name}: binary with num_labels != 2"
+        elif canonical_type == "multiclass":
+            assert task.num_labels is not None, f"{entry.name}: multiclass without a head"
+            assert task.num_labels >= 3, f"{entry.name}: multiclass with num_labels < 3"
+        elif canonical_type == "multilabel":
+            assert task.num_labels is not None, f"{entry.name}: multilabel without a head"
+            assert task.num_labels >= 2, f"{entry.name}: multilabel with num_labels < 2"
+        elif canonical_type == "regression":
+            assert task.num_labels in (None, 1), (
+                f"{entry.name}: regression with num_labels {task.num_labels}"
+            )
+            assert task.threshold is None, f"{entry.name}: regression with threshold"
+        elif canonical_type == "token":
+            assert task.num_labels is not None, f"{entry.name}: token without a head"
+            assert task.num_labels >= 2, f"{entry.name}: token with num_labels < 2"
+        else:
+            assert task.num_labels is None, (
+                f"{entry.name}: foundation task {canonical_type!r} carries num_labels"
+            )
+        if task.label_names is not None:
+            assert len(task.label_names) > 0, (
+                f"{entry.name}: label_names is an empty list — unrecorded names are null, never []"
+            )
+            if task.num_labels is not None:
+                assert len(task.label_names) == task.num_labels, (
+                    f"{entry.name}: label_names length != num_labels"
+                )
+        if entry.kind == "pretrained":
+            assert canonical_type in ("mask", "generation", "embedding"), (
+                f"{entry.name}: pretrained section carries supervised task {canonical_type!r}"
+            )
