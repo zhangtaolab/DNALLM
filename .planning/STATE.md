@@ -2,19 +2,19 @@
 gsd_state_version: "1.0"
 milestone: v1.4
 milestone_name: Pre-flight UX & Registry-as-Truth-Source
-current_phase: 26
-status: completed
+status: Awaiting next milestone
 stopped_at: Phase 26 complete — all phases complete
-last_updated: "2026-10-22T06:55:42.604Z"
+last_updated: "2026-10-22T07:54:00.461Z"
 last_activity: 2026-10-22
-last_activity_desc: Phase 26 complete
-state_head: e06b5876baeff72e968257dfcfd1ba895ee1536e
+last_activity_desc: Milestone v1.4 completed and archived
+state_head: aed99ce25504421df786d840cf7ac3ce9076947a
 progress:
   total_phases: 5
   completed_phases: 5
   total_plans: 23
   completed_plans: 23
   percent: 100
+current_phase: 26
 ---
 
 # Project State
@@ -24,16 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-22)
 
 **Core value:** One terminal flow takes a user from their own data to a validated, model-compatible config, with the model registry as the runtime single source of truth (Track A first) — suite, coverage gate, and CI honest-green throughout.
-**Current focus:** v1.4 milestone complete — all 5 phases (22–26) verified; next: milestone close
+**Current focus:** v1.4 milestone complete and archived — start next cycle with /gsd-new-milestone
 
 ## Current Position
 
-Phase: 26
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-10-22 — Completed quick task 261022-huv: Refresh TUI real-run walkthrough (report §7 re-captured + execution loop closed)
-
-Progress: [██████████] 100% (5 of 5 v1.4 phases)
+Phase: Milestone v1.4 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-22 — Milestone v1.4 completed and archived
 
 ## Performance Metrics
 
@@ -122,13 +120,6 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
-| 261017-414 | scan all files for mypy remnants and systematically replace with ty (D-09 flip follow-up) | 2026-10-17 | 1c52e46 | [261017-414-scan-all-files-for-mypy-remnants-and-sys](./quick/261017-414-scan-all-files-for-mypy-remnants-and-sys/) |
-| 261019-cr6 | Windows local CI replication + KDA declaration proof | 2026-10-19 | 6d14d9d | [261019-cr6-windows-local-ci-replication-kda-declara](./quick/261019-cr6-windows-local-ci-replication-kda-declara/) |
-| 261020-gk4 | TUI opportunity survey for v1.4 planning (6 ranked / 7 excluded vs dnallmmark; analysis-only) | 2026-10-20 | 3028f0c | [261020-gk4-tui-dnallmmark-home-forrest-github-dnall](./quick/261020-gk4-tui-dnallmmark-home-forrest-github-dnall/) |
-| 261022-tta | Registry task-type audit: 236 entries swept; 6 PlantCAD2 classification→binary + 3 empty-labels→null (f94c50f); lab 189/189 task types verified vs ModelScope model code; hub-side cleanup list recorded | 2026-10-22 | f94c50f | [261022-tta](./quick/261022-tta/) |
-| 4 | Append Part 5 addendum to 261020-gk4 TUI survey (pre-flight cluster + merge-or-build verdicts per owner directives 2026-10-20) | 2026-10-20 | e60303f | — |
-| 261020-kwt | Registry data-layer fix: +15 pretrained variants, DNAGPT/EVO task-class fixes, base_model 187/187, aDNA typo (12 tests) | 2026-10-20 | f0b8302 | [261020-kwt-registry-data-layer-fix-add-15-missing-p](./quick/261020-kwt-registry-data-layer-fix-add-15-missing-p/) |
-| 261022-huv | Refresh TUI real-run walkthrough: §7 re-captured on current tree (2 real runs, 11 figs), config-file + real inference blocks added, dead -i flag recorded as tech debt #13; owner follow-up: fool-proofing demo (2 figs + 8 live tests) + data-sample block added | 2026-10-22 | e06b587 | [261022-huv-refresh-tui-real-run-walkthrough-re-capt](./quick/261022-huv-refresh-tui-real-run-walkthrough-re-capt/) |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
@@ -154,5 +145,4 @@ Resume file: None
 
 ## Operator Next Steps
 
-- `/clear` then `/gsd-discuss-phase 25` — Terminal UI — Pre-flight Wizard & `tui` Extra (no CONTEXT.md yet; discussion first)
-- Roadmap research flag: Phase 25 warrants `--research-phase` at planning (worker-seam shape, cancel semantics, extra-vs-alias ordering, Pilot wall-time budget)
+- Start the next milestone with /gsd-new-milestone

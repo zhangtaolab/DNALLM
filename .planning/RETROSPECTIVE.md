@@ -163,6 +163,40 @@ Ollama surface clean exit with census re-pin; GAP-1 zero-rung disposition; Windo
 - ~2 days wall (10-11 → 10-16) for 8 phases incl. two ~15 h nightly cycles; execution heavily subagent-parallel with a lean orchestrator
 - Notable: the milestone closed with zero Co-Authored-By trailers (owner directive, verified per commit)
 
+## Milestone: v1.4 — Pre-flight UX & Registry-as-Truth-Source
+
+**Shipped:** 2026-10-22
+**Phases:** 5 (22–26) | **Plans:** 23 (+6 quick tasks)
+
+### What Was Built
+Registry-as-truth-source: cached read-only typed loader as sole parser of `model_info.yaml` (236 entries after the kwt +15 fix and the tta task-type audit), tokenizer/max-length enrichment from measured hub metadata, `load_preset_model` registry rewire. Pure pre-flight core (`validate_data` / `check_compatibility` / `probe_availability` / `generate_config`/`edit_config`) — offline-safe, probes-never-raise. The `dnallm preflight` Textual wizard (env → data → suitability → validated config → optional ModelScope-first download) behind a new `tui` extra, with the `base` alias retired. MCP consistency checker (warn-first, strict CI gate over committed configs) + honest 236-entry lab-first listing.
+
+### What Worked
+- Loader-before-consumers / core-before-shells dependency order: all 7 integration seams and 3 E2E flows verified live at audit with zero seam rework
+- Pure-core-first made the TUI a thin consumer: copy gaps (25-11..13) closed without touching verdict logic; structure guards pin the "presentation only" contract two-way
+- Honest delegated verification: 25-UAT recorded the copy read-through as model-verified-not-human-verified; the audit carried it as the standing owner item instead of a gap
+- The pre-close artifact audit earned its keep: 4 open items fixed for real in one commit (aed99ce) → verified_closeout instead of acknowledge-and-carry
+- Biologist-copy discipline (glossaries for all 12 ML terms + all 8 task types, verbatim YAML keys) turned UAT failures into three small gap plans, not a rewrite
+
+### What Was Inefficient
+- Phase 25 needed 13 plans incl. 3 gap closures — the 25-11 contract was narrower than its UAT truth (3 task types glossed of 8); a completeness test in the original plan would have saved a debug session + 2 gap plans
+- kwt's SUMMARY frontmatter carried unquoted `model: "<repo>"` — invalid YAML that scanners silently degraded to "unknown" for 2 days; parse-verify planning artifacts when writing them
+- WINDOWS row 28 was hand-appended to the table without the fenced-JSON half, blocking `windows append` from 2026-10-20 until the close
+
+### Patterns Established
+- Read-only-forever registries: maintenance = scripted insertion, never a YAML round-trip (structure guards CI-red on write APIs / second parsers)
+- Unavailability is a state, not an exception: probes degrade to UNKNOWN with machine-readable reasons; WARN never blocks; lab-first (`zhangtaolab/*`) ordering everywhere
+- PEP 562 lazy facades for instant CLI/TUI start on CPU-only machines (3.71 s → 0.29 s)
+- Thread-worker seam lands before panels; Pilot-functional tests over snapshot/golden infra
+
+### Key Lessons
+- A phase can implement its plan verbatim and still fail UAT when the contract is narrower than the truth — assert completeness (all eight values), not presence (the three written)
+- Planning-artifact frontmatter that fails to parse fails silently into "unknown" status — the audit scanner is only as honest as the YAML it can read
+
+### Cost Observations
+- 3 days wall (10-20 → 10-22), 228 commits, 170 files (+38,911/−328) — fastest plan-per-day rate to date despite a full TUI and the UI safety gate
+- Notable: heaviest single phase (25: 13 plans) absorbed its own gap closures plus a retroactive UI-SPEC without reopening
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -172,6 +206,7 @@ Ollama surface clean exit with census re-pin; GAP-1 zero-rung disposition; Windo
 | v1 | ~6 | 4 | First GSD milestone on this repo: audit-first, gate-last wave discipline; behavior-first authoring rule |
 | v1.1 | ~7 | 5 | Execute-for-real milestone: census→repair→gate loop; frozen-contract metrics; family rollout with per-repair census reconciliation |
 | v1.2 | ~3 | 3 | Paper-revision suite: file-disjoint parallel waves; owner overrides in VERIFICATION frontmatter; fixpoint verification regeneration practiced from the start |
+| v1.4 | ~5 | 5 | Registry-as-truth-source + first UX surface: pure-core-first with structure-guarded thin shells; probes-never-raise; delegated-verification honesty in UAT records |
 
 ### Cumulative Quality
 
@@ -180,6 +215,7 @@ Ollama surface clean exit with census re-pin; GAP-1 zero-rung disposition; Windo
 | v1 | 1,657 (7 allowlisted skips) | 96.30% | 0 — no new test frameworks (constraint held) |
 | v1.1 | fast lane 1,933 (1 allowlisted skip) + nightly example census 196/1S/0F | 96.42% | 0 — nbclient/marimo ride existing dev/test extras (constraint held) |
 | v1.2 | fast lane 2,404 (0 failed) | 96.72% | 1 — scikit-allel only (owner-approved, empirically verified); everything else on the existing scipy/sklearn/stdlib footprint |
+| v1.4 | per-phase gates green; 828-test cross-phase regression gate at audit | per-module ≥96% on all new code (preflight 99% pkg · TUI ≥97.4% · registry 100% · consistency 98%) | +2 optional (textual, platformdirs) behind the `tui` extra; 0 new core deps |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -188,3 +224,5 @@ Ollama surface clean exit with census re-pin; GAP-1 zero-rung disposition; Windo
 3. *(seeded from v1.1, pending cross-validation)* Real execution is the only honest test of example code — green static suites hide an order of magnitude more defects than they expose
 4. *(seeded from v1.1, pending cross-validation)* Freeze metric contracts (observed values + tolerance bands) at calibration time; parse them at assert time — never literals
 5. *(seeded from v1.1, pending cross-validation)* Land all fixes first, then regenerate verifiers with zero code changes between — reactive stale-digest chasing cost more than the fixes themselves
+6. *(seeded from v1.4, pending cross-validation)* A plan implemented verbatim can still fail its UAT when the contract is narrower than the truth — assert completeness over the full allowed set, not presence of the examples written
+7. *(seeded from v1.4, pending cross-validation)* Unparseable planning-artifact frontmatter degrades silently to "unknown" — the honesty chain (audit scanner → close gate) is only as good as the YAML it can read

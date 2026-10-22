@@ -2,27 +2,19 @@
 
 ## What This Is
 
-DNALLM (`dnallm` v0.8.0) is a Python toolkit for fine-tuning, inference, and benchmarking of DNA large language models (150+ pretrained models from HF/ModelScope), plus an MCP server exposing them to LLM agents. Milestone v1 (shipped 2026-10-01) was a quality-engineering cycle on that existing codebase: the pytest suite was audited end to end, test gaps closed, and line coverage driven from 45.92% to 96.30% behind a CI-enforced >90% hard gate. Milestone v1.1 (shipped 2026-10-07) made every artifact under `example/` execute for real — 21 notebooks, 3 marimo apps, the helper script, every YAML — on the nightly GPU runner, fixed every error it surfaced with same-change regression tests, delivered the PlantHelixSeek showcase notebooks over committed Arabidopsis loci, and brought the execution tests under formal nightly gating. Milestone v1.2 (shipped 2026-10-10) delivered the paper-revision suite: the eleven reviewer-requested capabilities REV-01..REV-11 (eval-semantics guard, metric registry, IA³ + PEFT presets, from-scratch baselines, probing, zero-shot VEP, multi-seed sweeps, FIMO motif scanning, MCP tool expansion) with the suite, gate, and CI honest-green throughout.
+DNALLM (`dnallm` v1.3.3) is a Python toolkit for fine-tuning, inference, and benchmarking of DNA large language models (150+ pretrained models from HF/ModelScope), plus an MCP server exposing them to LLM agents. Milestone v1 (shipped 2026-10-01) was a quality-engineering cycle on that existing codebase: the pytest suite was audited end to end, test gaps closed, and line coverage driven from 45.92% to 96.30% behind a CI-enforced >90% hard gate. Milestone v1.1 (shipped 2026-10-07) made every artifact under `example/` execute for real — 21 notebooks, 3 marimo apps, the helper script, every YAML — on the nightly GPU runner, fixed every error it surfaced with same-change regression tests, delivered the PlantHelixSeek showcase notebooks over committed Arabidopsis loci, and brought the execution tests under formal nightly gating. Milestone v1.2 (shipped 2026-10-10) delivered the paper-revision suite: the eleven reviewer-requested capabilities REV-01..REV-11 (eval-semantics guard, metric registry, IA³ + PEFT presets, from-scratch baselines, probing, zero-shot VEP, multi-seed sweeps, FIMO motif scanning, MCP tool expansion) with the suite, gate, and CI honest-green throughout. Milestone v1.4 (shipped 2026-10-22) delivered the first user-facing onboarding surface: a pure-function pre-flight core (`dnallm.preflight`) plus the `dnallm preflight` Textual wizard that takes a user from their own dataset to a validated, model-compatible config and an optional ModelScope-first model download, with `model_info.yaml` (236 entries) as the runtime single source of truth behind one cached read-only registry loader.
 
 ## Core Value
 
 A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
 
-## Current Milestone: v1.4 Pre-flight UX & Registry-as-Truth-Source
+## Current Milestone: none — planning next
 
-**Goal:** One terminal flow takes a user from their own data to a validated, model-compatible config, with the model registry as the runtime single source of truth (Track A first).
-
-**Target features:**
-- Pre-flight API core: `validate_data` / `check_compatibility` (availability: source/size/cache/revision, ModelScope-first) / `generate_config` — pure functions, pytest-covered
-- Pre-flight TUI: env panel → data stats/validation → model suitability (`zhangtaolab/*` first) → config edit+validate (absorbs R4) → emits validated YAML; select-to-download via ModelScope-first path
-- Registry-as-truth-source: `model_info.yaml` consumed at runtime (`load_preset_model` resolves finetuned entries with heads/labels/threshold; base↔finetuned axis via `base_model`, 187/187 after 261020-kwt)
-- One-core-many-shells: the same core consumable by future MCP tools and notebooks
-
-**Scope boundaries (owner, 2026-10-20):** Track B (dnallmmark TUI substrate merge) and Track C (R2 training dashboard, R3 MCP control room, R5 VEP runner, R6 interpretation triage) → future requirements, not v1.4. Known defects (mutagenesis click stub, MCP load/unload not registered as tools, `get_all_available_models` name/reality mismatch) → GitHub issues, fixed outside v1.4. main is frozen; all v1.4 development on branch `v1.4`.
+v1.4 shipped 2026-10-22 (verified_closeout). Start the next cycle with `/gsd-new-milestone`. Carried future scope from the v1.4 requirements deliberation (owner, 2026-10-20): Track B (dnallmmark TUI substrate merge — merge from downstream, never duplicate) and Track C (R2 training dashboard, R3 MCP control room, R5 VEP runner, R6 interpretation triage); defects #62/#63 remain open on GitHub (#64's registry-consumption half shipped as MCP-02).
 
 ## Current State
 
-v1.3 shipped 2026-10-16 (8/8 phases verified at the final-tree fixpoint; audit record in `milestones/v1.3-MILESTONE-AUDIT.md`; closeout override for the two owner-deferred acceptance halves). Package at 1.2.1 on the py≥3.11 / numpy≥2.0 floors; extras surface post-surgery: `full` (one-cycle `base` alias, removal v1.4) + `cuda130` recommended default (first-ever cuda130 CI leg green, run 38677302395) + `mamba`/`fla` (triton-windows marker); cuda121 retired, rocm removed (restore path documented). Publish chain never uploads off-release (event-gated, live-proven ×3), OIDC workflow-side ready (registration = WINDOWS #25). Census triple 216/217 held across the whole milestone; mkdocs --strict zero warnings; docs/ + example/ carry per-file disposition ledgers (19-EVIDENCE.md). Nightly venvs interpreter-pinned (bdf6ba3 — closes the uv-managed drift class). Known carried debt (owner-tracked): #25 PyPI trusted-publisher registration, #27 Windows KDA smoke (six-step checklist), #26 pip-side alias resolve (box-network), #13 mcp notebook execution, #18/#19 Windows items; temp `- v1.3` push-filter removal bound to the actual merge; runner-box ops items carried from v1.1.
+v1.4 shipped 2026-10-22 (5 phases, 23 plans, 62 tasks; audit `tech_debt`, 0 critical gaps — `milestones/v1.4-MILESTONE-AUDIT.md`; verified_closeout, 10 carried suppressions). Package at 1.3.3 (no product release cut in-cycle; publish.yml stays event-gated). New surfaces: `dnallm.preflight` (99% package coverage, every module ≥96%), `dnallm preflight` TUI wizard (per-module ≥97.4%, no omit entries), `dnallm/models/registry.py` (100%) now the sole parser of `model_info.yaml`, `dnallm/mcp/consistency.py` (98%) with the strict CI gate over committed configs; `tui` extra live, `base` alias retired; `import dnallm.preflight` 0.29 s torch-free. Branch `v1.4` (main frozen all cycle); milestone tag `milestone/v1.4`. Known carried debt (owner-tracked): Phase-25 TUI copy read-through delegated-verified, not human-verified (25-UAT); Phase-24 WR-01 unprobed third-party ModelScope hosting; v1.3 WINDOWS #13/#18/#19/#25/#26/#27 (#25/#26/#27 resume checklists in the WINDOWS ledger).
 
 ## Requirements
 
@@ -55,11 +47,14 @@ Shipped in Phase 2 (Suite Hygiene & Known-Bug Fixes, 2026-09-30):
 
 ### Active
 
-- [ ] Pre-flight validation & suitability API — `validate_data` / `check_compatibility` / `generate_config` pure functions with availability dimension (v1.4)
-- [ ] Pre-flight TUI — env/data/suitability/config panels over the API core, Textual behind a `tui` extra (v1.4)
-- [ ] ModelScope-first downloads on the pre-flight critical path, lab models (`zhangtaolab/*`) prioritized in the UX (v1.4)
+(None — all v1.4 requirements shipped and verified; the next milestone defines fresh requirements via `/gsd-new-milestone`.)
 
-### Validated — v1.4 partial
+### Validated — v1.4 (Pre-flight UX & Registry-as-Truth-Source, shipped 2026-10-22)
+
+Shipped in Phase 25 (Terminal UI — Pre-flight Wizard & `tui` Extra, 2026-10-22):
+
+- ✓ TUI-01..TUI-08 — `dnallm preflight` Textual wizard over the pure core: `tui` extra + install/CI wiring + thread-worker seam landed before any panel; every blocking core call crosses a worker as a typed message with a proven BaseException cancel sentinel escaping `download_model`'s retry loop; import facade 0.29 s and torch-free (was 3.71 s); env/data/suitability/config panels with lab-first listings, honest UNKNOWN, collect-all field-level errors, byte-faithful YAML preview, save gated on zero problems, real byte-progress download with cooperative stop; proven by one offline Pilot walk; copy carries one-line glosses for all twelve ML terms and all eight task types from one shared mapping (gap plans 25-11..25-13)
+- ✓ PKG-01 — `tui` extra (textual + platformdirs) declared and installed on every CI leg; deprecated `base` extras alias retired in the same install-line change
 
 Shipped in Phase 26 (MCP Consistency — Registry-Keyed Check & Honest Listing, 2026-10-22):
 
@@ -190,8 +185,11 @@ Shipped in Phase 4 (CI Gate Enforcement, 2026-10-01):
 - Root `cli/` legacy launcher cleanup — packaging concern (CONCERNS.md), not needed for coverage
 - mypy `|| true` CI fix, dependency lockfile, other CONCERNS items — separate quality work
 - Performance optimization (e.g. `attn_implementation` hardcoding) — record, don't fix
+- Track B (dnallmmark TUI substrate merge) and Track C (R2 training dashboard, R3 MCP control room, R5 VEP runner, R6 interpretation triage) — v1.4 owner boundary (2026-10-20); future-milestone scope, Track B merges from downstream rather than duplicating
 
 ## Context
+
+Shipped v1.4 on 2026-10-22 (228 commits over v1.3; 5 phases, 23 plans): the pre-flight surface (pure core + Textual wizard) with the registry as runtime single source of truth — one cached read-only loader (236 entries) consumed by `load_preset_model`, the MCP listing, and the CI-gated consistency checker; `tui` extra live, `base` alias retired; per-module coverage ≥96% everywhere new (preflight 99% package, TUI ≥97.4%, registry 100%, consistency 98%); 23/23 requirements, 7/7 integration seams, 3/3 E2E flows proven live at the milestone audit.
 
 Shipped v1.2 on 2026-10-10 (145 commits over v1.1; 3 phases, 12 plans): the paper-revision suite (REV-01..REV-11) landed in three sequential waves of file-disjoint parallel agents under pathspec-commit discipline, with every phase verified at the milestone fixpoint (zero code changes between regenerations). Two owner-accepted overrides recorded in phase VERIFICATION frontmatter: VEP-01 literature-magnitude (small ≤50M plant models honestly at the random floor; same-scale BPE anchor matched) and MOTIF-01 Fig 4a coordinates (golden-fixture deferral, issue #44). Fast lane at close: 2404 passed / 0 failed; coverage 96.72%; full CI matrix green including Windows.
 
@@ -254,6 +252,11 @@ Shipped v1 on 2026-10-01: 1,657 tests passing (7 allowlisted skips), **96.30% li
 | Preflight import discipline is SOURCE-level (AST), not runtime — sys.modules purity deferred to Phase 25 owner call (v1.4 Phase 23, CR-01 deferral) | `import dnallm.preflight` transitively pulls torch/transformers/datasets via `dnallm.utils`/`dnallm.models` package inits; fixing that means an unsanctioned root-facade refactor | ✓ AST structure test green; docstrings state the truth; TUI fast-start (Phase 25) owns the runtime-purity decision |
 | One `validate_sections` path shared by `load_config` and `generate_config`/`edit_config` (v1.4 Phase 23, the one sanctioned refactor) | Two validators drift; the round-trip editor must revalidate through the exact path production loads with | ✓ Verbatim factor-out, equivalence-pinned; load_config raise-first contract unchanged |
 | Probes never raise — every failure degrades to UNKNOWN with a machine-readable reason (v1.4 Phase 23) | A 429 masquerading as "unavailable" would wrongly steer model choice; unavailability is a state, not an exception | ✓ Pinned taxonomy tests (RATE_LIMITED/OFFLINE/PROBE_TIMEOUT/NOT_FOUND_ON_EITHER_HUB/PROBE_ERROR); severed-network integration test green |
+| PEP 562 lazy facades cut `dnallm.preflight` import 3.71 s → 0.29 s (v1.4 Phase 25) | The TUI must start instantly on CPU-only biologist machines; the compat-shim ordering guarantee moved into every consumer module | ✓ Torch-free fast start pinned by structure tests; no import-order behavior change |
+| `DownloadCancelled` is a BaseException sentinel (v1.4 Phase 25) | A regular Exception is swallowed by `download_model`'s retry/backoff loop; cooperative stop must escape ten attempts in one call | ✓ Proven by a dedicated sentinel test |
+| Worker seam before panels; Pilot-functional tests only, no snapshot/golden TUI infra (v1.4 Phase 25) | Every blocking core call crossing a thread worker is a structural invariant, not a per-panel choice; snapshots would pin rendering over behavior | ✓ Six probe-red structure guards; offline Pilot E2E walk; every TUI module ≥97.4% coverage with no omit entries |
+| MCP consistency checker warn-by-default, strict in CI over the committed configs (v1.4 Phase 26) | Committed-config drift is breakage (CI fatal); user-side configs get WARN-first honesty, never a write | ✓ 98% module coverage; gate test green on every lane via existing testpaths |
+| `get_all_available_models` serves all 236 registry entries with configured/enabled/loaded overlay; UNKNOWN shown honestly (v1.4 Phase 26) | The menu must tell the truth about the registry (issue #64 registry half); unavailability is a state to display, not hide | ✓ Client surface pinned by 73 unedited SDK tests; unmatched-configured rows visible |
 
 ## Evolution
 
@@ -273,4 +276,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-22 after Phase 26 (MCP consistency checker + honest registry listing shipped — MCP-01/02/03 validated; v1.4 23/23 plans)*
+*Last updated: 2026-10-22 after the v1.4 milestone (Pre-flight UX & Registry-as-Truth-Source shipped — verified_closeout)*
