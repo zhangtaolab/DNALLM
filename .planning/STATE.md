@@ -4,17 +4,17 @@ milestone: v1.4
 milestone_name: Pre-flight UX & Registry-as-Truth-Source
 current_phase: 26
 current_phase_name: MCP Consistency — Registry-Keyed Check & Honest Listing
-status: executing
-stopped_at: Completed 26-01-PLAN.md
-last_updated: "2026-10-22T01:35:19.901Z"
+status: verifying
+stopped_at: Completed 26-02-PLAN.md
+last_updated: "2026-10-22T01:42:58.273Z"
 last_activity: 2026-10-22
 last_activity_desc: Phase 26 execution started
-state_head: 703d974e1787d8ee8537c3500b428ea3b047e59f
+state_head: f9fba20c4a171b2d9cbd3ff393c2146147451ac2
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 23
-  completed_plans: 22
+  completed_plans: 23
   percent: 80
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 
 Phase: 26 (MCP Consistency — Registry-Keyed Check & Honest Listing) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-22 — Phase 26 execution started
 
 Progress: [████████░░] 80% (3 of 5 v1.4 phases)
@@ -59,6 +59,7 @@ Progress: [████████░░] 80% (3 of 5 v1.4 phases)
 | Phase 25 P12 | 22 min | 2 tasks | 6 files |
 | Phase 25 P13 | 8min | 2 tasks | 3 files |
 | Phase 26 P01 | 10 min | 3 tasks | 3 files |
+| Phase 26 P02 | 6 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 25]: Config error pane gives up its height cap and the side column carries the scroll, so every row the pane holds is laid out
 - [Phase 25]: Layout tests assert rendered geometry against Textual's own Content.get_height rather than .content strings
 - [Phase 25]: Field hints render under their Input for all twelve hinted fields, with no copy change
+- [Phase 26]: MCP consistency checker (26-01): direct yaml.safe_load route; label_names head rule matches num_labels; ERROR findings fatal in both modes; coverage 98pct — Keeps the checker independent of validator schema drift; a None-entry-vs-config-value label claim is real drift; unreadable committed files are breakage not drift; branch test beats sitting on the coverage gate
+- [Phase 26]: MCP listing (26-02): status word mapping loaded greater-than enabled greater-than disabled greater-than available; repo-id route before entry-name route; unmatched configured keys visible, never phantom rows; no truncation until 10x registry growth — Loaded wins over enabled in the status column because callability is what the menu promises; both routes keep the registry-name key space; visibility beats silent dropping because the 26-01 checker finding is the durable backstop
 
 ### Pending Todos
 
@@ -144,8 +147,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-22T01:35:19.776Z
-Stopped at: Completed 26-01-PLAN.md
+Last session: 2026-10-22T01:42:58.157Z
+Stopped at: Completed 26-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

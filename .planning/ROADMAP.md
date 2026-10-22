@@ -216,9 +216,9 @@ Plans:
   2. A CI check runs the consistency checker over `dnallm/mcp/configs/`, so config↔registry drift fails the build (coverage of user-facing example configs decided at phase planning)
   3. `get_all_available_models` reports the registry listing overlaid with configured/loaded state — an MCP client's model menu matches what it can actually call (closing the name/reality mismatch, issue #64's registry-consumption half)
 
-**Plans**: 1/2 plans executed
+**Plans**: 2/2 plans executed
 - [x] 26-01-PLAN.md
-- [ ] 26-02-PLAN.md
+- [x] 26-02-PLAN.md
 
 **Note**: owner call at phase planning — consistency-check scope (committed configs only vs also `configs/*.yaml` user-facing examples)
 
@@ -234,4 +234,4 @@ Phases execute in numeric order: 22 → 23 → 24 → 25 → 26
 | 23. Pre-flight Core | 5/5 | Complete    | 2026-10-21 |
 | 24. Preset Loading | 1/1 | Complete    | 2026-10-21 |
 | 25. Terminal UI & tui Extra | 13/13 | Complete    | 2026-10-22 |
-| 26. MCP Consistency | 1/2 | In Progress | - |
+| 26. MCP Consistency | 2/2 | In Progress | - |
