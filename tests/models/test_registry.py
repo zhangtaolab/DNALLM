@@ -507,14 +507,12 @@ def test_effective_value_live_registry_post_enrichment_inherits_from_base() -> N
 # ─────────────────────────────────────────────────────────────────────────────
 
 # The only dnallm/**/*.py files allowed to contain the literal
-# "model_info.yaml". The server.py hit is the stale integration comment at
-# line ~821 ("# This would integrate with model_info.yaml") — the one
-# pre-existing mentioner outside the loader, allowlisted here and scheduled
-# for the Phase 26 MCP-consistency rewire. Any new mentioner in dnallm/ (a
-# second parser, a would-be writer) fails the guard below.
+# "model_info.yaml". The server.py entry allowlisted the stale integration
+# comment deleted by the Phase 26 MCP-consistency rewire (D-17); with it
+# gone, the loader itself is again the sole mentioner. Any new mentioner in
+# dnallm/ (a second parser, a would-be writer) fails the guard below.
 EXPECTED_REGISTRY_MENTIONERS = {
     "dnallm/models/registry.py",
-    "dnallm/mcp/server.py",
 }
 
 # REG-03: the loader is born read-only (Pitfall 3 — provenance destruction
@@ -539,7 +537,7 @@ FILE_MODE_PATTERN = re.compile(r"^[rwx][rwx+bt]*$")
 
 
 def test_registry_module_is_sole_parser_of_model_info_yaml() -> None:
-    """REG-01/REG-03: exactly registry.py plus the allowlisted stale comment mention the file."""
+    """REG-01/REG-03: the loader module is the sole mentioner of the registry file."""
     package_root = Path(dnallm.__file__).parent
     mentioners = {
         # as_posix: forward-slash relative paths stay stable on Windows legs.
