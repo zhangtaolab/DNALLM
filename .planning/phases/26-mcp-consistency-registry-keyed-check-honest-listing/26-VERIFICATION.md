@@ -1,6 +1,6 @@
 ---
 phase: 26-mcp-consistency-registry-keyed-check-honest-listing
-verified: 2026-10-22T02:00:00Z
+verified: 2026-10-22T03:30:00Z
 status: passed
 score: 27/27 must-haves verified
 covered_files:
@@ -14,7 +14,7 @@ covered_files:
   - tests/mcp/test_config_registry_consistency.py
   - tests/mcp/test_server_streaming.py
   - tests/models/test_registry.py
-covered_digest: v3:sha256:f00dfa8c7fb5bf4dabfb915cde787466241c5355f6f8763d7e9b65e1e1034ffe
+covered_digest: v3:sha256:92f011e4eaed886c50d26dd8e3b9210ac720f7d5ed614e62d5e3463435e07464
 ---
 
 # Phase 26 Verification: MCP Consistency — Registry-Keyed Check & Honest Listing
@@ -81,3 +81,11 @@ All three phase requirement IDs are marked `[x]` in REQUIREMENTS.md with Phase-2
 ## Verdict
 
 **PASSED** — 27/27 must-haves verified against the tree at verification time; all three requirements complete; security gate threats_open 0; code-review findings dispositioned (1 fixed, 2 deferred with reasons); regression gate 828 passed.
+
+## Re-verification 2026-10-22 (stale-digest refresh, #4682)
+
+The 2026-10-22 task-type audit added the permanent registry guard test to
+tests/models/test_registry.py — a file in this phase's covered set — after the original
+verifier ran. Fresh evidence on the current tree: tests/mcp gate 22 passed, registry
+suite 42 passed (model-lane 290-passed run), verdicts above unchanged. Status remains
+**passed**; covered_digest regenerated below.
