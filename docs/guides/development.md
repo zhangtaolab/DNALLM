@@ -72,10 +72,12 @@ Optional-dependency groups from `pyproject.toml` relevant to contributors:
 | `test` | pytest stack (`pytest>=8.4`, `pytest-asyncio`, `pytest-cov`, `pytest-timeout`), `coverage[toml]`, `nbclient` |
 | `notebook` | jupyter, marimo, `nbclient` (with the IPython < 9 and pygenometracks platform pins) |
 | `docs` | mkdocs-material, mkdocs-jupyter, mkdocstrings-python |
-| `full` | `dev` + `test` + `notebook` + `mcp` + isort (renamed from `base` in v1.3) |
-| `all` | `full` + `docs` + `ui` + `fla` |
+| `tui` | Textual, for the `dnallm preflight` terminal wizard |
+| `full` | `dev` + `test` + `notebook` + `mcp` |
+| `all` | `full` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` + `tui` |
 
 The `dev` extra is enough for package work; `full` is the CI environment shape.
+(The former `base` alias was fully retired in v1.4 — it no longer resolves on install.)
 
 ## Repository Layout
 
@@ -90,7 +92,10 @@ DNALLM/
 │   ├── interpret/     # Model interpretation tooling
 │   ├── mcp/           # MCP server plus its packaged test suite
 │   ├── models/        # Model registry, loading, presets
+│   ├── preflight/     # Read-only pre-flight validation (data, compatibility,
+│   │                  # config generation) — torch/transformers-free
 │   ├── tasks/         # Task heads and metrics
+│   ├── tui/           # Terminal pre-flight wizard (Textual, tui extra)
 │   └── utils/         # Shared utilities
 ├── tests/             # Pytest suite mirroring the package, plus TESTING.md
 │                      # and expected_skips.yaml (the typed skip allowlist)
@@ -215,7 +220,7 @@ The repository runs a two-branch integration model, visible in the merge history
 - **`main`** — the default branch; releases land here.
 - **`dev`** — the integration branch; feature work accumulates here and is merged
   to `main` via PR (e.g. PR #58, the v1.3.1 release train).
-- **Release branches** named `vX.Y` (currently `v1.3`) carry stabilized releases;
+- **Release branches** named `vX.Y` (currently `v1.4`) carry stabilized releases;
   tags `vX.Y.Z` mark published versions.
 - **Topic branches** for features and fixes — CONTRIBUTING.md documents
   `feature/your-feature-name` and `fix/issue-description`; dependabot branches

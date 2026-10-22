@@ -143,6 +143,8 @@ trainer.train()  # checkpoints and logs land in ./outputs
 
 The config's `finetune` section is a Hugging Face `TrainingArguments` subset (3 epochs, batch size 16, lr 2e-5 by default in the example). Pip-only installs (no repo clone) can fetch the example configs from the [GitHub repo](https://github.com/zhangtaolab/DNALLM) or generate one interactively with `dnallm-model-config-generator`. Every YAML section is documented in the [Configuration Reference](../configuration/configuration.md).
 
+> **Have your own data?** Run `dnallm preflight` (needs `pip install "dnallm[tui]"`) before Step 2: the terminal wizard checks your sequences, tells you which models are compatible, and writes a validated config file for you — no YAML hand-editing. See the [Pre-flight Wizard guide](../user_guide/tui/preflight_wizard.md).
+
 ## Common setup issues
 
 - **`torch.cuda.is_available()` is False after a plain `pip install`** — you most likely have the CPU wheel. On Windows the default PyPI torch wheel is CPU-only, and `pip` ignores the CUDA index pins in `pyproject.toml`. Fix: [GPU Support with plain pip](../getting_started/installation.md#gpu-support-with-plain-pip).
@@ -158,5 +160,6 @@ Full troubleshooting list: [Installation — Troubleshooting](../getting_started
 - [Configuration Reference](../configuration/configuration.md) — every YAML section (`task`, `finetune`, `lora`, `ia3`, `inference`, `vep`, `sweep`, `benchmark`)
 - [Architecture Overview](../architecture/overview.md) — how a config flows through model loading, training, and inference
 - Task guides: [Fine-tuning](../user_guide/fine_tuning/getting_started.md) · [Inference](../user_guide/inference/getting_started.md) · [CLI](../user_guide/cli/usage.md)
+- Check data/model compatibility interactively: [Pre-flight Wizard](../user_guide/tui/preflight_wizard.md) · Load a registry model in one call: [Preset Model Loading](../user_guide/preset_loading.md)
 - Serve predictions to AI assistants: `dnallm-mcp-server --transport streamable-http` — [MCP Server Guide](../user_guide/mcp/startserver.md)
 - Contributing code: [CONTRIBUTING.md](https://github.com/zhangtaolab/DNALLM/blob/main/CONTRIBUTING.md) · Full docs site: https://zhangtaolab.github.io/DNALLM/

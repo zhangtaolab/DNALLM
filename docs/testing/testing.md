@@ -40,7 +40,7 @@ Configuration facts that surprise newcomers:
 
 `tests/` mirrors the `dnallm/` package, plus a few suite-specific directories:
 
-- Module directories: `benchmark/`, `cli/`, `configuration/`, `datahandling/`, `finetune/`, `inference/`, `interpret/`, `mcp/`, `models/`, `tasks/`, `utils/`
+- Module directories: `benchmark/`, `cli/`, `configuration/`, `datahandling/`, `finetune/`, `inference/`, `interpret/`, `mcp/`, `models/`, `preflight/`, `tasks/`, `tui/`, `utils/`. Two of these carry structure guards: `tests/preflight/test_structure.py` and `tests/tui/test_structure.py` AST-enforce that those packages never import torch/transformers/datasets at module level, and `tests/test_package_facade.py` proves in subprocesses that importing `dnallm.preflight` or `dnallm.models.registry` leaves the training stack out of `sys.modules`.
 - `examples/` — the example/notebook/script execution census (nightly lane; per-test timeout marks in the 3600–7200s range)
 - `scripts/` — tests for the CI scripts themselves (`audit_skips.py`, `check_docs_sync.py`)
 - Root contract tests — `test_models_lock_contracts.py`, `test_extras_guard.py`, `test_config_mapping_contracts.py`, `test_runner_infra_contracts.py`, `test_dispatch_direction.py`, `test_frozen_pairs.py`, `test_genomic_intervals.py`

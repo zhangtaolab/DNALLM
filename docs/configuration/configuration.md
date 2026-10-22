@@ -259,7 +259,7 @@ Selected defaults defined in `dnallm/configuration/configs.py`:
 | `dnallm/mcp/configs/` | MCP server config plus per-model inference configs (promoter, conservation, open chromatin, H3K27ac, H3K27me3) |
 | `dnallm/configuration/presets/lora_targets.yaml` | Packaged PEFT target-module presets (ships with the wheel via package data) |
 | `dnallm/configuration/evo/` | Evo 1 / Evo 2 model architecture YAMLs consumed by the model loader, not by `load_config` |
-| `dnallm/models/model_info.yaml` | Model registry (pretrained/finetuned entries) used by the config generator |
+| `dnallm/models/model_info.yaml` | Model registry (49 pretrained + 187 finetuned entries), parsed only by `dnallm/models/registry.py`; feeds the config generator, pre-flight compatibility checks, and preset loading |
 
 ## Generating configurations
 
@@ -273,6 +273,18 @@ dnallm-model-config-generator --output config.yaml --non-interactive
 ```
 
 Details: [Config Generator](../user_guide/cli/config_generator.md).
+
+The pre-flight wizard is the second interactive path — it starts from *your data*
+instead of a model list: `dnallm preflight` (needs `pip install "dnallm[tui]"`)
+validates the data, checks model compatibility against the registry, then builds
+and live-validates a config before saving it (the exact file is previewed first,
+and the save is refused while validation errors remain). `dnallm preflight
+--config existing.yaml` jumps straight to editing an existing file. The same
+capability exists as pure functions: `dnallm.preflight.generate_config(model)`
+and `edit_config(path)` return the config document, and `render_yaml` returns
+the exact text that would be written — nothing touches disk unless you pass
+`output_path`. Walkthrough with screenshots:
+[Pre-flight Wizard](../user_guide/tui/preflight_wizard.md).
 
 ## Per-environment overrides
 
@@ -297,12 +309,15 @@ From `[project.optional-dependencies]` in `pyproject.toml`:
 | Extra | Config relevance |
 |---|---|
 | `mcp` | Required for `dnallm-mcp-server` and the MCP configuration subsystem |
+| `tui` | Terminal pre-flight wizard (`dnallm preflight`); Textual only — adds no config keys |
 | `mamba` | Mamba-family models (`mamba-ssm`, `causal_conv1d`) referenced by model configs |
 | `fla` | flash-linear-attention kernels for PlantHelixSeek remote code |
 | `cuda124`–`cuda130`, `cpu` | torch build selection (see above) |
 | `full` | `dev + test + notebook + mcp` |
-| `base` | Deprecated one-cycle alias for `full` (installs the full set; removal planned for v1.4) |
-| `all` | `full + dev + test + notebook + docs + ui + mcp + fla` |
+| `all` | `full + dev + test + notebook + docs + ui + mcp + fla + tui` |
+
+The former `base` extra (a one-cycle alias for `full`) was retired in v1.4 and no
+longer resolves on install.
 
 Everything the YAML schema itself needs (bitsandbytes, optuna, peft, tensorboardx,
 wandb, pyyaml) is in the core dependencies — no extra is required to load any section.

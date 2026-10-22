@@ -612,6 +612,53 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Discussions**: [GitHub Discussions](https://github.com/zhangtaolab/DNALLM/discussions)
 - **Examples**: Check the `example/` directory for working code
 
+## 🧭 Pre-flight Wizard (TUI)
+
+Before fine-tuning, the interactive pre-flight wizard checks that your data and your
+chosen model will actually work together — then writes a ready-to-use config file for
+you. It runs in the terminal and needs no programming:
+
+```bash
+pip install "dnallm[tui]"   # Textual is the only extra dependency
+dnallm preflight            # start from your own data
+dnallm preflight --config my.yaml   # or jump straight to editing a config
+```
+
+The wizard walks through seven screens — environment, entry, your data, model
+suitability, config editing with live validation, an optional model download,
+and a summary with the exact file that was saved:
+
+<p align="center">
+  <img src="docs/pic/tui/summary.svg" alt="Pre-flight wizard summary screen" width="720">
+</p>
+
+Every OK / WARN / FAIL verdict comes from the core pre-flight checks
+(`dnallm.preflight`); the wizard only displays them. A full walkthrough with
+screenshots of every screen lives in the
+[Pre-flight Wizard guide](https://zhangtaolab.github.io/DNALLM/user_guide/tui/preflight_wizard/).
+
+## 📦 Preset Model Loading
+
+`load_preset_model(model_name, task_config)` loads one of the 236 registry models
+(49 pretrained + 187 finetuned) by entry name, repo id, or family name. For a
+registry entry the task type is **validated, never patched** — asking a model that
+was trained for another task type raises a clear error instead of silently
+mislabeling — and the label settings (`num_labels`, `label_names`, `threshold`)
+come from the registry entry, not from your config:
+
+```python
+from dnallm import load_config
+from dnallm.models.model import load_preset_model
+
+model, tokenizer = load_preset_model(
+    "zhangtaolab/plant-dnabert-BPE-promoter",
+    load_config("configs/finetune_config.yaml")["task"],
+)
+```
+
+Details and the two-tier name-resolution rules:
+[Preset Model Loading](https://zhangtaolab.github.io/DNALLM/user_guide/preset_loading/).
+
 ---
 
 **DNALLM** - Empowering DNA sequence analysis with state-of-the-art language models.

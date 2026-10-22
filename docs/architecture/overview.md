@@ -12,7 +12,7 @@ This document describes how the DNALLM package is organized at the code level: t
 
 DNALLM is a **configuration-driven Python toolkit** for fine-tuning and running DNA large language models. Its primary input is a YAML configuration file plus DNA sequence data (local files, or preset datasets hosted on Hugging Face / ModelScope); its outputs are fine-tuned model checkpoints with training metrics, prediction results (labels, scores, embeddings, attention maps), and — through the MCP layer — standardized prediction services consumable by AI assistants and web clients.
 
-Architecturally, DNALLM is a **layered framework built on the Hugging Face ecosystem**: model loading wraps `transformers` auto-classes, datasets wrap the `datasets` library, and training delegates the optimization loop to the Hugging Face `Trainer`. DNALLM's own value sits in the layers above this foundation — a registry of 37 DNA LLM families, task-aware model heads, PEFT adapter presets, honest evaluation semantics, in-silico mutagenesis and interpretation tooling, and an MCP server for serving predictions.
+Architecturally, DNALLM is a **layered framework built on the Hugging Face ecosystem**: model loading wraps `transformers` auto-classes, datasets wrap the `datasets` library, and training delegates the optimization loop to the Hugging Face `Trainer`. DNALLM's own value sits in the layers above this foundation — a model registry (37 families plus 236 typed registry entries), task-aware model heads, PEFT adapter presets, honest evaluation semantics, in-silico mutagenesis and interpretation tooling, an MCP server for serving predictions, and a pre-flight path (`dnallm/preflight` + the `dnallm preflight` terminal wizard) that takes a user from raw data to a validated, model-compatible config file before any training starts.
 
 The single YAML config file is the source of truth for every workflow: each top-level section (`task`, `model`, `finetune`, `lora`, `ia3`, `inference`, `vep`, `sweep`, `benchmark`) is parsed into a typed Pydantic configuration object by `dnallm.configuration.load_config`, and downstream components consume only the sections they need.
 
@@ -21,7 +21,8 @@ The single YAML config file is the source of truth for every workflow: each top-
 ```text
 ┌──────────────────────────────────────────────────────────────────────┐
 │                           Entry points                               │
-│   dnallm CLI + console scripts  ·  Python API  ·  MCP clients        │
+│   dnallm CLI + console scripts  ·  dnallm preflight (TUI)        │
+│   ·  Python API  ·  MCP clients                                  │
 └──────────────────────────┬───────────────────────────────────────────┘
                            │ YAML config (--config / load_config)
                            ▼
@@ -58,6 +59,8 @@ The single YAML config file is the source of truth for every workflow: each top-
   Cross-cutting: dnallm/tasks (TaskType enum + task metrics)
                  dnallm/utils (logging, transformers/CUDA compatibility
                  shims, genomic coordinate helpers, training plots)
+                 dnallm/preflight + dnallm/tui (read-only pre-flight
+                 checks; Textual wizard renders the reports)
 ```
 
 ## 3. Data Flow
@@ -106,13 +109,26 @@ The MCP layer (`dnallm/mcp/`) turns inference engines into a network service, de
 3. `DNALLMMCPServer` (in `dnallm/mcp/server.py`) registers these operations as FastMCP tools — `dna_sequence_predict`, `dna_batch_predict`, `dna_multi_model_predict`, their streaming (`dna_stream_*`) variants with real-time progress, plus model-management and health-check tools.
 4. The server runs over **stdio**, **SSE**, or **streamable-HTTP** transports, started via the `dnallm-mcp-server` console script or `dnallm mcp-server`.
 
+### 3.4 Pre-flight: raw data → validated config
+
+Before any of the flows above, a user can run the pre-flight path to find out whether their data and chosen model are compatible *before* downloading weights or writing a config by hand:
+
+1. **Validate data.** `validate_data(sequences)` (in `dnallm/preflight/`) checks sequences for length, alphabet, and degenerate-base issues and returns a typed report — it is pure, read-only, and offline-safe (no file is ever rewritten).
+2. **Check compatibility.** `check_compatibility(report, models=[...], task_type=...)` scores each registry model against the data report; every verdict fact flows through the typed registry in `dnallm/models/registry.py` (REG-01). `probe_availability` is the only network-capable call — opt-in, metadata-only, and every failure degrades to an honest unknown state.
+3. **Generate a config.** `generate_config(model)` and `edit_config(path)` produce a config document; `render_yaml` returns the exact text that will be saved, and nothing is written unless an explicit `output_path` is passed.
+
+The terminal wizard (`dnallm preflight`, package `dnallm/tui/`, Textual, installed via the `tui` extra) is a presentation-only shell over these functions: it renders the reports verbatim — every OK / WARN / FAIL rule lives in `dnallm.preflight`, never in the screens. See the [Pre-flight Wizard guide](../user_guide/tui/preflight_wizard.md).
+
 ## 4. Key Abstractions
 
 | Abstraction | Location | Role |
 |---|---|---|
 | `load_config` / `DNALLMConfig` | `dnallm/configuration/configs.py` | Parses the YAML config into typed Pydantic section objects; single source of truth for every workflow |
 | `MODEL_INFO` registry | `dnallm/models/modeling_auto.py` | Catalog of 37 DNA LLM families with architecture, tokenization tags, Hugging Face / ModelScope IDs, and defaults |
+| Typed model registry | `dnallm/models/registry.py` | Sole parser of the packaged `model_info.yaml` (236 entries: 49 pretrained + 187 finetuned); frozen `RegistryEntry` objects with accessors `resolve`, `get_by_task_type`, `effective_max_length`, `effective_tokenizer_type` |
 | `load_model_and_tokenizer` | `dnallm/models/model.py` | Family-aware model loading: source resolution (HF / ModelScope / local), task-specific head attachment, optional quantization and random-init gating |
+| `load_preset_model` | `dnallm/models/model.py` | Preset loading: resolves a name in two tiers (registry entry name → repo id, then family table), validates `task_type` strictly (never patches it), and copies head fields (`num_labels`, `label_names`, `threshold`) from the registry entry |
+| Pre-flight API | `dnallm/preflight/` | Pure, read-only validation before training: `validate_data`, `check_compatibility`, `generate_config`, `edit_config`, plus opt-in `probe_availability` / offline `local_availability` |
 | `DNADataset` | `dnallm/datahandling/data.py` | Dataset wrapper: local loading, preset datasets, tokenization, augmentation, statistics |
 | `TaskType` / `TaskConfig` | `dnallm/tasks/task.py` | Enum of the 8 supported task types (embedding, mask, generation, binary / multi-class / multi-label classification, regression, token classification) and its config |
 | `compute_metrics` factory | `dnallm/tasks/metrics.py` | Builds the task-metrics callable handed to the Hugging Face `Trainer` |
@@ -135,11 +151,15 @@ dnallm/
 │                   # embedding probes, plotting
 ├── interpret/      # Motif scanning (MEME/JASPAR/CIS-BP, FIMO conventions)
 ├── mcp/            # FastMCP server, model + config managers, tests
-├── models/         # MODEL_INFO registry, model loading, heads, losses,
-│                   # tokenizer fallback, special model families
+├── models/         # Typed registry + MODEL_INFO family table, model loading,
+│                   # heads, losses, tokenizer fallback, special families
+├── preflight/      # Read-only pre-flight validation (data, compatibility,
+│                   # config generation) — imports no torch/transformers
 ├── tasks/          # TaskType, TaskConfig, metric registry
+├── tui/            # Terminal pre-flight wizard (Textual, tui extra) —
+│                   # presentation-only shell over dnallm.preflight
 └── utils/          # Logging, transformers/CUDA compat, genomic coordinates
-                    # and intervals, training plots
+                    # and intervals, env facts, training plots
 ```
 
 The layout follows the pipeline: each top-level package corresponds to one stage (configure → model → data → train / infer), so a change to fine-tuning logic lands in `finetune/` without touching the model registry, and a new model family is added by extending `models/` alone. `tasks/` and `utils/` are deliberately cross-cutting — shared by both training and inference.
@@ -162,3 +182,5 @@ Supporting directories at the repository root: `configs/` holds example YAML con
 - [Benchmark Guide](../user_guide/benchmark/index.md) — multi-model evaluation
 - [MCP Concepts](../concepts/mcp.md) — the protocol layer and DNALLM's server integration
 - [CLI Usage](../user_guide/cli/usage.md) — all console scripts and their options
+- [Pre-flight Wizard](../user_guide/tui/preflight_wizard.md) — the `dnallm preflight` terminal walkthrough
+- [Preset Model Loading](../user_guide/preset_loading.md) — `load_preset_model` and the registry resolution tiers
