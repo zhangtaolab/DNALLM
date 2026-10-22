@@ -15,10 +15,12 @@ magnitudes are asserted. No network, no model downloads, no skips.
 from types import SimpleNamespace
 from typing import ClassVar
 import json as jsonlib
+import gzip
 import math
 import sys
 import urllib.error
 import urllib.request
+import zlib
 from pathlib import Path
 from unittest.mock import patch
 
@@ -938,6 +940,7 @@ class TestScoreVariant:
 CLINVAR_URL = "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz"
 CHR22_URL = "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/chromosomes/chr22.fa.gz"
 DOWNLOAD_TIMEOUT_S = 120
+DOWNLOAD_ATTEMPTS = 3
 SAMPLE_SEED = 42
 PER_CLASS_TARGET = 500  # 1k-sample acceptance target (D-09 tier 2)
 CONTEXT_WINDOW = 200  # the VepConfig protocol default
@@ -979,14 +982,49 @@ def _probe(url):
 
 
 def _download(url, destination):
-    """Stream one download into the isolated session tmp dir."""
-    # Callers pass hardcoded https constants only (no file:/custom schemes).
-    with (
-        urllib.request.urlopen(url, timeout=DOWNLOAD_TIMEOUT_S) as response,  # ruff: ignore[suspicious-url-open-usage]
-        open(destination, "wb") as handle,
-    ):
-        while chunk := response.read(1 << 20):
-            handle.write(chunk)
+    """Stream one download into the isolated session tmp dir.
+
+    261022-sl7: the nightly's ClinVar stream was cut mid-transfer while the
+    HEAD probe stayed green (CI 39746765123), and the truncated file raised
+    ``EOFError: Compressed file ended before the end-of-stream marker`` in
+    five test params. Each attempt is now validated -- Content-Length when
+    the host sends it, then a full gzip decompress pass proving the
+    end-of-stream marker -- and truncated/transport failures retry before
+    the caller type-skips. A permanent 4xx re-raises immediately (WR-04
+    sibling policy: a broken input contract never becomes a skip).
+
+    Raises:
+        urllib.error.HTTPError: a permanent (< 500) HTTP answer.
+        RuntimeError: every attempt failed or produced a corrupt file; the
+            message carries the last matchable evidence.
+    """
+    evidence = ""
+    for _attempt in range(1, DOWNLOAD_ATTEMPTS + 1):
+        evidence = ""
+        try:
+            with (
+                urllib.request.urlopen(url, timeout=DOWNLOAD_TIMEOUT_S) as response,  # ruff: ignore[suspicious-url-open-usage]
+                open(destination, "wb") as handle,
+            ):
+                expected = int(response.headers.get("Content-Length") or 0)
+                written = 0
+                while chunk := response.read(1 << 20):
+                    handle.write(chunk)
+                    written += len(chunk)
+            if expected and written != expected:
+                evidence = f"short read: {written}/{expected} bytes"
+                continue
+            with gzip.open(destination, "rb") as probe:
+                while probe.read(1 << 20):
+                    pass  # full pass: EOFError here means a truncated stream
+            return
+        except urllib.error.HTTPError as exc:
+            if exc.code < 500:
+                raise  # WR-04: permanent 4xx is a broken input contract
+            evidence = f"HTTP {exc.code}"
+        except (urllib.error.URLError, TimeoutError, OSError, EOFError, zlib.error) as exc:
+            evidence = evidence or f"{type(exc).__name__}: {exc}"
+    raise RuntimeError(f"download failed after {DOWNLOAD_ATTEMPTS} attempts: {url} ({evidence})")
 
 
 @pytest.fixture(scope="class")
@@ -995,7 +1033,8 @@ def clinvar_cohort(tmp_path_factory):
 
     Yields the slice VCF path (downloads live only under the session tmp
     dir; nothing is committed). Typed-skips with the ``clinvar-unavailable:``
-    prefix when either canonical host is unreachable.
+    prefix when either canonical host is unreachable, or when the hardened
+    downloader exhausts its retries on a truncating host (261022-sl7).
     """
     evidence = _probe(CLINVAR_URL) or _probe(CHR22_URL)
     if evidence:
@@ -1004,8 +1043,11 @@ def clinvar_cohort(tmp_path_factory):
     workdir = tmp_path_factory.mktemp("clinvar")
     vcf_gz = workdir / "clinvar.vcf.gz"
     chr22_gz = workdir / "chr22.fa.gz"
-    _download(CLINVAR_URL, vcf_gz)
-    _download(CHR22_URL, chr22_gz)
+    try:
+        _download(CLINVAR_URL, vcf_gz)
+        _download(CHR22_URL, chr22_gz)
+    except RuntimeError as exc:
+        pytest.skip(f"clinvar-unavailable: {exc}")
 
     import allel
 
@@ -1513,3 +1555,97 @@ class TestEvaluateVcfEdgeCases:
         result = score_variant(model, simple_dna_tokenizer, "ACGTTGCA", 3, "T", "A", paradigm="clm")
 
         assert isinstance(result, float)
+
+
+class _FakeUrlStream:
+    """Minimal urllib response double: read() + headers + context manager."""
+
+    def __init__(self, chunks, headers=None):
+        self._iter = iter(chunks)
+        self.headers = headers or {}
+
+    def read(self, n=-1):
+        return next(self._iter, b"")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class TestDownloadRetries:
+    """Contract for the hardened :func:`_download` (261022-sl7).
+
+    A HEAD-green but truncating host (CI 39746765123: ClinVar stream cut
+    mid-transfer, EOFError in five params) must retry and then surface
+    matchable evidence for the caller's ``clinvar-unavailable:`` skip;
+    a permanent 4xx re-raises immediately (WR-04).
+    """
+
+    def test_truncated_stream_retries_then_raises(self, tmp_path):
+        """Body short of Content-Length retries, then raises matchable evidence."""
+        with patch(
+            "urllib.request.urlopen",
+            side_effect=lambda url, timeout: _FakeUrlStream(
+                [b"abc"], headers={"Content-Length": "10"}
+            ),
+        ) as urlopen:
+            with pytest.raises(RuntimeError, match=r"short read: 3/10 bytes"):
+                _download(CLINVAR_URL, tmp_path / "clinvar.vcf.gz")
+        assert urlopen.call_count == DOWNLOAD_ATTEMPTS
+
+    def test_truncated_gzip_retries_then_raises(self, tmp_path):
+        """Content-Length-consistent but corrupt bytes fail the gzip pass."""
+        with patch(
+            "urllib.request.urlopen",
+            side_effect=lambda url, timeout: _FakeUrlStream([b"not-a-gzip-stream"]),
+        ) as urlopen:
+            with pytest.raises(RuntimeError, match=r"after 3 attempts"):
+                _download(CHR22_URL, tmp_path / "chr22.fa.gz")
+        assert urlopen.call_count == DOWNLOAD_ATTEMPTS
+
+    def test_transient_failure_then_success(self, tmp_path):
+        """A transport blip on attempt one recovers on attempt two."""
+        payload = gzip.compress(b"genome-bytes")
+        responses: list = [
+            urllib.error.URLError("connection reset"),
+            _FakeUrlStream([payload]),
+        ]
+
+        def _flaky(url, timeout):
+            item = responses.pop(0)
+            if isinstance(item, Exception):
+                raise item
+            return item
+
+        with patch("urllib.request.urlopen", side_effect=_flaky):
+            _download(CHR22_URL, tmp_path / "chr22.fa.gz")
+        assert (tmp_path / "chr22.fa.gz").read_bytes() == payload
+
+    def test_valid_download_first_try(self, tmp_path):
+        """A complete gzip stream with no Content-Length passes untouched."""
+        payload = gzip.compress(b"clinvar-bytes")
+        with patch(
+            "urllib.request.urlopen",
+            side_effect=lambda url, timeout: _FakeUrlStream([payload], headers={}),
+        ) as urlopen:
+            _download(CLINVAR_URL, tmp_path / "clinvar.vcf.gz")
+        assert urlopen.call_count == 1
+        assert (tmp_path / "clinvar.vcf.gz").read_bytes() == payload
+
+    def test_permanent_4xx_raises_immediately(self, tmp_path):
+        """WR-04: a 404 fails loud on the first attempt, no retry, no skip path."""
+        error = urllib.error.HTTPError(CLINVAR_URL, 404, "Not Found", None, None)
+        with patch("urllib.request.urlopen", side_effect=error) as urlopen:
+            with pytest.raises(urllib.error.HTTPError):
+                _download(CLINVAR_URL, tmp_path / "clinvar.vcf.gz")
+        assert urlopen.call_count == 1
+
+    def test_server_5xx_joins_retry_path(self, tmp_path):
+        """A 503 is transient: it retries into RuntimeError (caller skips)."""
+        error = urllib.error.HTTPError(CLINVAR_URL, 503, "Service Unavailable", None, None)
+        with patch("urllib.request.urlopen", side_effect=error) as urlopen:
+            with pytest.raises(RuntimeError, match=r"after 3 attempts"):
+                _download(CLINVAR_URL, tmp_path / "clinvar.vcf.gz")
+        assert urlopen.call_count == DOWNLOAD_ATTEMPTS
