@@ -81,7 +81,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 - [x] **Phase 23: Pre-flight Core — Pure Validation / Suitability / Config API** - `validate_data` / `check_compatibility` / `generate_config` plus a ModelScope-first availability probe as pure, pytest-covered, offline-safe functions; lab-first listings; shared `validate_sections` path (completed 2026-10-21)
 - [x] **Phase 24: Preset Loading — `load_preset_model` Registry Rewire** - Registry entry names resolve with `num_labels`/`label_names`/`threshold` patched into TaskConfig; the existing family-name path is preserved and regression-tested (completed 2026-10-21)
 - [x] **Phase 25: Terminal UI — Pre-flight Wizard & `tui` Extra** - `dnallm preflight` Textual wizard over the core (env → data → suitability → config panels, select-to-download); extra + CI wiring + worker seam land before any panel; `full`-alias removal rides the same change (completed 2026-10-22)
-- [ ] **Phase 26: MCP Consistency — Registry-Keyed Check & Honest Listing** - `check_config_registry_consistency()` (repo-id-keyed, warn-first, never writes) + CI check over committed configs + `get_all_available_models` registry listing with configured/loaded overlay
+- [x] **Phase 26: MCP Consistency — Registry-Keyed Check & Honest Listing** - `check_config_registry_consistency()` (repo-id-keyed, warn-first, never writes) + CI check over committed configs + `get_all_available_models` registry listing with configured/loaded overlay (completed 2026-10-22)
 
 ## Phase Details
 
@@ -216,7 +216,7 @@ Plans:
   2. A CI check runs the consistency checker over `dnallm/mcp/configs/`, so config↔registry drift fails the build (coverage of user-facing example configs decided at phase planning)
   3. `get_all_available_models` reports the registry listing overlaid with configured/loaded state — an MCP client's model menu matches what it can actually call (closing the name/reality mismatch, issue #64's registry-consumption half)
 
-**Plans**: 2/2 plans executed
+**Plans**: 2/2 plans complete
 - [x] 26-01-PLAN.md
 - [x] 26-02-PLAN.md
 
@@ -234,4 +234,4 @@ Phases execute in numeric order: 22 → 23 → 24 → 25 → 26
 | 23. Pre-flight Core | 5/5 | Complete    | 2026-10-21 |
 | 24. Preset Loading | 1/1 | Complete    | 2026-10-21 |
 | 25. Terminal UI & tui Extra | 13/13 | Complete    | 2026-10-22 |
-| 26. MCP Consistency | 2/2 | In Progress | - |
+| 26. MCP Consistency | 2/2 | Complete    | 2026-10-22 |
