@@ -16,7 +16,7 @@ DNALLM/
 │   ├── datahandling/           # data.py (DNADataset), dataset_auto.py (PRESET_DATASETS)
 │   ├── finetune/               # trainer.py (DNATrainer), megatron.py (standalone, lint-excluded)
 │   ├── inference/              # inference.py (DNAInference), interpret.py, mutagenesis.py, benchmark.py, plot.py
-│   ├── mcp/                    # server.py, model_manager.py, config_manager.py, config_validators.py, client.py,
+│   ├── mcp/                    # server.py, model_manager.py, config_manager.py, config_validators.py, consistency.py (registry-keyed config checker), client.py,
 │   │                           #   configs/ (server + per-model YAMLs), tests/ (own pytest suite)
 │   ├── models/                 # model.py (loader), modeling_auto.py (registry), head.py, tokenizer.py, losses.py,
 │   │                           #   registry.py (runtime loader, sole parser of model_info.yaml — 236-entry registry,

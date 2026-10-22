@@ -40,9 +40,9 @@ Scope pinned by owner 2026-10-20: Track A only; Track B (dnallmmark TUI substrat
 
 ### MCP Consistency (Phase 26)
 
-- [ ] **MCP-01**: `check_config_registry_consistency()` compares per-model MCP YAMLs against the registry keyed on repo id (task_type, num_labels, label_names ORDER, threshold, source), warn-first with `strict_registry` opt-in, and never writes
+- [x] **MCP-01**: `check_config_registry_consistency()` compares per-model MCP YAMLs against the registry keyed on repo id (task_type, num_labels, label_names ORDER, threshold, source), warn-first with `strict_registry` opt-in, and never writes
 - [ ] **MCP-02**: `get_all_available_models` serves the registry listing with a configured/loaded overlay (closes the name/reality mismatch — issue #64's consumption half)
-- [ ] **MCP-03**: A CI check runs the consistency checker over committed configs (`dnallm/mcp/configs/`; coverage of example configs decided at phase planning)
+- [x] **MCP-03**: A CI check runs the consistency checker over committed configs (`dnallm/mcp/configs/`; coverage of example configs decided at phase planning)
 
 ### Packaging (Phase 25)
 
@@ -99,9 +99,9 @@ Scope pinned by owner 2026-10-20: Track A only; Track B (dnallmmark TUI substrat
 | TUI-07 | Phase 25 | Complete |
 | TUI-08 | Phase 25 | Complete |
 | PKG-01 | Phase 25 | Complete |
-| MCP-01 | Phase 26 | Pending |
+| MCP-01 | Phase 26 | Complete |
 | MCP-02 | Phase 26 | Pending |
-| MCP-03 | Phase 26 | Pending |
+| MCP-03 | Phase 26 | Complete |
 
 **Coverage:**
 - v1.4 requirements: 23 total
