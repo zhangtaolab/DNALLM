@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DNALLM v1.4 里程碑测试报告 — Pre-flight UX & Registry-as-Truth-Source</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+    background: #f6f8fa; color: #24292f; line-height: 1.65; padding: 32px 16px 64px;
+  }
+  .page { max-width: 1080px; margin: 0 auto; background: #fff; border-radius: 12px;
+          box-shadow: 0 1px 3px rgba(0,0,0,.08); padding: 48px 56px; }
+  header { border-bottom: 3px solid #1f6feb; padding-bottom: 20px; margin-bottom: 28px; }
+  header h1 { font-size: 26px; letter-spacing: .5px; }
+  header .sub { color: #57606a; margin-top: 6px; font-size: 14.5px; }
+  header .verdict { display: inline-block; margin-top: 12px; background: #dafbe1; color: #1a7f37;
+                    border: 1px solid #82e5a3; border-radius: 999px; padding: 3px 14px;
+                    font-weight: 600; font-size: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 14px; margin: 24px 0 8px; }
+  .card { border: 1px solid #d0d7de; border-radius: 10px; padding: 14px 16px; background: #fff; }
+  .card .num { font-size: 26px; font-weight: 700; color: #1f6feb; }
+  .card .num.green { color: #1a7f37; }
+  .card .lbl { font-size: 12.5px; color: #57606a; margin-top: 2px; }
+  h2 { font-size: 19px; margin: 40px 0 6px; padding-top: 10px; }
+  h2 .no { color: #1f6feb; margin-right: 6px; }
+  .lead { color: #57606a; font-size: 14px; margin-bottom: 14px; }
+  .chart { border: 1px solid #d0d7de; border-radius: 10px; padding: 18px 20px 10px; margin: 14px 0 6px; }
+  .chart .src { font-size: 12px; color: #8b949e; margin-top: 8px; border-top: 1px dashed #d0d7de; padding-top: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13.5px; }
+  th { background: #f6f8fa; text-align: left; }
+  th, td { border: 1px solid #d0d7de; padding: 7px 10px; vertical-align: top; }
+  .ok { color: #1a7f37; font-weight: 600; white-space: nowrap; }
+  .warn { color: #b35900; }
+  .dim { color: #57606a; }
+  .tag { display: inline-block; font-size: 12px; border-radius: 5px; padding: 1px 7px;
+         border: 1px solid #d0d7de; color: #57606a; white-space: nowrap; }
+  .tag.blue { border-color: #a5ccff; background: #ddf4ff; color: #0969da; }
+  .note { background: #fff8c5; border: 1px solid #d4a72c33; border-radius: 8px;
+          padding: 10px 14px; font-size: 13.5px; margin: 12px 0; }
+  .glossary dt { font-weight: 600; margin-top: 10px; }
+  .glossary dd { color: #57606a; margin-left: 0; font-size: 13.5px; }
+  footer { margin-top: 44px; border-top: 1px solid #d0d7de; padding-top: 14px;
+           font-size: 12.5px; color: #8b949e; }
+  footer code { background: #f6f8fa; padding: 1px 5px; border-radius: 4px; font-size: 11.5px; }
+  @media print { body { background: #fff; padding: 0; } .page { box-shadow: none; padding: 20px; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <h1>DNALLM v1.4 里程碑测试报告</h1>
+  <div class="sub">Pre-flight UX &amp; Registry-as-Truth-Source（预检体验与"注册表即事实源"）· 阶段 22–26 · 2026-10-20 → 2026-10-22 · 分支 <code>v1.4</code>（HEAD <code>eb18431</code>）</div>
+  <div class="verdict">✓ 全部通过：5/5 阶段验证 · 23/23 需求达成 · 0 项未关闭威胁</div>
+</header>
+
+<!-- ═══════════ 关键数字 ═══════════ -->
+<div class="cards">
+  <div class="card"><div class="num green">3147</div><div class="lbl">测试通过（本次完整运行，0 失败）</div></div>
+  <div class="card"><div class="num">3224</div><div class="lbl">测试总数（17 个通道）</div></div>
+  <div class="card"><div class="num green">5/5</div><div class="lbl">阶段全部验证通过</div></div>
+  <div class="card"><div class="num green">23/23</div><div class="lbl">需求全部达成</div></div>
+  <div class="card"><div class="num">104/104</div><div class="lbl">关键验收条款逐条核验</div></div>
+  <div class="card"><div class="num">≥90%</div><div class="lbl">代码覆盖率 CI 硬门槛（新代码 93–100%）</div></div>
+</div>
+
+<div class="note"><b>怎么读这份报告：</b>每一节先给结论，再给图/表，最后在页脚注明数据来自哪条命令、哪天运行。
+术语在文末「词汇表」都有通俗解释。本报告面向生物学家/生信用户，工程术语均配有中文白话。</div>
+
+<!-- ═══════════ 1 里程碑概览 ═══════════ -->
+<h2><span class="no">1.</span>里程碑概览：五个阶段做了什么</h2>
+<p class="lead">v1.4 的目标一句话：让用户从"自己的数据"到"一份与模型兼容、经过校验的配置"只走一条终端流程，而模型注册表（内置的 236 个模型目录）是唯一的事实来源。</p>
+
+<div class="chart">
+<svg viewBox="0 0 960 190" role="img" aria-label="五个阶段时间线" style="width:100%;height:auto">
+  <style>
+    .tl-bar { fill: #ddf4ff; stroke: #54aeff; }
+    .tl-bar.ms { fill: #dafbe1; stroke: #4ac26b; }
+    .tl-txt { font: 12.5px sans-serif; fill: #24292f; }
+    .tl-sub { font: 11px sans-serif; fill: #57606a; }
+    .tl-day { font: 600 11px sans-serif; fill: #0969da; }
+  </style>
+  <!-- day columns: 10-20 | 10-21 | 10-22 -->
+  <line x1="255" y1="20" x2="255" y2="165" stroke="#d0d7de" stroke-dasharray="4 4"/>
+  <line x1="530" y1="20" x2="530" y2="165" stroke="#d0d7de" stroke-dasharray="4 4"/>
+  <text x="130" y="16" text-anchor="middle" class="tl-day">10-20（周一）</text>
+  <text x="392" y="16" text-anchor="middle" class="tl-day">10-21（周二）</text>
+  <text x="770" y="16" text-anchor="middle" class="tl-day">10-22（周三）</text>
+  <!-- phase rows: y = 30 + i*27 -->
+  <rect class="tl-bar" x="20"  y="30" width="235" height="21" rx="5"/>
+  <text class="tl-txt" x="30" y="45">阶段 22 · 注册表基础（2 计划）· REG×3</text>
+  <rect class="tl-bar ms" x="255" y="57" width="275" height="21" rx="5"/>
+  <text class="tl-txt" x="265" y="72">阶段 23 · 预检核心 API（5 计划）· PFC×7</text>
+  <rect class="tl-bar ms" x="420" y="84" width="110" height="21" rx="5"/>
+  <text class="tl-txt" x="430" y="99">阶段 24 · 预设加载</text>
+  <rect class="tl-bar ms" x="530" y="111" width="240" height="21" rx="5"/>
+  <text class="tl-txt" x="540" y="126">阶段 25 · 终端向导 TUI（13 计划）</text>
+  <rect class="tl-bar ms" x="640" y="138" width="120" height="21" rx="5"/>
+  <text class="tl-txt" x="650" y="153">阶段 26 · MCP 一致性</text>
+  <text class="tl-sub" x="940" y="45" text-anchor="end">加载器+数据富集，覆盖率 100%</text>
+  <text class="tl-sub" x="940" y="72" text-anchor="end">纯函数核心：验数据/查兼容/生成配置</text>
+  <text class="tl-sub" x="940" y="99" text-anchor="end">LOAD-01 · 注册表键控模型加载</text>
+  <text class="tl-sub" x="940" y="126" text-anchor="end">TUI×8 + PKG×1 · 文字界面向导</text>
+  <text class="tl-sub" x="940" y="153" text-anchor="end">MCP×3 · 配置一致性检查+诚实列表</text>
+</svg>
+<div class="src">来源：.planning/ROADMAP.md 各阶段完成记录；绿色 = 当天完成并验证。23 个计划全部按原子提交执行。</div>
+</div>
+
+<!-- ═══════════ 2 全套件结果 ═══════════ -->
+<h2><span class="no">2.</span>完整测试套件运行结果（2026-10-22，里程碑收尾时点）</h2>
+<p class="lead">在仓库当前版本上完整跑了一遍与 CI"门禁通道"同口径的测试（不含标记为 slow 的夜间长测试）：<b>3147 个测试全部通过，0 失败</b>，169 秒跑完。唯一的 1 个跳过是<b>已登记的网络类跳过</b>（机器离线时自动跳过需要联网的检查，属预期行为，有白名单管理）。</p>
+
+<div class="chart">
+<svg viewBox="0 0 960 240" role="img" aria-label="门禁通道通过情况" style="width:100%;height:auto">
+  <style>.dn-lbl{font:600 13px sans-serif;fill:#24292f}.dn-sub{font:11.5px sans-serif;fill:#57606a}</style>
+  <!-- donut: r=78, C=490.09; passed 3147/3148 = 99.97% -->
+  <circle cx="150" cy="120" r="78" fill="none" stroke="#d0d7de" stroke-width="34"/>
+  <circle cx="150" cy="120" r="78" fill="none" stroke="#1a7f37" stroke-width="34"
+          stroke-dasharray="489.9 490.1" stroke-dashoffset="-0.1" transform="rotate(-90 150 120)"/>
+  <text x="150" y="112" text-anchor="middle" class="dn-lbl" style="font-size:26px">3147</text>
+  <text x="150" y="132" text-anchor="middle" class="dn-sub">通过 · 0 失败</text>
+  <text x="150" y="150" text-anchor="middle" class="dn-sub">通过率 99.97%</text>
+  <!-- breakdown bars -->
+  <g font-family="sans-serif" font-size="13" fill="#24292f">
+    <text x="300" y="52">按结果分类</text>
+    <rect x="300" y="62"  width="600" height="16" rx="3" fill="#1a7f37"/>
+    <text x="910" y="75" text-anchor="end" fill="#fff" font-size="11.5">通过 3147</text>
+    <rect x="300" y="86"  width="4" height="16" fill="#b35900"/>
+    <text x="312" y="99" font-size="12">跳过 1（网络类，已登记白名单）</text>
+    <rect x="300" y="110" width="2" height="16" fill="#c62828"/>
+    <text x="312" y="123" font-size="12">失败 0</text>
+    <rect x="300" y="140" width="150" height="16" rx="3" fill="#8b949e"/>
+    <text x="460" y="153" font-size="12">未纳入本次运行：76 个 slow 夜间长测试（GPU/全量示例执行）</text>
+    <text x="300" y="188" font-size="12" fill="#57606a">环境：Python 3.13.15 · pytest 9.1.1 · 本地开发虚机（与 CI 矩阵同套测试代码）</text>
+    <text x="300" y="208" font-size="12" fill="#57606a">7 条警告均为第三方库弃用提示，不影响结果，已在 CI 长期跟踪。</text>
+  </g>
+</svg>
+<div class="src">命令：<code>pytest -q tests/ dnallm/mcp/tests/ -m "not slow"</code> → "3147 passed, 1 skipped, 76 deselected in 169.22s"（2026-10-22）。收集总数 3224 来自 <code>pytest --collect-only</code>。</div>
+</div>
+
+<div class="note"><b>夜间长测试说明：</b>76 个 slow 测试（示例笔记本真执行、GPU 相关）在专门的夜间通道运行——这是 v1.1 以来的一贯做法，本次未在本机重跑；它们的最近一次通道结果见 CI Actions 页。</div>
+
+<!-- ═══════════ 3 测试分布 ═══════════ -->
+<h2><span class="no">3.</span>3224 个测试分布在哪里（17 个通道）</h2>
+<p class="lead">蓝色高亮的四个通道是 v1.4 新建或大幅扩展的（共 <b>1299</b> 个测试）：模型注册表、预检核心、终端向导、MCP 服务器。灰色通道是此前里程碑积累的存量，本次全部保持绿色（回归无破坏）。</p>
+
+<div class="chart">
+<svg viewBox="0 0 960 560" role="img" aria-label="各通道测试数量" style="width:100%;height:auto">
+  <style>
+    .ln-lbl{font:12.5px sans-serif;fill:#24292f}
+    .ln-val{font:600 12px sans-serif;fill:#24292f}
+    .ln-ax{stroke:#d0d7de}
+  </style>
+  <!-- x scale: 548 -> 700px ; x = 210 + n * (700/560) -->
+  <!-- gridlines at 0,100,...,500 -->
+  <g>
+    <line class="ln-ax" x1="210" y1="14" x2="210" y2="540"/>
+    <line class="ln-ax" x1="210" y1="540" x2="916" y2="540"/>
+    <text x="210" y="556" text-anchor="middle" font-size="11" fill="#8b949e">0</text>
+    <text x="335" y="556" text-anchor="middle" font-size="11" fill="#8b949e">100</text>
+    <text x="460" y="556" text-anchor="middle" font-size="11" fill="#8b949e">200</text>
+    <text x="585" y="556" text-anchor="middle" font-size="11" fill="#8b949e">300</text>
+    <text x="710" y="556" text-anchor="middle" font-size="11" fill="#8b949e">400</text>
+    <text x="835" y="556" text-anchor="middle" font-size="11" fill="#8b949e">500</text>
+    <line class="ln-ax" x1="335" y1="14" x2="335" y2="540" stroke-dasharray="3 4"/>
+    <line class="ln-ax" x1="460" y1="14" x2="460" y2="540" stroke-dasharray="3 4"/>
+    <line class="ln-ax" x1="585" y1="14" x2="585" y2="540" stroke-dasharray="3 4"/>
+    <line class="ln-ax" x1="710" y1="14" x2="710" y2="540" stroke-dasharray="3 4"/>
+    <line class="ln-ax" x1="835" y1="14" x2="835" y2="540" stroke-dasharray="3 4"/>
+  </g>
+  <!-- rows y = 24 + i*30 ; bar h=18 ; w = n*1.25 ; text at 206 right-aligned ; value right of bar -->
+  <g>
+    <text class="ln-lbl" x="200" y="38" text-anchor="end">tests/models（模型注册表）★</text>
+    <rect x="210" y="24" width="685" height="18" rx="3" fill="#1f6feb"/><text class="ln-val" x="903" y="38">548</text>
+    <text class="ln-lbl" x="200" y="68" text-anchor="end">tests/inference（推理/解释）</text>
+    <rect x="210" y="54" width="561" height="18" rx="3" fill="#8b949e"/><text class="ln-val" x="779" y="68">449</text>
+    <text class="ln-lbl" x="200" y="98" text-anchor="end">tests/mcp（MCP 服务器）★</text>
+    <rect x="210" y="84" width="422" height="18" rx="3" fill="#1f6feb"/><text class="ln-val" x="640" y="98">338</text>
+    <text class="ln-lbl" x="200" y="128" text-anchor="end">tests/examples（示例执行）</text>
+    <rect x="210" y="114" width="271" height="18" rx="3" fill="#8b949e"/><text class="ln-val" x="489" y="128">217</text>
+    <text class="ln-lbl" x="200" y="158" text-anchor="end">tests/preflight（预检核心）★</text>
+    <rect x="210" y="144" width="267" height="18" rx="3" fill="#1f6feb"/><text class="ln-val" x="485" y="158">214</text>
+    <text class="ln-lbl" x="200" y="188" text-anchor="end">tests/utils（工具与环境）</text>
+    <rect x="210" y="174" width="266" height="18" rx="3" fill="#8b949e"/><text class="ln-val" x="484" y="188">213</text>
+    <text class="ln-lbl" x="200" y="218" text-anchor="end">tests/tui（终端向导）★</text>
+    <rect x="210" y="204" width="249" height="18" rx="3" fill="#1f6feb"/><text class="ln-val" x="467" y="218">199</text>
+    <text class="ln-lbl" x="200" y="248" text-anchor="end">tests/tasks（任务与指标）</text>
+    <rect x="210" y="234" width="240" height="18" rx="3" fill="#8b949e"/><text class="ln-val" x="458" y="248">192</text>
+    <text class="ln-lbl" x="200" y="278" text-anchor="end">tests/datahandling（数据加载）</text>
+    <rect x="210" y="264" width="194" height="18" rx="3" fill="#8b949e"/><text class="ln-val" x="412" y="278">155</text>
+    <text class="ln-lbl" x="200" y="308" text-anchor="end">tests/configuration（配置校验）</text>
+    <rect x="210" y="294" width="185" height="18" rx="3" fill="#8b949e"/><text class="ln-val" x="403" y="308">148</text>
+    <text class="ln-lbl" x="200" y="338" text-anchor="end">tests/finetune（微调训练）</text>
+    <rect x="210" y="324" width="165" height="18" rx="3" fill="#8b949e"/><text class="ln-val" x="383" y="338">132</text>
+    <text class="ln-lbl" x="200" y="368" text-anchor="end">根目录合同测试</text>
+    <rect x="210" y="354" width="152" height="18" rx="3" fill="#8b949e"/><text class="ln-val" x="370" y="368">122</text>
+    <text class="ln-lbl" x="200" y="398" text-anchor="end">tests/interpret（可解释性）</text>
+    <rect x="210" y="384" width="120" height="18" rx="3" fill="#8b949e"/><text class="ln-val" x="338" y="398">96</text>
+    <text class="ln-lbl" x="200" y="428" text-anchor="end">tests/cli（命令行）</text>
+    <rect x="210" y="414" width="96" height="18" rx="3" fill="#8b949e"/><text class="ln-val" x="314" y="428">77</text>
+    <text class="ln-lbl" x="200" y="458" text-anchor="end">dnallm/mcp/tests（MCP 自带）</text>
+    <rect x="210" y="444" width="74" height="18" rx="3" fill="#8b949e"/><text class="ln-val" x="292" y="458">59</text>
+    <text class="ln-lbl" x="200" y="488" text-anchor="end">tests/benchmark（基准）</text>
+    <rect x="210" y="474" width="44" height="18" rx="3" fill="#8b949e"/><text class="ln-val" x="262" y="488">35</text>
+    <text class="ln-lbl" x="200" y="518" text-anchor="end">tests/scripts（脚本）</text>
+    <rect x="210" y="504" width="38" height="18" rx="3" fill="#8b949e"/><text class="ln-val" x="256" y="518">30</text>
+  </g>
+  <text x="916" y="556" text-anchor="end" font-size="11.5" fill="#0969da">★ = v1.4 里程碑通道（合计 1299）</text>
+</svg>
+<div class="src">来源：<code>pytest --collect-only</code> 逐通道计数（2026-10-22）。合计 3224，与总收集数一致。</div>
+</div>
+
+<!-- ═══════════ 4 验证得分 ═══════════ -->
+<h2><span class="no">4.</span>每个阶段的验收条款逐条核验（104/104）</h2>
+<p class="lead">每个阶段在执行完成后都经过一轮独立"验证器"复查：把计划里写下的每一条<b>必须为真的事实</b>（must-have，即验收条款）逐条对照实际代码检查。五个阶段共 104 条，<b>全部核验通过</b>（阶段 22 有一条涉及联网取证，在 UAT 环节补验关闭）。</p>
+
+<div class="chart">
+<svg viewBox="0 0 960 240" role="img" aria-label="各阶段验收条款核验" style="width:100%;height:auto">
+  <style>.vb-lbl{font:12.5px sans-serif;fill:#24292f}.vb-val{font:600 12.5px sans-serif;fill:#1a7f37}.vb-gate{stroke:#cf222e;stroke-dasharray:6 4}</style>
+  <!-- 5 rows, y=40+i*36; bar w = n*16 (max 44 -> 704px) ; x=250 -->
+  <g>
+    <text x="240" y="54" text-anchor="end" class="vb-lbl">阶段 22 · 注册表基础</text>
+    <rect x="250" y="40" width="288" height="22" rx="4" fill="#dafbe1" stroke="#4ac26b"/>
+    <text class="vb-val" x="546" y="57">18/18（17 自动核验 + 1 UAT 补验）</text>
+    <text x="240" y="90" text-anchor="end" class="vb-lbl">阶段 23 · 预检核心</text>
+    <rect x="250" y="76" width="80" height="22" rx="4" fill="#dafbe1" stroke="#4ac26b"/>
+    <text class="vb-val" x="338" y="93">5/5</text>
+    <text x="240" y="126" text-anchor="end" class="vb-lbl">阶段 24 · 预设加载</text>
+    <rect x="250" y="112" width="160" height="22" rx="4" fill="#dafbe1" stroke="#4ac26b"/>
+    <text class="vb-val" x="418" y="129">10/10</text>
+    <text x="240" y="162" text-anchor="end" class="vb-lbl">阶段 25 · 终端向导</text>
+    <rect x="250" y="148" width="704" height="22" rx="4" fill="#dafbe1" stroke="#4ac26b"/>
+    <text class="vb-val" x="962" y="165" text-anchor="end">44/44</text>
+    <text x="240" y="198" text-anchor="end" class="vb-lbl">阶段 26 · MCP 一致性</text>
+    <rect x="250" y="184" width="432" height="22" rx="4" fill="#dafbe1" stroke="#4ac26b"/>
+    <text class="vb-val" x="690" y="201">27/27</text>
+  </g>
+  <text x="250" y="228" font-size="12" fill="#57606a">合计 104/104。各阶段详细逐条证据见 .planning/phases/2X-*/2X-VERIFICATION.md。</text>
+</svg>
+<div class="src">来源：五个 VERIFICATION.md 的 frontmatter（status: passed）与逐条核验表；阶段 25 曾首次 41/44，三个缺口由补充计划 25-11/12/13 关闭后复验为 44/44。</div>
+</div>
+
+<!-- ═══════════ 5 覆盖率 ═══════════ -->
+<h2><span class="no">5.</span>新代码的测试覆盖率：93%–100%，远超 90% 硬门槛</h2>
+<p class="lead"><b>覆盖率</b>（coverage）= 测试实际执行到的代码行比例，是"测试有没有真跑到每行代码"的度量。CI 设有 90% 硬门槛：低于即构建失败，无法回退。v1.4 新增/改写的每个模块都单独测量过。</p>
+
+<div class="chart">
+<svg viewBox="0 0 960 300" role="img" aria-label="模块覆盖率" style="width:100%;height:auto">
+  <style>.cv-lbl{font:12.5px sans-serif;fill:#24292f}.cv-val{font:600 12.5px sans-serif;fill:#24292f}.cv-ax{stroke:#d0d7de}.cv-gate{stroke:#cf222e;stroke-width:1.5;stroke-dasharray:7 4}</style>
+  <!-- scale: 100% -> 640px ; x=270 ; gate 90% -> x=270+576=846 -->
+  <line class="cv-ax" x1="270" y1="16" x2="270" y2="256"/>
+  <line class="cv-ax" x1="270" y1="256" x2="930" y2="256"/>
+  <g font-size="11" fill="#8b949e">
+    <text x="270" y="272" text-anchor="middle">0%</text><text x="398" y="272" text-anchor="middle">20%</text>
+    <text x="526" y="272" text-anchor="middle">40%</text><text x="654" y="272" text-anchor="middle">60%</text>
+    <text x="782" y="272" text-anchor="middle">80%</text><text x="910" y="272" text-anchor="middle">100%</text>
+  </g>
+  <line class="cv-gate" x1="846" y1="16" x2="846" y2="256"/>
+  <text x="846" y="12" text-anchor="middle" font-size="11.5" fill="#cf222e" font-weight="600">CI 门槛 90%</text>
+  <g>
+    <text x="260" y="42" text-anchor="end" class="cv-lbl">dnallm/models/registry.py（注册表加载器）</text>
+    <rect x="270" y="28" width="640" height="20" rx="4" fill="#1f6feb"/><text class="cv-val" x="918" y="44" text-anchor="end" fill="#fff">100%</text>
+    <text x="260" y="78" text-anchor="end" class="cv-lbl">dnallm/preflight/*（预检核心四模块）</text>
+    <rect x="270" y="64" width="640" height="20" rx="4" fill="#1f6feb"/><text class="cv-val" x="918" y="80" text-anchor="end" fill="#fff">99–100%</text>
+    <text x="260" y="114" text-anchor="end" class="cv-lbl">dnallm/tui/*（终端向导，逐模块）</text>
+    <rect x="270" y="100" width="614" height="20" rx="4" fill="#1f6feb"/><text class="cv-val" x="892" y="116" text-anchor="end" fill="#fff">≥96%</text>
+    <text x="260" y="150" text-anchor="end" class="cv-lbl">dnallm/mcp/consistency.py（一致性检查器）</text>
+    <rect x="270" y="136" width="627" height="20" rx="4" fill="#1f6feb"/><text class="cv-val" x="905" y="152" text-anchor="end" fill="#fff">98%</text>
+    <text x="260" y="186" text-anchor="end" class="cv-lbl">dnallm/models/model.py（模型加载，改造部分）</text>
+    <rect x="270" y="172" width="595" height="20" rx="4" fill="#1f6feb"/><text class="cv-val" x="873" y="188" text-anchor="end" fill="#fff">93%</text>
+  </g>
+  <text x="270" y="240" font-size="12" fill="#57606a">条形长度按各模块实测最低值绘制；预检核心四模块分别为 99%/100%/100%（验证记录）。整包 &gt;90% 门槛由 CI 在每次提交强制执行。</text>
+</svg>
+<div class="src">来源：各阶段 VERIFICATION.md 记录的实测覆盖率（测量时点见各文件）；整包门槛配置于 pyproject.toml（fail_under=90，coverage omit 清单冻结于 v1）。</div>
+</div>
+
+<!-- ═══════════ 6 端到端 ═══════════ -->
+<h2><span class="no">6.</span>端到端流程实测（不是只看单测数字）</h2>
+<p class="lead">里程碑审计时把三个"用户真正会走的流程"从头到尾实跑了一遍，包括一次<b>真实的模型下载</b>（从 ModelScope 拉取 2 亿参数的启动子模型并加载成功）。</p>
+
+<table>
+<tr><th style="width:24%">流程</th><th style="width:44%">实测内容</th><th>结果</th></tr>
+<tr><td><b>A. 数据 → 校验 → 兼容性 → 配置</b></td>
+    <td>喂入两条模拟 DNA 序列，依次调用预检三件套：<code>validate_data</code>（数据体检）→ <code>check_compatibility</code>（模型匹配度）→ <code>generate_config</code>（生成训练/推理配置）。全程离线、纯函数。</td>
+    <td class="ok">✓ 通过</td></tr>
+<tr><td><b>B. 配置 → 真实加载模型</b></td>
+    <td>用生成的配置中的模型名"Plant DNABERT BPE promoter"，走注册表解析 → ModelScope 下载 → 加载引擎，完整打通"生成配置"与"按名加载"两个阶段的接缝。</td>
+    <td class="ok">✓ 通过（真实下载并加载成功）</td></tr>
+<tr><td><b>C. MCP 菜单与配置一致性</b></td>
+    <td>用真实的 MCP 服务器配置检查模型菜单：236 个模型全部列出、实验室内模型排前；3 个已配置模型正确标注"已配置/已启用"；同一批配置文件用严格模式一致性检查器复查——两套互不相识的代码给出同一答案。</td>
+    <td class="ok">✓ 通过（两阶段交叉验证一致）</td></tr>
+</table>
+
+<div class="chart">
+<svg viewBox="0 0 960 120" role="img" aria-label="交叉回归闸门" style="width:100%;height:auto">
+  <style>.rg-t{font:600 13px sans-serif;fill:#24292f}.rg-s{font:12px sans-serif;fill:#57606a}</style>
+  <text class="rg-t" x="16" y="26">交叉回归闸门（防止新功能弄坏旧功能）</text>
+  <rect x="16" y="38" width="742" height="22" rx="4" fill="#dafbe1" stroke="#4ac26b"/>
+  <text x="766" y="54" font-size="12.5" font-weight="600" fill="#1a7f37">828 / 828 通过</text>
+  <text class="rg-s" x="16" y="84">阶段 26 收尾时，把此前 22–25 四个阶段的全部测试文件（21 个文件）整体重跑：828 个测试全部通过，94.75 秒。</text>
+  <text class="rg-s" x="16" y="104">期间确实抓到一处预期内的护栏触发（删除过期注释后，注册表"唯一解析者"白名单按计划退役）——护栏按设计工作，已当场修复。</text>
+</svg>
+</div>
+
+<!-- ═══════════ 7 安全与质量闸门 ═══════════ -->
+<h2><span class="no">7.</span>安全与代码评审闸门</h2>
+<p class="lead">每个阶段都做了<b>威胁建模</b>（提前列出可能的攻击/事故场景）并逐条核验防护是否真实存在，以及一轮独立<b>代码评审</b>。结果：57 项威胁全部关闭；评审发现的问题全部"已修复 / 已记录延期 / 记录在案"，无一项悬而未决地阻塞交付。</p>
+
+<div class="chart">
+<svg viewBox="0 0 960 250" role="img" aria-label="威胁与评审" style="width:100%;height:auto">
+  <style>.sc-l{font:12.5px sans-serif;fill:#24292f}.sc-v{font:600 12px sans-serif;fill:#1a7f37}</style>
+  <text class="sc-l" x="16" y="24" font-weight="600">威胁建模核验（每阶段）</text>
+  <!-- threat bars: max 28 -> 420px ; x=190 -->
+  <g>
+    <text class="sc-l" x="180" y="52" text-anchor="end">阶段 22</text><rect x="190" y="38" width="90"  height="18" rx="3" fill="#1f6feb"/><text class="sc-v" x="288" y="52">6 项 · 全关闭</text>
+    <text class="sc-l" x="180" y="80" text-anchor="end">阶段 23</text><rect x="190" y="66" width="165" height="18" rx="3" fill="#1f6feb"/><text class="sc-v" x="363" y="80">11 项 · 全关闭</text>
+    <text class="sc-l" x="180" y="108" text-anchor="end">阶段 24</text><rect x="190" y="94" width="45"  height="18" rx="3" fill="#1f6feb"/><text class="sc-v" x="243" y="108">3 项 · 全关闭</text>
+    <text class="sc-l" x="180" y="136" text-anchor="end">阶段 25</text><rect x="190" y="122" width="420" height="18" rx="3" fill="#1f6feb"/><text class="sc-v" x="618" y="136">28 项 · 全关闭</text>
+    <text class="sc-l" x="180" y="164" text-anchor="end">阶段 26</text><rect x="190" y="150" width="135" height="18" rx="3" fill="#1f6feb"/><text class="sc-v" x="333" y="164">9 项 · 全关闭</text>
+  </g>
+  <text x="620" y="200" font-size="26" font-weight="700" fill="#1a7f37">threats_open = 0</text>
+  <text x="620" y="222" font-size="12" fill="#57606a">五个阶段的 SECURITY.md 全部为 0 项未关闭</text>
+  <text x="16" y="200" font-size="12.5" fill="#24292f" font-weight="600">代码评审：</text>
+  <text x="16" y="220" font-size="12" fill="#57606a">5 轮评审 · 45 项发现 → 19 修复 / 12 延期(有记录) / 9 在案跟踪(阶段22建议项) / 其余随计划关闭；其中阶段 26 评审实测复现并修复了 1 个真实缺陷（非常规编码字节导致检查器崩溃）。</text>
+</svg>
+<div class="src">来源：各阶段 *-SECURITY.md（threats_open 字段）与 *-REVIEW-DISPOSITION.md 台账。</div>
+</div>
+
+<!-- ═══════════ 8 需求矩阵 ═══════════ -->
+<h2><span class="no">8.</span>需求达成矩阵（23/23）</h2>
+<p class="lead">23 条需求逐条经过<b>三方交叉核对</b>：阶段验证报告 ✓ + 计划总结中的需求清单 ✓ + 需求追踪表勾选 ✓。三方一致才算"达成"，无一遗漏、无一孤儿。</p>
+
+<table>
+<tr><th>阶段</th><th>需求</th><th>内容（白话）</th><th>状态</th></tr>
+<tr><td rowspan="3">22 注册表基础</td><td>REG-01</td><td>236 个模型目录成为运行时可查询的"事实源"，只有一个入口读取</td><td class="ok">✓</td></tr>
+<tr><td>REG-02</td><td>每个模型补齐分词器类型/最大长度元数据，每个数值有出处</td><td class="ok">✓</td></tr>
+<tr><td>REG-03</td><td>完整性测试锁死：目录只读、永不被第二处代码改写</td><td class="ok">✓</td></tr>
+<tr><td rowspan="7">23 预检核心</td><td>PFC-01</td><td>数据体检：读入即报告统计/字符/长度，绝不改动用户数据</td><td class="ok">✓</td></tr>
+<tr><td>PFC-02</td><td>模型匹配度：任务/长度/字符三维判定，警告不拦截</td><td class="ok">✓</td></tr>
+<tr><td>PFC-03</td><td>可得性探测：优先 ModelScope，离线时如实报"未知"</td><td class="ok">✓</td></tr>
+<tr><td>PFC-04</td><td>配置生成与编辑：字段级报错，一次报全</td><td class="ok">✓</td></tr>
+<tr><td>PFC-05/06</td><td>模型清单路由 + 探测降级策略（绝不误报"不存在"）</td><td class="ok">✓</td></tr>
+<tr><td>PFC-07</td><td>实验室模型（zhangtaolab/*）在所有列表中排最前</td><td class="ok">✓</td></tr>
+<tr><td>（PFC-05 复用）</td><td>纯函数核心：无界面依赖，未来 MCP/笔记本直接复用</td><td class="ok">✓</td></tr>
+<tr><td>24 预设加载</td><td>LOAD-01</td><td>按模型名加载：标签/阈值自动从注册表带入，绝不悄悄改用户配置</td><td class="ok">✓</td></tr>
+<tr><td rowspan="9">25 终端向导</td><td>TUI-01</td><td>向导骨架与 <code>tui</code> 安装选项（先行落管线）</td><td class="ok">✓</td></tr>
+<tr><td>TUI-02/03</td><td>环境面板 + 数据面板（体检结果一屏读懂）</td><td class="ok">✓</td></tr>
+<tr><td>TUI-04/05</td><td>模型匹配面板 + 配置面板（选中即下载、改完即校验）</td><td class="ok">✓</td></tr>
+<tr><td>TUI-06/07/08</td><td>下载流程、生物学家友好文案、错误信息人话化</td><td class="ok">✓</td></tr>
+<tr><td>PKG-01</td><td>安装诚实化：新增 tui 选项、移除名不符实的 full 别名</td><td class="ok">✓</td></tr>
+<tr><td rowspan="3">26 MCP 一致性</td><td>MCP-01</td><td>每份 MCP 模型配置与注册表逐字段比对，只读不改、一次报全</td><td class="ok">✓</td></tr>
+<tr><td>MCP-02</td><td>模型菜单如实列出全部 236 个模型并标注配置/加载状态</td><td class="ok">✓</td></tr>
+<tr><td>MCP-03</td><td>以上比对进入 CI：配置漂移直接让构建失败</td><td class="ok">✓</td></tr>
+</table>
+<div class="src dim" style="font-size:12px">完整逐条证据（含每条对应的测试名）见 .planning/v1.4-MILESTONE-AUDIT.md 与各阶段 VERIFICATION.md。</div>
+
+<!-- ═══════════ 9 技术债 ═══════════ -->
+<h2><span class="no">9.</span>已知技术债（12 项，均不阻塞交付）</h2>
+<p class="lead">"技术债"= 已如实记录、暂不处理的改进项。全部属于建议级/外观级，不影响任何已交付功能；其中只有一项需要_owner_判断。</p>
+
+<table>
+<tr><th style="width:14%">阶段</th><th>事项</th><th style="width:22%">性质</th></tr>
+<tr><td>25 终端向导</td><td><b>向导文案的生物学家通读</b>由 AI 代读完成（业主授权"你来验证"），记录为"代读、非人读"——业主亲自通读一次即可彻底关闭</td><td class="warn">唯一待业主判断项</td></tr>
+<tr><td>25 终端向导</td><td>超大配置编辑时预览区只显示前 24 行（已测量并记录，正常场景无影响）</td><td>外观/延期</td></tr>
+<tr><td>22 注册表</td><td>9 条建议级评审项在案跟踪（均非验收条款）</td><td>建议级</td></tr>
+<tr><td>23 预检核心</td><td>5 条信息级评审项延期（有记录、有理由）</td><td>信息级</td></tr>
+<tr><td>24 预设加载</td><td>24 个第三方模型的"托管地未实测"（当前任何界面都不宣称托管地，风险休眠）；一处无现实触发条件的潜在别名问题</td><td>延期（休眠）</td></tr>
+<tr><td>26 MCP</td><td>两个服务器键指向同一模型时以后者为准（当前配置无重复）；空目录检查器返回"空过"（CI 已用文件计数兜底）</td><td>边界情况</td></tr>
+</table>
+
+<!-- ═══════════ 10 CI ═══════════ -->
+<h2><span class="no">10.</span>CI 持续集成说明</h2>
+<p class="lead">每次提交自动在 <b>3 个 Python 版本 × 2 个 numpy 版本</b>的组合矩阵上运行同一套测试，覆盖率低于 90% 直接判失败；另设夜间通道跑 76 个 GPU/长时测试。本报告的数据来自与 CI 完全相同的测试代码在本地实跑；矩阵各组合的最新结果可在仓库 Actions 页查看（私有仓库，报告生成时无法直接读取远程结果）。</p>
+
+<!-- ═══════════ 词汇表 ═══════════ -->
+<h2><span class="no">11.</span>词汇表</h2>
+<dl class="glossary">
+<dt>测试通道（lane）</dt><dd>按目录划分的一组测试，如"tests/mcp"专测 MCP 服务器。</dd>
+<dt>覆盖率（coverage）</dt><dd>测试实际执行到的代码行占比。90% 硬门槛意味着低于 90% 时 CI 自动失败，防止测试被悄悄删减。</dd>
+<dt>回归测试（regression）</dt><dd>把旧功能的测试重跑一遍，确认新改动没有弄坏旧东西。</dd>
+<dt>must-have / 验收条款</dt><dd>计划阶段写下的"必须为真的事实"，完成时逐条对照真实代码核验，不是自我报告。</dd>
+<dt>威胁建模（threat modeling）</dt><dd>提前枚举"可能怎么出事"（数据被改、信息泄漏、恶意输入等），再逐条确认防护真实存在。</dd>
+<dt>slow / 夜间测试</dt><dd>耗时长（真实下载模型、GPU 推理）的测试，放在夜间通道跑，日常提交不等待它们。</dd>
+<dt>技术债（tech debt）</dt><dd>已知但暂不处理的改进项，全部有记录、有理由、可追踪。</dd>
+<dt>MCP</dt><dd>Model Context Protocol——让大语言模型代理直接调用本工具包能力的标准协议。</dd>
+<dt>注册表（registry）</dt><dd>内置的 236 个 DNA 模型目录（model_info.yaml），记录每个模型的仓库地址、任务类型、标签等；本里程碑后它是全链路唯一事实来源。</dd>
+</dl>
+
+<footer>
+  <b>数据出处</b>（全部为 2026-10-22 实测或阶段验证时点记录）：<br>
+  · 完整运行：<code>pytest -q tests/ dnallm/mcp/tests/ -m "not slow"</code> → 3147 passed, 1 skipped, 76 deselected, 169.22s（Python 3.13.15 / pytest 9.1.1）<br>
+  · 测试清单：<code>pytest --collect-only</code>（3224）；回归闸门：21 文件 828 passed（94.75s）<br>
+  · 验证/安全/覆盖率：.planning/phases/22…26 各 *-VERIFICATION.md、*-SECURITY.md；汇总见 .planning/v1.4-MILESTONE-AUDIT.md<br>
+  · 本报告为零依赖单文件 HTML，所有图表为内联 SVG，可直接打印或转发。生成：Claude（GSD 里程碑审计流程）· 2026-10-22
+</footer>
+
+</div>
+</body>
+</html>
