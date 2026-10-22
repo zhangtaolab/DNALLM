@@ -19,6 +19,7 @@ from dnallm.mcp import consistency
 from dnallm.mcp.consistency import (
     CONFIG_INVALID,
     CONFIG_UNREADABLE,
+    DANGLING_CONFIG_REFERENCE,
     DESCRIPTION_DIVERGED,
     LABEL_ORDER_MISMATCH,
     MAX_LENGTH_MISMATCH,
@@ -60,11 +61,13 @@ class TestCommittedConfigsGate:
     """The MCP-03 CI gate: committed configs must compare clean against the registry."""
 
     def test_day_one_green_strict(self):
-        """The five committed per-model configs pass strict registry comparison."""
+        """The committed configs pass strict registry comparison, references included."""
         report = check_config_registry_consistency(CONFIGS_DIR, strict_registry=True)
-        expected = sorted(path.name for path in CONFIGS_DIR.glob("*_inference_config.yaml"))
-        assert len(expected) == 5
-        assert report.configs_checked == expected
+        per_model = sorted(path.name for path in CONFIGS_DIR.glob("*_inference_config.yaml"))
+        server_configs = sorted(path.name for path in CONFIGS_DIR.glob("mcp_server_config*.yaml"))
+        assert len(per_model) == 5
+        assert len(server_configs) == 2
+        assert report.configs_checked == per_model + server_configs
         assert report.findings == []
         assert report.passed is True
         assert report.strict_registry is True
@@ -259,3 +262,50 @@ class TestNeverWrites:
         assert "yaml.dump" not in source
         assert "write_text" not in source
         assert not re.search(r"open\s*\([^)]*['\"][wa+x+]['\"]", source)
+
+
+class TestServerConfigReferences:
+    """D-03: every server-config model reference must resolve to a real file."""
+
+    def _write_server_config(self, tmp_path, config_path):
+        """Write a minimal server config with one models entry into tmp_path."""
+        server_config = {
+            "models": {
+                "test_model": {
+                    "name": "test_model",
+                    "model_name": "Test Model",
+                    "config_path": config_path,
+                    "enabled": True,
+                    "priority": 1,
+                }
+            }
+        }
+        (tmp_path / "mcp_server_config.yaml").write_text(
+            yaml.safe_dump(server_config), encoding="utf-8"
+        )
+
+    def test_dangling_reference_is_error_fatal_by_default(self, tmp_path):
+        """A models entry pointing at a missing file is an ERROR in default mode too."""
+        self._write_server_config(tmp_path, "./missing_inference_config.yaml")
+        report = check_config_registry_consistency(tmp_path)
+        assert [finding.reason_code for finding in report.findings] == [DANGLING_CONFIG_REFERENCE]
+        assert report.findings[0].severity == Severity.ERROR
+        assert report.passed is False
+
+    def test_resolving_reference_produces_no_finding(self, tmp_path):
+        """A reference that resolves to a real per-model config stays findings-free."""
+        (tmp_path / "mutated_inference_config.yaml").write_text(
+            PROMOTER_CONFIG.read_text(encoding="utf-8"), encoding="utf-8"
+        )
+        self._write_server_config(tmp_path, "./mutated_inference_config.yaml")
+        report = check_config_registry_consistency(tmp_path)
+        assert report.findings == []
+        assert report.passed is True
+
+    def test_unparseable_server_config_is_error_not_crash(self, tmp_path):
+        """A server config that fails to parse yields CONFIG_UNREADABLE, never a crash."""
+        (tmp_path / "mcp_server_config.yaml").write_text("models: [unclosed", encoding="utf-8")
+        report = check_config_registry_consistency(tmp_path)
+        assert [finding.reason_code for finding in report.findings] == [CONFIG_UNREADABLE]
+        assert report.findings[0].severity == Severity.ERROR
+        assert report.passed is False

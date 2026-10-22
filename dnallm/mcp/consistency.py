@@ -5,7 +5,8 @@ Phase-22 model registry and reports every divergence as a pre-flight
 :class:`~dnallm.preflight.report.Finding`, so config drift fails CI instead
 of silently shipping confidently-wrong predictions — a swapped
 ``label_names`` order inverts every prediction's meaning without raising an
-error.
+error. Every ``mcp_server_config*.yaml`` in the directory additionally has
+its ``models[*].config_path`` references checked for integrity.
 
 1. Repo-id keying: each config is matched to its registry entry via
    ``registry.try_resolve(config["model"]["path"])`` — the same seam the
@@ -104,11 +105,12 @@ class ConsistencyReport(BaseModel):
 def check_config_registry_consistency(
     config_dir: str | Path, *, strict_registry: bool = False
 ) -> ConsistencyReport:
-    """Check every per-model MCP inference config in a directory against the registry.
+    """Check every MCP config in a directory against the registry.
 
     Args:
         config_dir: Directory holding the ``*_inference_config.yaml`` files
-            to check (read-only; nothing is ever written back).
+            and ``mcp_server_config*.yaml`` server configs to check
+            (read-only; nothing is ever written back).
         strict_registry: When True, hard-field drift (the four D-04 reason
             codes) flips :attr:`ConsistencyReport.passed` to False — the CI
             gate mode. Defaults to warn-first.
@@ -123,6 +125,9 @@ def check_config_registry_consistency(
     for path in sorted(directory.glob("*_inference_config.yaml")):
         configs_checked.append(path.name)
         findings.extend(_check_one_model_config(path))
+    for path in sorted(directory.glob("mcp_server_config*.yaml")):
+        configs_checked.append(path.name)
+        findings.extend(_check_one_server_config(path, directory))
     passed = not any(
         finding.severity == Severity.ERROR
         or (strict_registry and finding.reason_code in STRICT_FATAL_REASON_CODES)
@@ -315,4 +320,60 @@ def _compare_task_fields(
             )
         )
 
+    return findings
+
+
+def _check_one_server_config(path: Path, config_dir: Path) -> list[Finding]:
+    """Check a server config's ``models[*].config_path`` references (D-03).
+
+    Args:
+        path: The ``mcp_server_config*.yaml`` file to check (read-only).
+        config_dir: Directory the server config lives in — relative
+            ``config_path`` entries resolve against it, exactly the way
+            ``config_manager`` resolves them (absolute stays absolute).
+
+    Returns:
+        One DANGLING_CONFIG_REFERENCE ERROR finding per reference whose
+        target file does not exist; a single CONFIG_UNREADABLE ERROR
+        finding when the file cannot be parsed. ``multi_model`` groups are
+        not walked — the MCPServerConfig validator owns those.
+    """
+    import yaml
+
+    try:
+        doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as e:
+        logger.warning(f"Server config {path.name} could not be read or parsed: {e}")
+        return [
+            Finding(
+                severity=Severity.ERROR,
+                reason_code=CONFIG_UNREADABLE,
+                message=(
+                    f"{path.name} could not be read or parsed as YAML, so its model "
+                    f"references cannot be checked ({e.__class__.__name__})."
+                ),
+            )
+        ]
+    models = doc.get("models") if isinstance(doc, dict) else None
+    if not isinstance(models, dict):
+        return []
+    findings: list[Finding] = []
+    for key, entry in models.items():
+        if not isinstance(entry, dict) or not isinstance(entry.get("config_path"), str):
+            continue
+        raw_reference = entry["config_path"]
+        reference = Path(raw_reference)
+        if not reference.is_absolute():
+            reference = config_dir / reference
+        if not reference.is_file():
+            findings.append(
+                Finding(
+                    severity=Severity.ERROR,
+                    reason_code=DANGLING_CONFIG_REFERENCE,
+                    message=(
+                        f"{path.name} entry '{key}' points at '{raw_reference}', but no "
+                        "such config file exists in the config directory."
+                    ),
+                )
+            )
     return findings
