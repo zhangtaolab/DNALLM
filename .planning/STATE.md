@@ -5,10 +5,10 @@ milestone_name: Pre-flight UX & Registry-as-Truth-Source
 current_phase: 26
 status: completed
 stopped_at: Phase 26 complete — all phases complete
-last_updated: "2026-10-22T01:59:13.636Z"
+last_updated: "2026-10-22T06:55:42.604Z"
 last_activity: 2026-10-22
 last_activity_desc: Phase 26 complete
-state_head: 9fac9de6cac52626f4bdbc6bb4950350f3372738
+state_head: e06b5876baeff72e968257dfcfd1ba895ee1536e
 progress:
   total_phases: 5
   completed_phases: 5
@@ -31,9 +31,9 @@ See: .planning/PROJECT.md (updated 2026-10-22)
 Phase: 26
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-10-22 — Phase 26 complete
+Last activity: 2026-10-22 — Completed quick task 261022-huv: Refresh TUI real-run walkthrough (report §7 re-captured + execution loop closed)
 
-Progress: [██████████████] 100% (5 of 5 v1.4 phases)
+Progress: [██████████] 100% (5 of 5 v1.4 phases)
 
 ## Performance Metrics
 
@@ -128,6 +128,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/
 | 261022-tta | Registry task-type audit: 236 entries swept; 6 PlantCAD2 classification→binary + 3 empty-labels→null (f94c50f); lab 189/189 task types verified vs ModelScope model code; hub-side cleanup list recorded | 2026-10-22 | f94c50f | [261022-tta](./quick/261022-tta/) |
 | 4 | Append Part 5 addendum to 261020-gk4 TUI survey (pre-flight cluster + merge-or-build verdicts per owner directives 2026-10-20) | 2026-10-20 | e60303f | — |
 | 261020-kwt | Registry data-layer fix: +15 pretrained variants, DNAGPT/EVO task-class fixes, base_model 187/187, aDNA typo (12 tests) | 2026-10-20 | f0b8302 | [261020-kwt-registry-data-layer-fix-add-15-missing-p](./quick/261020-kwt-registry-data-layer-fix-add-15-missing-p/) |
+| 261022-huv | Refresh TUI real-run walkthrough: §7 re-captured on current tree (2 real runs, 11 figs), config-file + real inference blocks added, dead -i flag recorded as tech debt #13 | 2026-10-22 | e06b587 | [261022-huv-refresh-tui-real-run-walkthrough-re-capt](./quick/261022-huv-refresh-tui-real-run-walkthrough-re-capt/) |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
