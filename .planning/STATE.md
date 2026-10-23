@@ -4,10 +4,10 @@ milestone: v1.4
 milestone_name: Pre-flight UX & Registry-as-Truth-Source
 status: Awaiting next milestone
 stopped_at: Phase 26 complete — all phases complete
-last_updated: "2026-10-22T07:54:00.461Z"
-last_activity: 2026-10-22
-last_activity_desc: Milestone v1.4 completed and archived
-state_head: aed99ce25504421df786d840cf7ac3ce9076947a
+last_updated: "2026-10-23T08:45:00.000Z"
+last_activity: 2026-10-23
+last_activity_desc: Mac dev environment rebuilt + non-mamba Mac compat audit (2 commits)
+state_head: 5c82c22e042023baee329fbff3cb75aec98c56b0
 progress:
   total_phases: 5
   completed_phases: 5
@@ -139,8 +139,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-22T01:42:58.157Z
-Stopped at: Phase 26 complete — all phases complete
+Last session: 2026-10-23
+Stopped at: Development moved to Mac (arm64, macOS 26.6.2). .venv rebuilt from scratch (uv venv py3.13 + .[test] + dev tools minus pygenometracks — mac sdist build fails; same rationale as the Windows exclusion). Non-mamba Mac compat audit done: 7/10 families load+CPU+MPS green; pad_token_id legacy-default fix shipped (87da3c1); darwin test tolerance fix (5c82c22); DNABERT-2 real-weight load blocked by transformers 5.x unconditional meta-device init (upstream remote-code issue, platform-independent, known limitation).
 Resume file: None
 
 ## Operator Next Steps
