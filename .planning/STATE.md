@@ -4,9 +4,9 @@ milestone: v1.4
 milestone_name: Pre-flight UX & Registry-as-Truth-Source
 status: Awaiting next milestone
 stopped_at: Phase 26 complete — all phases complete
-last_updated: "2026-10-23T08:45:00.000Z"
-last_activity: 2026-10-23
-last_activity_desc: Mac dev environment rebuilt + non-mamba Mac compat audit (2 commits)
+last_updated: "2026-10-23T23:41:02.000Z"
+last_activity: 2026-10-24
+last_activity_desc: Mac dev env re-audited + rebuilt to recorded spec; ty hard-gate first-exposure risk surfaced (v1.4 absent from CI push triggers)
 state_head: 5c82c22e042023baee329fbff3cb75aec98c56b0
 progress:
   total_phases: 5
@@ -139,10 +139,11 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-23
-Stopped at: Development moved to Mac (arm64, macOS 26.6.2). .venv rebuilt from scratch (uv venv py3.13 + .[test] + dev tools minus pygenometracks — mac sdist build fails; same rationale as the Windows exclusion). Non-mamba Mac compat audit done: 7/10 families load+CPU+MPS green; pad_token_id legacy-default fix shipped (87da3c1); darwin test tolerance fix (5c82c22); DNABERT-2 real-weight load blocked by transformers 5.x unconditional meta-device init (upstream remote-code issue, platform-independent, known limitation).
+Last session: 2026-10-24
+Stopped at: Mac dev env audited + rebuilt to the recorded spec. Found `.venv` stale (py3.12.8 from miniconda, predating the numpy-2 migration; no textual/scikit-allel; transformers 4.55.4; ruff 0.15.8 vs the 0.17.1 pin) — rebuilt: `uv venv --python 3.13` (3.13.17) + `-e ".[test]"` + dev tools minus pygenometracks; mypy dropped (ty is the type gate since 2026-10-17). Verified: 489 offline tests green (registry + preflight + TUI + facade), ruff check clean, all key imports OK. ty FINDING: `v1.4` is absent from ci.yml `on.push.branches` (only main/master/dev/v1.3) → the entire v1.4 cycle never ran the ty hard gate or any CI lane. Faithful local reproduction (`uvx ty@0.0.84` against the pinned stub env, mac-adapted minus pgt) shows 28 diagnostics: 18 `dnallm/tui/workers.py` (`post_message` on `Self@*_worker` + `_worker` assignment), 7 `dnallm/preflight/config_gen.py` (DNALLMConfig TypedDict assignments), 1 `tui/screens/download.py`, 1 `preflight/availability.py`, 1 pyfaidx unresolved-import (mac-only artifact — CI resolves it via pygenometracks' dep). Expect coverage-gate red on the first v1.4→main exposure unless these are fixed first; textual is also unpinned in ty-stub-constraints.txt (gate-stability gap, same class the constraints file exists to prevent).
 Resume file: None
 
 ## Operator Next Steps
 
+- Pre-merge (v1.4→main): resolve the 27 first-party ty diagnostics (workers.py/config_gen.py/download.py/availability.py — see Session Continuity) or the coverage-gate ty hard gate goes red on first exposure; consider adding `v1.4` to ci.yml push triggers per the documented 2026-10-07 first-exposure lesson
 - Start the next milestone with /gsd-new-milestone
