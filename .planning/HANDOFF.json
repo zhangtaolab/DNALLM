@@ -1,0 +1,68 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-10-23T07:46:59.709Z",
+  "phase": null,
+  "phase_name": "(none active — v1.4 milestone archived; session work was ad-hoc CI robustness on branch v1.4)",
+  "phase_dir": "",
+  "plan": null,
+  "task": null,
+  "total_tasks": 0,
+  "status": "paused",
+  "completed_tasks": [
+    {
+      "id": 1,
+      "name": "Triage scheduled-CI failures on main (runs 39762591670, 39746765123)",
+      "status": "done",
+      "commit": null
+    },
+    {
+      "id": 2,
+      "name": "Notebook rice warm-or-skip guard (tests/examples/test_notebook_execution.py: _rice_extras_or_skip + 6 contract tests)",
+      "status": "done",
+      "commit": "0885416"
+    },
+    {
+      "id": 3,
+      "name": "VEP download retry + integrity validation (tests/inference/test_vep.py: _download hardening + 6 contract tests)",
+      "status": "done",
+      "commit": "0d5ff2e"
+    }
+  ],
+  "remaining_tasks": [],
+  "blockers": [],
+  "async_jobs": [],
+  "human_actions_pending": [
+    {
+      "action": "Decide disposition of untracked dnallm_config.yaml at repo root (commit / gitignore / delete)",
+      "context": "Locally generated runtime config present since before 2026-10-22; left untouched deliberately",
+      "blocking": false
+    },
+    {
+      "action": "Pick v1.4 → main merge timing",
+      "context": "main is frozen for the v1.4 cycle (owner directive 2026-10-20); until merge, the scheduled nightly on main keeps flapping on the rice.uga.edu / truncated-ClinVar classes even though fixes 0885416/0d5ff2e exist on v1.4",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "Nightly flakiness fixes go to v1.4 only; main stays untouched",
+      "rationale": "Owner directive: never merge into main during v1.4; all dev on branch v1.4",
+      "phase": null
+    },
+    {
+      "decision": "Mirror the sibling script lane's outage contract (cache-first warm-up, typed network-unavailable skip, WR-04 4xx re-raise) instead of a probe-only guard",
+      "rationale": "Warm-or-skip also fixes the cold cache for the whole run and matches the owner's established typed-skip conventions in test_script_execution.py",
+      "phase": null
+    },
+    {
+      "decision": "5xx HTTP errors join the retry path; only permanent 4xx re-raise",
+      "rationale": "WR-04 policy: a permanent 4xx (gone dataset) must fail loud, transient 5xx must not turn the nightly red",
+      "phase": null
+    }
+  ],
+  "uncommitted_files": [
+    "?? dnallm_config.yaml"
+  ],
+  "next_action": "No in-flight work — v1.4 is synced with origin at 0d5ff2e. On resume: ask the owner about dnallm_config.yaml disposition; when the v1.4→main merge lands, verify the first scheduled coverage-nightly on main confirms commits 0885416/0d5ff2e end the rice/ClinVar failure classes.",
+  "context_notes": "Nightly CI triage lives in auto-memory nightly-ci-flakiness-triage.md: 3 failure classes — (1) GitHub actions/cache 'Set up job' download timeouts = infra, rerun only; (2) rice.uga.edu stalls hitting the NER notebook wget cell when the runner's census cache is cold; (3) HEAD-green but truncated ClinVar gzip streams. Classes 2+3 fixed on v1.4; class 1 is not repo-fixable. All three .planning/async-jobs/*.json manifests are terminal (concluded/superseded) — nothing running."
+}
