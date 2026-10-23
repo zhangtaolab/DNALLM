@@ -515,10 +515,19 @@ def _patch_get_extended_attention_mask():
 # the owner instruction of 2026-10-02: fix all non-gated census failures now.
 # If execution surfaces another removed 4.x config default that remote code
 # reads, extend the closed map -- never a catch-all.
+#
+# pad_token_id joined the map on 2026-10-23 (Mac compatibility audit): 4.x set
+# ``self.pad_token_id = kwargs.pop("pad_token_id", None)`` on every config, 5.x
+# resolves it only when config.json carries the key, and DNABERT-2's 4.x-era
+# remote bert_layers.py reads ``config.pad_token_id`` unguarded
+# (``padding_idx=config.pad_token_id``), so the load dies with AttributeError
+# on any platform under transformers 5.20. None is exactly what 4.x answered
+# for the key-absent checkpoint (DNABERT-2's config.json never had it).
 
 _LEGACY_PRETRAINED_CONFIG_DEFAULTS: dict[str, object] = {
     "is_decoder": False,
     "add_cross_attention": False,
+    "pad_token_id": None,
 }
 
 
