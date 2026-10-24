@@ -741,7 +741,7 @@ class NoConfigModel:
 
 
 class MambaLikeModel:
-    """Model double whose type name contains 'mamba' (fp32/CPU downgrade branch)."""
+    """Model double whose type name contains 'mamba' (cuda/mps keep, others demote)."""
 
     def __init__(self):
         self.config = _BaseConfig("mamba")
@@ -1700,13 +1700,10 @@ class TestDeviceSelection:
 class TestConstructionBranches:
     """Constructor special-model and LoRA branches."""
 
-    def test_mamba_downgraded_on_cpu(self, mock_tokenizer, inference_config_factory):
-        """A mamba model on CPU gets fp16 disabled and the CPU device."""
-        config = inference_config_factory(task_type="binary", device="cuda", use_fp16=True)
-        model = MambaLikeModel()
-        with patch("torch.cuda.is_available", return_value=False):
-            with pytest.warns(UserWarning, match="CUDA is not available"):
-                engine = _build_engine(model, mock_tokenizer, config)
+    def test_mamba_non_cuda_non_mps_demoted_to_cpu(self, mock_tokenizer, inference_config_factory):
+        """A mamba model on a non-cuda non-mps device (tpu/xla) demotes to cpu."""
+        config = inference_config_factory(task_type="binary", device="tpu", use_fp16=True)
+        engine = _build_engine(MambaLikeModel(), mock_tokenizer, config)
 
         assert engine.device == torch.device("cpu")
         assert engine.pred_config.use_fp16 is False
@@ -1719,6 +1716,19 @@ class TestConstructionBranches:
 
         assert engine.device == torch.device("cuda")
         assert engine.pred_config.use_fp16 is False
+
+    def test_mamba_mps_kept_and_fp16_forced_off(
+        self, mock_tokenizer, inference_config_factory, monkeypatch
+    ):
+        """A mamba model keeps MPS (no cpu demotion) with fp16 still forced off."""
+        monkeypatch.setattr(torch.backends.mps, "is_available", lambda: True)
+        config = inference_config_factory(task_type="binary", device="mps", use_fp16=True)
+        model = MambaLikeModel()
+        engine = _build_engine(model, mock_tokenizer, config)
+
+        assert engine.device == torch.device("mps")
+        assert engine.pred_config.use_fp16 is False
+        assert model.to_called_with == torch.device("mps")
 
     def test_custom_evo_uses_inner_model(self, mock_tokenizer, inference_config_factory):
         """CustomEvo wrappers introspect and move their inner model."""

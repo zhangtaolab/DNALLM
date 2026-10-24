@@ -188,9 +188,11 @@ class DNAInference:
                 self.model.model.to(self.device)
             else:
                 self.model.to(self.device)
-            # mamba only support cuda and cpu, and only allow fp32
+            # mamba runs fp32 on cuda and mps (MPS parity measured 2026-10-24,
+            # torch 2.14.1); every other device type demotes to cpu. fp16 stays
+            # conservatively off because it is unverified on MPS.
             if "mamba" in str(type(self.model)).lower():
-                if self.device.type != "cuda":
+                if self.device.type not in ("cuda", "mps"):
                     self.device = torch.device("cpu")
                 if self.pred_config.use_fp16:
                     self.pred_config.use_fp16 = False
