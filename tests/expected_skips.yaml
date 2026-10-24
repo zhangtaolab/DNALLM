@@ -83,6 +83,15 @@ allowed:
   - reason_like: "fd accounting needs /proc"
     category: environment
 
+  # tests/inference/test_mamba_mps_smoke.py — non-darwin legs only (CI is
+  # linux/windows). Fires when a non-darwin run collects the slow-marked
+  # smoke: the example-nightly full census runs without the not-slow filter
+  # and collects it; CI fast legs deselect slow (-m "not slow") and never do.
+  # Darwin-side runtime skips (no usable MPS) reuse the registered
+  # environment-unavailable: prefix above, not this entry.
+  - reason_like: "MPS mamba smoke is darwin-only"
+    category: environment
+
   # Typed network skip for the Phase-12 JASPAR client lane
   # (tests/interpret/test_motifs.py::TestJasparLive): fires when the canonical
   # jaspar.elixir.no host is unreachable on the slow leg.
