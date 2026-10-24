@@ -3,13 +3,13 @@
   "plan_id": "spike-torch-214",
   "kind": "github_actions_dispatch",
   "workflow": "ci.yml",
-  "run_id": 40064966892,
-  "run_url": "https://github.com/zhangtaolab/DNALLM/actions/runs/40064966892",
+  "run_id": 40103520749,
+  "run_url": "https://github.com/zhangtaolab/DNALLM/actions/runs/40103520749",
   "repo": "zhangtaolab/DNALLM",
   "ref": "spike/torch-214-verification",
   "head_sha": "96420a02882d442e56a888b9f30ecbbd82bb58ee",
-  "dispatched_at": "2026-10-24T05:06:33Z",
-  "dispatched_by": "resume-work session (owner-approved: 恢复 runner + dispatch 验证)",
+  "dispatched_at": "2026-10-24T14:40:07Z",
+  "dispatched_by": "resume-work session (owner-approved re-dispatch after PyPI-route stall + TUNA mirror fix)",
   "status": "queued",
   "expected_jobs": [
     "test-mamba (3.11)",
@@ -18,13 +18,20 @@
   ],
   "purpose": "torch ceiling-raise pre-verification per .planning/research/torch-214-gb10-verification.md: spike branch pyproject <2.12 → <2.15 (7 places); prove mamba-ssm 2.3.2.post1 + causal_conv1d 1.7.0 source-compile and run against torch 2.14.x on GB10 before any v1.4 pyproject change.",
   "pass_criteria": [
-    "resolver lands torch 2.14.x (confirm from install logs of .[full,fla])",
+    "resolver lands torch 2.14.x — PARTIALLY PRE-PROVEN pre-run: local dry-run with CI toolcache py3.12 + user-level TUNA mirror config resolves torch==2.14.1 through pypi.tuna.tsinghua.edu.cn",
     "uv pip install -e .[mamba] --no-cache-dir --no-build-isolation source-builds green under torch 2.14",
     "pytest tests/ -v -m 'not slow' mamba census green (same口径 as the regular mamba lane)"
   ],
-  "verification_command": "gh run view 40064966892 --repo zhangtaolab/DNALLM --json status,conclusion,jobs",
+  "verification_command": "gh run view 40103520749 --repo zhangtaolab/DNALLM --json status,conclusion,jobs",
   "failure_matrix": "see runbook 失败诊断矩阵: resolver/no-kernel-image → spike commit adding cuda130 extra to test-mamba install line, re-dispatch; mamba compile fail → REAL blocker, capture full compile log + research upstream mamba-ssm releases, write conclusion back to runbook; compile green but runtime red → mamba-test-logs-* artifact, A.5 classify-before-retry discipline",
-  "after_green": "real ceiling raise lands on v1.4 as ONE commit referencing run 40064966892 (repo convention); then watch the first full nightly cycle (nightly is lockfile-free → implicit fleet jump to 2.14.x); ty gate unaffected (stub env pins torch==2.10.0)",
+  "after_green": "real ceiling raise lands on v1.4 as ONE commit referencing run 40103520749 (repo convention); then watch the first full nightly cycle (nightly is lockfile-free → implicit fleet jump to 2.14.x); ty gate unaffected (stub env pins torch==2.10.0)",
   "rollback": "spike stage: delete remote/local spike branch, v1.4 untouched; post-raise red first night: revert the single commit back to <2.12",
-  "notes": "Runner re-registered 2026-10-24 13:05 CST on edgexpert-296a (old registration auto-deleted by GitHub for idle; new name dnallm-nightly id 23, labels [self-hosted, dnallm-nightly], sanitized-env setsid nohup start per memory dnallm-nightly-runner-ops; stale entry edgexpert-3eee id 22 still listed on the repo — removal attempted, blocked by permission classifier, owner action pending). Serialized behind two stale 2026-10-23 scheduled main runs (owner-accepted auto-resume; they run pre-v1.4-merge main code where the known rice/ClinVar nightly failures are expected). Expected wall-clock before spike lanes start: ~7h of stale main runs first."
+  "prior_attempt": {
+    "run_id": 40064966892,
+    "dispatched_at": "2026-10-24T05:06:33Z",
+    "cancelled_at": "2026-10-24T14:40Z",
+    "classification": "infra (not repo): coverage-nightly install step stalled — box route to pypi.org/files.pythonhosted.org went from ~100 KB/s trickle to 0 B/s dead at ~21:00 CST (327 MB downloaded of torch 2.14 cu130-variant wheel over 2.5h); GitHub API unaffected. A.5 discipline: infra red = recovery + re-dispatch, never silently retried."
+  },
+  "infra_fix_applied": "Owner-approved (2026-10-24 22:34 CST): user-level uv config ~/.config/uv/uv.toml on edgexpert-296a sets [[index]] url=https://pypi.tuna.tsinghua.edu.cn/simple default=true (uv 0.13.5 rejects scalar default-index). Empirically verified NOT shadowed by repo pyproject's explicit [[tool.uv.index]] entries — dry-run resolution of -e .[full] fetches all metadata from tuna; mirror serves torch 2.14.0/2.14.1 cp311+cp312 aarch64; measured 33.9 MB/s vs 0 B/s via pypi.org. Affects all future uv installs on this box by design (owner accepted).",
+  "notes": "Runner re-registered 2026-10-24 13:05 CST on edgexpert-296a (old registration auto-deleted by GitHub; dnallm-nightly id 23; sanitized-env setsid nohup per memory dnallm-nightly-runner-ops; stale entry edgexpert-3eee id 22 deleted by owner). Queue context at re-dispatch: two main scheduled runs (40075917991, 40082916781) may interleave with job-level leasing; two older stale scheduled runs (39923326745/39938261013) were cancelled owner-side earlier in the day."
 }
