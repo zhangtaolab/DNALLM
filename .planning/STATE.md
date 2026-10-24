@@ -1,20 +1,20 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.4
-milestone_name: Pre-flight UX & Registry-as-Truth-Source
 status: Awaiting next milestone
 stopped_at: Phase 26 complete — all phases complete
-last_updated: "2026-10-24T02:40:00.000Z"
+last_updated: "2026-10-24T02:25:27.246Z"
 last_activity: 2026-10-24
-last_activity_desc: Mac env rebuilt; ty first-exposure risk found; PlantHelixSeek Mac-confirmed; local torch raised to 2.14.1 (MPS unblocked, 496 offline tests green)
-state_head: 5c82c22e042023baee329fbff3cb75aec98c56b0
+last_activity_desc: Quick 261024-dtw complete — mamba Predictor MPS passthrough + darwin real-device smoke + FAQ fix (3 commits, 509 mamba-surface tests green; earlier: env rebuild, ty risk, PlantHelixSeek confirm, torch 2.14.1)
+state_head: 9952ddca0c8c8f75c4951a41b1b5b32de5af1711
+milestone_name: Pre-flight UX & Registry-as-Truth-Source
+current_phase: 26
 progress:
   total_phases: 5
   completed_phases: 5
   total_plans: 23
   completed_plans: 23
   percent: 100
-current_phase: 26
 ---
 
 # Project State
@@ -120,6 +120,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 261024-dtw | Relax mamba Predictor device guard for Mac MPS (cuda/mps passthrough, fp32-only kept) + real-device darwin MPS smoke + FAQ cpu-only fix | 2026-10-24 | 9952ddc | [261024-dtw-relax-mamba-device-guard-in-predictor-to](./quick/261024-dtw-relax-mamba-device-guard-in-predictor-to/) |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
