@@ -4,9 +4,9 @@ milestone: v1.4
 milestone_name: Pre-flight UX & Registry-as-Truth-Source
 status: Awaiting next milestone
 stopped_at: Phase 26 complete — all phases complete
-last_updated: "2026-10-23T23:41:02.000Z"
+last_updated: "2026-10-24T01:55:00.000Z"
 last_activity: 2026-10-24
-last_activity_desc: Mac dev env re-audited + rebuilt to recorded spec; ty hard-gate first-exposure risk surfaced (v1.4 absent from CI push triggers)
+last_activity_desc: Mac dev env rebuilt to spec; ty first-exposure risk found; PlantHelixSeek Mac confirmation done (load+CPU green, MPS blocked, KDA degraded)
 state_head: 5c82c22e042023baee329fbff3cb75aec98c56b0
 progress:
   total_phases: 5
@@ -140,7 +140,7 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 ## Session Continuity
 
 Last session: 2026-10-24
-Stopped at: Mac dev env audited + rebuilt to the recorded spec. Found `.venv` stale (py3.12.8 from miniconda, predating the numpy-2 migration; no textual/scikit-allel; transformers 4.55.4; ruff 0.15.8 vs the 0.17.1 pin) — rebuilt: `uv venv --python 3.13` (3.13.17) + `-e ".[test]"` + dev tools minus pygenometracks; mypy dropped (ty is the type gate since 2026-10-17). Verified: 489 offline tests green (registry + preflight + TUI + facade), ruff check clean, all key imports OK. ty FINDING: `v1.4` is absent from ci.yml `on.push.branches` (only main/master/dev/v1.3) → the entire v1.4 cycle never ran the ty hard gate or any CI lane. Faithful local reproduction (`uvx ty@0.0.84` against the pinned stub env, mac-adapted minus pgt) shows 28 diagnostics: 18 `dnallm/tui/workers.py` (`post_message` on `Self@*_worker` + `_worker` assignment), 7 `dnallm/preflight/config_gen.py` (DNALLMConfig TypedDict assignments), 1 `tui/screens/download.py`, 1 `preflight/availability.py`, 1 pyfaidx unresolved-import (mac-only artifact — CI resolves it via pygenometracks' dep). Expect coverage-gate red on the first v1.4→main exposure unless these are fixed first; textual is also unpinned in ty-stub-constraints.txt (gate-stability gap, same class the constraints file exists to prevent).
+Stopped at: (1) Mac dev env rebuilt to the recorded spec — found `.venv` stale (py3.12.8, pre-numpy-2, no textual/scikit-allel); rebuilt py3.13.17 + `.[test]` + dev tools minus pygenometracks; 489 offline tests green, ruff clean. (2) ty FINDING: `v1.4` absent from ci.yml `on.push.branches` → the v1.4 cycle never ran the ty hard gate; faithful reproduction (ty@0.0.84 + pinned stub env) shows 28 diagnostics (18 `tui/workers.py`, 7 `preflight/config_gen.py`, 1 download.py, 1 availability.py, 1 pyfaidx mac-artifact) — expect coverage-gate red on first v1.4→main exposure; textual unpinned in ty-stub-constraints (gate-stability gap). (3) PlantHelixSeek Mac confirmation (per upstream docs/installation.md, owner request): load via ModelScope route green (729/729 params materialized, REG-02 frozen labels hold), CPU forward green ((1,2) logits, pure-PyTorch fallback path — rotated-seq logit delta 0.254, i.e. position-sensitive but NOT KDA-exact per upstream's mask-recovery evidence); MPS forward blocked twice over — remote code's MPS branch imports fla chunk_kda ungueded (ModuleNotFoundError: triton; macOS has no triton wheels, fla 0.5.2 chunk_kda is triton-bound) and past that torch 2.11 carries the upstream-documented MPS SDPA/MLA shape bug (502x1536 vs 1024x512 reproduced) — upstream's verified mac path needs torch>=2.12 (above dnallm's <2.12 ceiling) + `apply_mps_fix.py [--kda_fallback]` patched local checkpoint (outside the registry route). Residual test-design gap: smoke's WR-01 guard (`importorskip("fla")`) passes with fla installed-but-triton-absent; on THIS Mac the failure still surfaces honestly (MPS-forward red), but on a hypothetical CPU-only box with broken fla it would shape-only-green the fallback path. fla uninstalled again — Mac env back to the documented spec (CRE checkpoint stays in ~/.cache/modelscope for future runs).
 Resume file: None
 
 ## Operator Next Steps
