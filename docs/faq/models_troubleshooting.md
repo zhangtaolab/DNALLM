@@ -16,11 +16,11 @@ With the kernels installed the same checkpoints separate cleanly (p(CRE) 0.77 in
 
 `mamba-ssm` relies on [Triton](https://github.com/triton-lang/triton), which only provides pre-built wheels for Linux. As a result, the `[mamba]` extra cannot be installed on macOS.
 
-**Workaround:** HuggingFace `transformers` includes a pure-PyTorch Mamba implementation (`MambaModel`) that works on macOS without `mamba-ssm`. To use it:
+**Workaround:** HuggingFace `transformers` includes a pure-PyTorch Mamba implementation (`MambaForCausalLM`) that is the accepted official path on macOS without `mamba-ssm` (owner ruling 2026-10-24) — including its mambapy pscan gate, which the base `mambapy` dependency satisfies on every platform, so no checkpoint re-export is needed. To use it:
 
 ```bash
 # Install without the [mamba] extra
 uv pip install -e '.[full]'
 ```
 
-Then load a Mamba model through `transformers` (cpu only) as usual. Note that this fallback path is significantly slower than the optimized `mamba-ssm` kernels (which require Linux + CUDA).
+The path runs on CPU and on MPS (Apple Silicon): the Predictor keeps device `mps` automatically and always forces fp32 (fp16 on MPS is unverified and stays conservatively off). Measured 2026-10-24 on torch 2.14.1, a 512-token forward runs 349 ms on MPS vs 2119 ms on CPU (~6.1x) with bitwise-identical outputs. MPS for this path needs torch >= 2.12, which sits above dnallm's currently declared torch ceiling — MPS therefore means a locally raised torch (a documented local deviation); within the declared dependency range the path runs on CPU. Note that this path is still significantly slower than the optimized `mamba-ssm` kernels (which require Linux + CUDA).
