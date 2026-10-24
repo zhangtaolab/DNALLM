@@ -1,0 +1,30 @@
+{
+  "job_id": "spike-torch-214",
+  "plan_id": "spike-torch-214",
+  "kind": "github_actions_dispatch",
+  "workflow": "ci.yml",
+  "run_id": 40064966892,
+  "run_url": "https://github.com/zhangtaolab/DNALLM/actions/runs/40064966892",
+  "repo": "zhangtaolab/DNALLM",
+  "ref": "spike/torch-214-verification",
+  "head_sha": "96420a02882d442e56a888b9f30ecbbd82bb58ee",
+  "dispatched_at": "2026-10-24T05:06:33Z",
+  "dispatched_by": "resume-work session (owner-approved: 恢复 runner + dispatch 验证)",
+  "status": "queued",
+  "expected_jobs": [
+    "test-mamba (3.11)",
+    "coverage-nightly (py3.12, full suite incl. slow)",
+    "example-nightly (py3.12, example execution census)"
+  ],
+  "purpose": "torch ceiling-raise pre-verification per .planning/research/torch-214-gb10-verification.md: spike branch pyproject <2.12 → <2.15 (7 places); prove mamba-ssm 2.3.2.post1 + causal_conv1d 1.7.0 source-compile and run against torch 2.14.x on GB10 before any v1.4 pyproject change.",
+  "pass_criteria": [
+    "resolver lands torch 2.14.x (confirm from install logs of .[full,fla])",
+    "uv pip install -e .[mamba] --no-cache-dir --no-build-isolation source-builds green under torch 2.14",
+    "pytest tests/ -v -m 'not slow' mamba census green (same口径 as the regular mamba lane)"
+  ],
+  "verification_command": "gh run view 40064966892 --repo zhangtaolab/DNALLM --json status,conclusion,jobs",
+  "failure_matrix": "see runbook 失败诊断矩阵: resolver/no-kernel-image → spike commit adding cuda130 extra to test-mamba install line, re-dispatch; mamba compile fail → REAL blocker, capture full compile log + research upstream mamba-ssm releases, write conclusion back to runbook; compile green but runtime red → mamba-test-logs-* artifact, A.5 classify-before-retry discipline",
+  "after_green": "real ceiling raise lands on v1.4 as ONE commit referencing run 40064966892 (repo convention); then watch the first full nightly cycle (nightly is lockfile-free → implicit fleet jump to 2.14.x); ty gate unaffected (stub env pins torch==2.10.0)",
+  "rollback": "spike stage: delete remote/local spike branch, v1.4 untouched; post-raise red first night: revert the single commit back to <2.12",
+  "notes": "Runner re-registered 2026-10-24 13:05 CST on edgexpert-296a (old registration auto-deleted by GitHub for idle; new name dnallm-nightly id 23, labels [self-hosted, dnallm-nightly], sanitized-env setsid nohup start per memory dnallm-nightly-runner-ops; stale entry edgexpert-3eee id 22 still listed on the repo — removal attempted, blocked by permission classifier, owner action pending). Serialized behind two stale 2026-10-23 scheduled main runs (owner-accepted auto-resume; they run pre-v1.4-merge main code where the known rice/ClinVar nightly failures are expected). Expected wall-clock before spike lanes start: ~7h of stale main runs first."
+}
