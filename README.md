@@ -471,8 +471,11 @@ DNALLM/
 │   ├── datahandling/        # Dataset processing
 │   ├── finetune/            # Fine-tuning pipeline
 │   ├── inference/           # Inference & analysis tools
+│   ├── interpret/           # Motif analysis (FIMO scanner, JASPAR client)
 │   ├── models/              # Model loading & registry
+│   ├── preflight/           # Pre-flight validation core
 │   ├── tasks/               # Task definitions & metrics
+│   ├── tui/                 # Terminal pre-flight wizard (dnallm preflight)
 │   ├── utils/               # Utility functions
 │   └── mcp/                 # MCP server implementation
 ├── cli/                     # Legacy CLI scripts (deprecated)
