@@ -769,11 +769,23 @@ def load_config(config_path: str) -> DNALLMConfig:
     path (same behavior as before the factor-out).
 
     Args:
-        config_path (str): Path to the YAML configuration file.
+        config_path: Path to the YAML configuration file.
+
+    Raises:
+        ValueError: If the file's top level is not a YAML mapping
+            (an empty file, a comment-only file, a list root, or a
+            scalar root).
     """
 
     with open(config_path, encoding="utf-8") as f:
         config_dict = yaml.safe_load(f)
-        config_dict["config_path"] = os.path.abspath(config_path)
+
+    if not isinstance(config_dict, dict):
+        raise ValueError(
+            f"Config file {os.path.abspath(config_path)} must contain a YAML mapping "
+            f"at the top level, got {type(config_dict).__name__}"
+        )
+
+    config_dict["config_path"] = os.path.abspath(config_path)
 
     return validate_sections(config_dict)

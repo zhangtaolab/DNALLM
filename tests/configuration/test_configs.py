@@ -775,6 +775,48 @@ class TestLoadConfig:
             os.unlink(config_path)
 
 
+class TestLoadConfigDegenerateRoot:
+    """Degenerate YAML roots (empty / comment-only / list / scalar) must raise ValueError.
+
+    These inputs previously crashed at the ``config_dict["config_path"] = ...``
+    injection line with opaque TypeErrors naming interpreter internals; the
+    loader rejects them with a matchable ValueError per the repo error
+    convention (ValueError with a descriptive, matchable message).
+    """
+
+    def test_empty_file_raises_value_error(self, tmp_path):
+        """A zero-byte YAML file raises ValueError naming the NoneType root."""
+        config_file = tmp_path / "empty.yaml"
+        config_file.touch()
+
+        with pytest.raises(ValueError, match=r"must contain a YAML mapping.*got NoneType"):
+            load_config(str(config_file))
+
+    def test_comment_only_file_raises_value_error(self, tmp_path):
+        """A file containing only comments parses to None and raises ValueError."""
+        config_file = tmp_path / "comments.yaml"
+        config_file.write_text("# only a comment\n# another comment\n", encoding="utf-8")
+
+        with pytest.raises(ValueError, match=r"must contain a YAML mapping"):
+            load_config(str(config_file))
+
+    def test_list_root_raises_value_error(self, tmp_path):
+        """A YAML file whose root is a list raises ValueError naming the list root."""
+        config_file = tmp_path / "list_root.yaml"
+        config_file.write_text("- task\n- model\n", encoding="utf-8")
+
+        with pytest.raises(ValueError, match=r"must contain a YAML mapping.*got list"):
+            load_config(str(config_file))
+
+    def test_scalar_root_raises_value_error(self, tmp_path):
+        """A YAML file whose root is a bare scalar raises ValueError naming the str root."""
+        config_file = tmp_path / "scalar_root.yaml"
+        config_file.write_text("just_a_string\n", encoding="utf-8")
+
+        with pytest.raises(ValueError, match=r"must contain a YAML mapping.*got str"):
+            load_config(str(config_file))
+
+
 class TestEdgeCases:
     """Test edge cases and error conditions."""
 
