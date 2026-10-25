@@ -232,13 +232,13 @@ nvcc -V  # Verify CUDA compiler version
 # Install Mamba support
 uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation --link-mode=copy
 
-# If encounter network issue, using the special install script for mamba (optional)
-sh scripts/install_mamba.sh  # select github proxy
+# If the command above fails, build the kernels from source with this script (optional)
+sh scripts/install_mamba.sh  # checks the downloaded source against a fixed checksum; --index-url https://pypi.tuna.tsinghua.edu.cn/simple switches to the TUNA mirror
 ```
 
 > **Note**: The `nvcc` version must match your PyTorch CUDA version. For example, if you installed PyTorch with CUDA 12.8, you need `nvcc` from CUDA 12.x. Mismatched versions will cause build failures.
 
-Please ensure your machine can connect to GitHub, otherwise Mamba dependencies may fail to download.
+The script downloads the mamba source package from PyPI (or the mirror flag shown above), so your machine does not need to reach GitHub.
 
 Note that Plant DNAMamba, Caduceus, PlantCaduceus, PlantCAD2, Jamba-DNA, JanusDNA models are all based on Mamba architecture. Therefore, the training and inference of these models can be accelerated by installing the native mamba support.
 

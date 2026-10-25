@@ -665,11 +665,11 @@ source .venv/bin/activate  # Linux/MacOS
 # [uv lane] Install Mamba support
 uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation
 
-# If encounter network or compile issue, using the special install script for mamba (optional)
-sh scripts/install_mamba.sh  # select github proxy
+# If you hit a build error, build the kernels from source with this script (optional)
+sh scripts/install_mamba.sh  # checks the downloaded source against a fixed checksum; --index-url https://pypi.tuna.tsinghua.edu.cn/simple switches to the TUNA mirror
 ```
 
-Please ensure your machine can connect to GitHub, otherwise Mamba dependencies may fail to download.
+The script downloads the mamba source package from PyPI (or the mirror flag shown above), so your machine does not need to reach GitHub.
 
 ## Additional Model Dependencies
 

@@ -172,6 +172,12 @@ cuda128 = [
 cuda130 = [
     "torch>=2.9.0,<2.12",
 ]
+# Upstream ships no mamba-ssm wheels for torch 2.11+ (release matrix stops
+# at torch 2.10), and torch 2.14 headers require C++20 while the 2.3.2.post1
+# setup.py hardcodes c++17: source installs on modern torch must go through
+# scripts/install_mamba.sh (sha256-pinned sdist + the four -std flag edits,
+# upstream PR #1000 equivalent). CI installs the kernels exclusively via
+# that script; this extra stays the end-user torch<2.12 fast path.
 mamba = [
     "causal_conv1d==1.7.0",
     "mamba-ssm==2.3.2.post1",
