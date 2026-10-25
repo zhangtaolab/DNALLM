@@ -125,6 +125,8 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/
 | 261025-e4w | torch ceiling raise — pyproject.toml seven torch bounds <2.12 to <2.15, one commit citing GitHub run 40140203118 + dependabot cycle-record comment | 2026-10-25 | f00e90d | .planning/quick/261025-e4w-torch-ceiling-raise-pyproject-toml-seven-torch-bounds-2-12-t |
 | 261025-e4x | v1.4 lazy-facade shim regression — dnallm/_compat_activation.py meta-path lazy activation restores the import-dnallm compat contract; red-to-green regression tests; 100% module coverage | 2026-10-25 | fac22a0 | .planning/quick/261025-e4x-v1-4-lazy-facade-shim-regression-plain-import-dnallm-must-ag |
 | 5 | bump version to 1.4.1 (pyproject + version.py + changelog; version-contract 19 tests green) | 2026-10-25 | baf3445 | — |
+| 261025-vvv | Fix stale docs reference in README.md | 2026-10-25 | 967708e | /home/forrest/Github/DNALLM/.planning/quick/261025-vvv-fix-stale-docs-reference-in-readme-md |
+| 261025-vvw | Add regression test for config loader | 2026-10-25 | c0c6476 | /home/forrest/Github/DNALLM/.planning/quick/261025-vvw-add-regression-test-for-config-loader |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items

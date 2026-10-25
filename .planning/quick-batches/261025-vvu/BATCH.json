@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "batch_id": "261025-vvu",
+  "created_at": "2026-10-25T14:57:24.676Z",
+  "options": {},
+  "base_revision": "b188f6cee95ee2aeb194b3c570bf344ba87355eb",
+  "items": [
+    {
+      "quick_id": "261025-vvv",
+      "client_id": null,
+      "description": "Fix stale docs reference in README.md",
+      "status": "complete",
+      "depends_on": [],
+      "planned_files": [
+        "README.md"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 0,
+      "commit": "967708e",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261025-vvw",
+      "client_id": null,
+      "description": "Add regression test for config loader",
+      "status": "complete",
+      "depends_on": [],
+      "planned_files": [
+        "dnallm/configuration/configs.py",
+        "tests/configuration/test_configs.py"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 0,
+      "commit": "c0c6476",
+      "failure_reason": null
+    }
+  ]
+}
