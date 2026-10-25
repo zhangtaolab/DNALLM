@@ -672,7 +672,7 @@ jobs:
     # proportional estimates; run 37345067326 = first live exercise at the
     # 09-04 Task-1 wiring, run 37377004230 = the green-gate run at the
     # fixed wiring incl. the SSE-probe repair 5dfadda; authoritative
-    # record: .planning/phases/09-ci-wiring-census-verification/
+    # record: .planning/milestones/v1.1-phases/09-ci-wiring-census-verification/
     # 09-CENSUS-ROLLUP.md):
     #   stage 0 venv+extras+bedtools+inventory  ~1 min (warm uv; bedtools
     #     from cached prefix ~15s)
@@ -907,8 +907,8 @@ jobs:
             -m "not giants" 2>/dev/null | tee census-collect.txt | tail -1
           MEASURED=$(tail -1 census-collect.txt | sed -E 's/^=+ *//; s/ *=+$//; s/ in [0-9.]+s?$//')
           echo "census collection measured: ${MEASURED}"
-          if ! tail -1 census-collect.txt | grep -qE '^=* *216/217 tests collected \(1 deselected\) in '; then
-            echo "FAIL: census collection mismatch (D-03) — expected triple: 216/217 tests collected (1 deselected); measured line: $(tail -1 census-collect.txt)"
+          if ! tail -1 census-collect.txt | grep -qE '^=* *222/223 tests collected \(1 deselected\) in '; then
+            echo "FAIL: census collection mismatch (D-03) — expected triple: 222/223 tests collected (1 deselected); measured line: $(tail -1 census-collect.txt)"
             cat census-collect.txt
             exit 1
           fi

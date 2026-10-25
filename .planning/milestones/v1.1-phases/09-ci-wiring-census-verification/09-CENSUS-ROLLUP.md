@@ -378,3 +378,44 @@ commit as this addendum; the growth is repair-class (fail-loud pins), zero new
 skips. Example-nightly re-dispatch at the re-pin HEAD: recorded below.
 
 - Example-nightly run of record at the re-pin HEAD: **run 37550730293 (workflow_dispatch @ 86c1fe8, 2026-10-07) — example-nightly job `success`, all steps green** incl. Stage 0.5 census hard-gate passing on the re-pinned 197/206 triple and Stage 1 torch-heavy census; The same dispatch's test-mamba and coverage-nightly legs completed `success` as well — run 37550730293 is fully green at the re-pin HEAD (recorded 2026-10-07 13:19 CST).
+
+## v1.4-line recalibration (2026-10-26, quick 261026-aij)
+
+The v1.4 example commits grew the census past the Phase-13 pin, so every
+example-nightly dispatch failed Stage 0.5 before stage 1 — the guard working
+as designed, waiting for its deliberate bump-point re-pin. Pin lineage:
+193/202 (9 deselected) at phase-9 close → 197/206 (9 deselected) at the
+2026-10-07 post-close addendum above → the Phase 13 D-04 re-pin at ac4115f
+(2026-10-11) that left the `mcp_example` pair collected and collapsed the
+deselect set 9→1 → **222/223 (1 deselected)** now.
+
+Measurement evidence (live, exact stage-0.5 selector `.venv/bin/python -m
+pytest tests/examples --collect-only -q -m "not giants"`): the pin reproduced
+at ac4115f in a detached worktree — 216/217 tests collected (1 deselected) in
+1.24s, honest when landed — and v1.4 tip 6b055e5 measures
+**222/223 tests collected (1 deselected) in 0.90s** (planning time 2026-10-26);
+executor re-measurement the same day confirmed 222/223 (1 deselected) in
+0.88s before any edit landed (never pin a planned number).
+
+Delta attribution (verified per-commit): the +6 collected items are the six
+warm-or-skip guard tests for rice genome inputs added by 0885416 (2026-10-23 —
+the nightly-flakiness rice fix class from the v1.4 triage); commits d05a3b9,
+87b0c13, 628926a (2026-10-13, Phase 16 CRE/NER platform-dispatch work)
+modified existing example tests without changing the collected count (zero
+new `def test_` functions). Deselect split unchanged: 1 = the `giants`-marked
+evo execution test (D-01).
+
+Carriers re-pinned in the same commit as this note (the designed bump-point,
+triggered on the v1.4 line): both ci.yml Stage 0.5 carriers (the `grep -qE`
+gate pattern and the FAIL echo's expected-triple message), the workflows
+README stage-0.5 row, and the `tests/test_dispatch_direction.py`
+root-placement docstring citation — plus the D-12 comment's
+authoritative-record pointer refreshed to this file's archived
+`milestones/v1.1-phases` location (the old `.planning/phases/` path has
+been an empty directory since milestone archiving).
+
+Runner proof pending, addendum precedent cited: the 2026-10-07 re-pin was
+proven by example-nightly run 37550730293 at the re-pin HEAD; the next
+example-nightly dispatch at this re-pin HEAD records the green gate for
+222/223 (05:30 UTC schedule or owner dispatch — no auto-dispatch from the
+executor, same self-hosted queue discipline as Phase 13 D-04).
