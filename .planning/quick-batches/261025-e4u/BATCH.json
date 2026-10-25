@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "batch_id": "261025-e4u",
+  "created_at": "2026-10-25T02:10:36.876Z",
+  "options": {},
+  "base_revision": "3a680dc4a48454b5ae8ff0f84020d7f9291bb685",
+  "items": [
+    {
+      "quick_id": "261025-e4v",
+      "client_id": null,
+      "description": "mamba-ssm c++20 patch pipeline — rework scripts/install_mamba.sh and the CI test-mamba/example-nightly install lines to build mamba-ssm 2.3.2.post1 from the sha256-verified sdist (104cc47e9101e5401a675fa2b784f2952b9b037f3b1dd83b5ac544394e95d028) with the four -std=c++17 to -std=c++20 setup.py edits (upstream PR 1000 equivalent), replacing the guessed-URL wheel path that can never serve torch 2.11+ on aarch64; reproducible and TUNA-mirror compatible for the GB10 runner",
+      "status": "pending",
+      "depends_on": [],
+      "planned_files": [
+        "scripts/install_mamba.sh",
+        ".github/workflows/ci.yml",
+        "README.md",
+        "docs/getting_started/installation.md",
+        "pyproject.toml"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 0,
+      "commit": null,
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261025-e4w",
+      "client_id": null,
+      "description": "torch ceiling raise — pyproject.toml seven torch bounds <2.12 to <2.15 as one commit citing GitHub run 40140203118; depends on item 1 landing first",
+      "status": "pending",
+      "depends_on": [
+        "261025-e4v"
+      ],
+      "planned_files": [
+        "pyproject.toml",
+        ".github/dependabot.yml"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 1,
+      "commit": null,
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261025-e4x",
+      "client_id": null,
+      "description": "v1.4 lazy-facade shim regression — plain `import dnallm` must again activate the transformers_compat remote-code pruning helpers (Phase 25 PEP 562 facade dropped the eager subpackage imports that ran apply_patches); the notebook contract `import dnallm` activating compat must hold again; ship with a regression test that is red on v1.4 tip and green after the fix",
+      "status": "pending",
+      "depends_on": [],
+      "planned_files": [
+        "dnallm/_compat_activation.py",
+        "dnallm/__init__.py",
+        "tests/test_compat_activation.py",
+        ".claude/CLAUDE.md"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 0,
+      "commit": null,
+      "failure_reason": null
+    }
+  ]
+}
