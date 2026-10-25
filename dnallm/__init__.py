@@ -16,6 +16,13 @@ The former utils-before-models ordering guarantee is no longer expressed here:
 it travels with the consumer. dnallm.models installs the transformers and cuda
 compatibility shims itself before it resolves a modeling symbol, so the
 guarantee now also covers a direct submodule import that never runs this file.
+
+A plain root import now ARMS (not eagerly runs) the compat activation: the
+lazy meta-path hook in ``dnallm._compat_activation`` fires on the first
+transformers import, so a consumer that imports only this package -- the
+notebook contract of embedding_attention.ipynb cell 1 -- still gets the
+transformers_compat shims installed, while the light path stays torch-free.
+Pinned by tests/test_compat_activation.py.
 """
 
 # ruff: file-ignore[non-empty-init-module] -- a PEP 562 lazy facade is
@@ -46,6 +53,15 @@ from .configuration import load_config
 # Bound eagerly (see the module docstring): cheap and torch-free, and its name
 # collides with the dnallm.cli subpackage attribute.
 from .cli import cli
+
+# The notebook contract (embedding_attention.ipynb cell 1, nightly run
+# 40140203118): a bare `import dnallm` must still activate the compat shims on
+# the first transformers import. Arming is torch-free and near-instant; the
+# shim cost is paid only when transformers is actually used.
+# Pinned by tests/test_compat_activation.py.
+from ._compat_activation import arm_compat_activation
+
+arm_compat_activation()
 
 # name -> defining module. Covers exactly the public API that is not bound
 # eagerly above, so every name in __all__ resolves and nothing else does.
