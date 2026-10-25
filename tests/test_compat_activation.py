@@ -37,6 +37,7 @@ also writes to stdout.
 
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -214,3 +215,97 @@ def test_finder_passes_through_non_watch_names() -> None:
     assert finder.find_spec("transformers.pytorch_utils") is None
     assert finder.find_spec("torch") is None
     assert finder.find_spec("sys") is None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# In-process unit variants for the branches the subprocess contract tests can
+# never exercise under coverage (the subprocess runs untraced): delegation
+# exhaustion, the idempotent re-arm scan, and the arm-time-already-imported
+# activation. Each uses monkeypatch with restore -- no lingering global state.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_find_spec_passes_through_when_watch_module_unresolvable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A watch name no finder resolves returns None unwrapped, unfired.
+
+    Delegation exhaustion: with an empty meta-path chain the finder must hand
+    the "found nothing" verdict straight back so the interpreter raises the
+    normal ImportError -- activation never fabricates a spec, and the finder
+    does not mark itself fired for an import that did not happen.
+    """
+    activation = pytest.importorskip("dnallm._compat_activation")
+    monkeypatch.setattr(sys, "meta_path", [])
+    finder = activation._CompatActivationFinder()
+    assert finder.find_spec(activation._WATCH_MODULE) is None
+    assert finder._fired is False
+
+
+def test_find_spec_returns_namespace_spec_unwrapped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A loader-less (namespace) spec is returned untouched and never wrapped.
+
+    A namespace package has no module body to execute, so there is nothing to
+    wrap and no meaningful activation point; the finder stays unfired and the
+    interpreter's own namespace semantics apply.
+    """
+    activation = pytest.importorskip("dnallm._compat_activation")
+
+    class _NullLoaderFinder:
+        """Meta-path stub that resolves everything to a loader-less spec."""
+
+        def find_spec(self, fullname, path=None, target=None):
+            from importlib.machinery import ModuleSpec
+
+            return ModuleSpec(fullname, loader=None)
+
+    monkeypatch.setattr(sys, "meta_path", [_NullLoaderFinder()])
+    finder = activation._CompatActivationFinder()
+    spec = finder.find_spec(activation._WATCH_MODULE)
+    assert spec is not None
+    assert spec.loader is None
+    assert finder._fired is False
+
+
+def test_rearm_leaves_meta_path_untouched() -> None:
+    """A second arm call scans and exits without touching sys.meta_path.
+
+    The pytest process armed the real finder at collection time (conftest
+    imports dnallm), so this in-process re-arm exercises exactly the scan-hit
+    branch the subprocess FINDERS=1 contract pins end to end: no second
+    finder, no reorder.
+    """
+    activation = pytest.importorskip("dnallm._compat_activation")
+    before = list(sys.meta_path)
+    activation.arm_compat_activation()
+    assert sys.meta_path == before
+    assert (
+        sum(isinstance(finder, activation._CompatActivationFinder) for finder in sys.meta_path) == 1
+    )
+
+
+def test_late_arm_activates_immediately_when_transformers_already_imported(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Arm finds an unfired finder and an imported watch module -> activate.
+
+    In-process variant of the notebook-order branch, fully hermetic: stub
+    sys.modules entries stand in for the already-imported transformers and
+    the already-run shim module (the activation import becomes a no-op
+    lookup), so a stand-in unfired finder at meta_path[0] makes arm() take
+    the "the finder would never fire" branch -- activation runs immediately
+    and the finder is marked fired, with no heavy import pulled in.
+    """
+    activation = pytest.importorskip("dnallm._compat_activation")
+    monkeypatch.setitem(sys.modules, "transformers", types.ModuleType("transformers"))
+    monkeypatch.setitem(
+        sys.modules,
+        "dnallm.utils.transformers_compat",
+        types.ModuleType("dnallm.utils.transformers_compat"),
+    )
+    fresh = activation._CompatActivationFinder()
+    monkeypatch.setattr(sys, "meta_path", [fresh, *sys.meta_path])
+    activation.arm_compat_activation()
+    assert fresh._fired is True
