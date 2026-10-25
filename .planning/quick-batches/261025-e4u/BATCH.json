@@ -9,7 +9,7 @@
       "quick_id": "261025-e4v",
       "client_id": null,
       "description": "mamba-ssm c++20 patch pipeline — rework scripts/install_mamba.sh and the CI test-mamba/example-nightly install lines to build mamba-ssm 2.3.2.post1 from the sha256-verified sdist (104cc47e9101e5401a675fa2b784f2952b9b037f3b1dd83b5ac544394e95d028) with the four -std=c++17 to -std=c++20 setup.py edits (upstream PR 1000 equivalent), replacing the guessed-URL wheel path that can never serve torch 2.11+ on aarch64; reproducible and TUNA-mirror compatible for the GB10 runner",
-      "status": "pending",
+      "status": "complete",
       "depends_on": [],
       "planned_files": [
         "scripts/install_mamba.sh",
@@ -24,14 +24,14 @@
       "dispatched_branch": null,
       "dispatched_base": null,
       "wave": 0,
-      "commit": null,
+      "commit": "ef91f8d",
       "failure_reason": null
     },
     {
       "quick_id": "261025-e4w",
       "client_id": null,
       "description": "torch ceiling raise — pyproject.toml seven torch bounds <2.12 to <2.15 as one commit citing GitHub run 40140203118; depends on item 1 landing first",
-      "status": "pending",
+      "status": "complete",
       "depends_on": [
         "261025-e4v"
       ],
@@ -45,14 +45,14 @@
       "dispatched_branch": null,
       "dispatched_base": null,
       "wave": 1,
-      "commit": null,
+      "commit": "f00e90d",
       "failure_reason": null
     },
     {
       "quick_id": "261025-e4x",
       "client_id": null,
       "description": "v1.4 lazy-facade shim regression — plain `import dnallm` must again activate the transformers_compat remote-code pruning helpers (Phase 25 PEP 562 facade dropped the eager subpackage imports that ran apply_patches); the notebook contract `import dnallm` activating compat must hold again; ship with a regression test that is red on v1.4 tip and green after the fix",
-      "status": "pending",
+      "status": "complete",
       "depends_on": [],
       "planned_files": [
         "dnallm/_compat_activation.py",
@@ -66,7 +66,7 @@
       "dispatched_branch": null,
       "dispatched_base": null,
       "wave": 0,
-      "commit": null,
+      "commit": "fac22a0",
       "failure_reason": null
     }
   ]
