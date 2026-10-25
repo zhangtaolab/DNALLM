@@ -196,12 +196,12 @@ uv pip install -e '.[all,cuda128]'
 
 | Group | PyTorch | Use Case |
 |-------|---------|----------|
-| `cpu` | 2.4.0-2.11 | No GPU |
-| `cuda124` | 2.4.0-2.11 | Most modern GPUs |
-| `cuda126` | 2.6.0-2.11 | Ada/Hopper with Flash Attention |
-| `cuda128` | 2.6.0-2.11 | RTX 5090 and latest hardware |
-| `cuda130` | 2.9.0-2.11 | CUDA 13.0, Windows & Linux (driver >= 580) — recommended |
-| `mamba` | 2.6.0-2.11 | Native Mamba architecture (requires CUDA) |
+| `cpu` | 2.4.0-2.14 | No GPU |
+| `cuda124` | 2.4.0-2.14 | Most modern GPUs |
+| `cuda126` | 2.6.0-2.14 | Ada/Hopper with Flash Attention |
+| `cuda128` | 2.6.0-2.14 | RTX 5090 and latest hardware |
+| `cuda130` | 2.9.0-2.14 | CUDA 13.0, Windows & Linux (driver >= 580) — recommended |
+| `mamba` | 2.6.0-2.14 | Native Mamba architecture (requires CUDA) |
 
 Retired in v1.3: the cu121 lane (index frozen at torch 2.5.1) and the ROCm extra (never execution-tested on AMD hardware — see the [Installation Guide](docs/getting_started/installation.md) for the manual AMD restore path).
 
