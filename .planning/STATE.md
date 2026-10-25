@@ -3,18 +3,18 @@ gsd_state_version: "1.0"
 milestone: v1.4
 status: Awaiting next milestone
 stopped_at: Phase 26 complete — all phases complete
-last_updated: "2026-10-24T02:25:27.246Z"
+last_updated: "2026-10-25T06:43:14.011Z"
 last_activity: 2026-10-24
-last_activity_desc: Quick 261024-dtw complete — mamba Predictor MPS passthrough + darwin real-device smoke + FAQ fix (3 commits, 509 mamba-surface tests green; earlier: env rebuild, ty risk, PlantHelixSeek confirm, torch 2.14.1)
-state_head: 9952ddca0c8c8f75c4951a41b1b5b32de5af1711
-milestone_name: Pre-flight UX & Registry-as-Truth-Source
-current_phase: 26
+last_activity_desc: "Quick 261024-dtw complete — mamba Predictor MPS passthrough + darwin real-device smoke + FAQ fix (3 commits, 509 mamba-surface tests green; earlier: env rebuild, ty risk, PlantHelixSeek confirm, torch 2.14.1)"
+state_head: baf34450d9b35c38c0fff277148ae6a67fc86d6e
 progress:
   total_phases: 5
   completed_phases: 5
   total_plans: 23
   completed_plans: 23
   percent: 100
+milestone_name: Pre-flight UX & Registry-as-Truth-Source
+current_phase: 26
 ---
 
 # Project State
@@ -124,6 +124,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/
 | 261025-e4v | mamba-ssm c++20 patch pipeline — sha256-pinned sdist patch+build pipeline in scripts/install_mamba.sh, CI test-mamba/example-nightly routing, docs sync | 2026-10-25 | ef91f8d | .planning/quick/261025-e4v-mamba-ssm-c-20-patch-pipeline-rework-scripts-install-mamba-s |
 | 261025-e4w | torch ceiling raise — pyproject.toml seven torch bounds <2.12 to <2.15, one commit citing GitHub run 40140203118 + dependabot cycle-record comment | 2026-10-25 | f00e90d | .planning/quick/261025-e4w-torch-ceiling-raise-pyproject-toml-seven-torch-bounds-2-12-t |
 | 261025-e4x | v1.4 lazy-facade shim regression — dnallm/_compat_activation.py meta-path lazy activation restores the import-dnallm compat contract; red-to-green regression tests; 100% module coverage | 2026-10-25 | fac22a0 | .planning/quick/261025-e4x-v1-4-lazy-facade-shim-regression-plain-import-dnallm-must-ag |
+| 5 | bump version to 1.4.1 (pyproject + version.py + changelog; version-contract 19 tests green) | 2026-10-25 | baf3445 | — |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
