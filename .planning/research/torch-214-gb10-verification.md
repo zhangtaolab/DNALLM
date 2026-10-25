@@ -103,3 +103,19 @@ dispatch 时在 `.planning/async-jobs/` 建 manifest（沿用 19-07-nightly.json
 v1.4 惰性门面回归须独立修复(与 ceiling 决策解耦,属 v1.4→main 合并前必修)。
 
 **执行注记**:三次 dispatch —— ①40064966892(装依赖死于 pypi.org 断流;TUNA 镜像修复);②40103520749(Set up job 死于 codeload.github.com 断流;SHA 钉死 + action 缓存预填修复);③40140203118 完成实验。spike 分支 ci.yml 带 SHA 钉死(勿合并);`.scratch/prefill-actions.sh` 预填脚本(blob-hash 全验)。
+
+## 追加:B+C 结果(2026-10-25 上午,owner 指令 "B and C")
+
+**C(补丁实验)— ✅ 决定性成功**:
+- sdist(sha256 `104cc47e…` 与 PyPI 一致)4 处 `-std=c++17`→`-std=c++20`,在 owner 的 `~/miniconda3/envs/cuda130`(py3.13,torch 2.14.1+cu130,GB10)以 `MAMBA_FORCE_BUILD=1 --no-build-isolation --no-deps` 编译:wheel 干净产出(cp313,347MB)
+- 运行时冒烟:`selective_scan_fn` CUDA kernel vs `selective_scan_ref`,max|Δ|=5.72e-06(fp32 期望量级)——编译+数值双绿
+- **结论:阻断 = 仅 setup.py 的 -std 标志,无后续 API 断裂**
+
+**B(上游调研)— 详见 /tmp/mamba-upstream-research.md(子代理全文)与上表**:
+- 前提修正:ATen C++20 地板在 **torch 2.14** 才竖起(2.12/2.13 仍 C++17)——raw ATen.h 逐版本核实
+- 2.3.2.post1 后零 release;所有 tag + main 均硬编码 c++17;上游 **PR #1000**(4 行同款修复)mergeable clean 但未合并;评审共识 = 干脆删掉 -std(让 BuildExtension 自选,causal-conv1d 即此构造)
+- 上游 wheel 全架构止步 torch 2.10(#999);GB10 源码路径已有两个独立用户在 torch 2.13 跑通(#891/#1019,`TORCH_CUDA_ARCH_LIST="12.1+PTX"`)
+- 升级 main 不可行:tvm-ffi 元数据默认坏(#986)、Mamba-3 MIMO 超出 sm_121 共享内存(#1044)、CUDA ext 变 opt-in 且仍 c++17
+- 顺带发现:`scripts/install_mamba.sh` `DEFAULT_MAMBA_VERSION="2.2.4"` + 猜 URL 下载路径对 torch≥2.11 aarch64 永远无效
+
+**合并裁决:torch 2.14 三要素全绿** — ①套件兼容(census 3215 通过)②causal-conv1d 原样可编 ③mamba-ssm 四行补丁可编可跑。ceiling raise 的唯一剩余工作 = 把补丁以可复现方式接入 `mamba` extra 安装流水线(sdist-sed-in-flight 或补丁 wheel/wheelhouse),外加两项独立必修(v1.4 惰性门面回归;timeout 单例复跑分类)。
