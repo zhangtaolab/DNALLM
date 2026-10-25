@@ -266,9 +266,10 @@ jobs:
           pytest tests/ -v -m "not slow" --tb=short
           
   test-mamba:
-    # Self-hosted GPU box on nightly cadence per GATE-02 (amended): the .[mamba]
-    # install compiles mamba-ssm/causal_conv1d CUDA kernels from source, which
-    # belongs to the nightly leg — push/PR stays the fast hosted leg.
+    # Self-hosted GPU box on nightly cadence per GATE-02 (amended): the
+    # mamba kernel install below builds mamba-ssm/causal_conv1d CUDA
+    # kernels from source via the patch pipeline in scripts/install_mamba.sh,
+    # which belongs to the nightly leg — push/PR stays the fast hosted leg.
     # schedule/dispatch-only preserves the coverage-nightly posture that PR code
     # (including forks) never executes on this runner. The gpu-check step below
     # stays as a fail-safe no-op if the box ever loses its GPU.
@@ -279,7 +280,7 @@ jobs:
     # stays; push/PR must never reach the self-hosted box.
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '0 3 * * *')
     # The recurring per-run CUDA kernel source build is the long pole
-    # (--no-cache-dir plus a fresh uv venv per run bypass all wheel caching, so
+    # (the patch pipeline builds uncached into a fresh uv venv per run, so
     # the mamba-ssm/causal_conv1d compile repeats every run, not just the
     # first). 180min covers a worst-case GB10 build plus the .[full]
     # install plus the `not slow` census with headroom. Self-hosted jobs have
@@ -339,7 +340,25 @@ jobs:
           # at the runner's real toolcache lib.
           export LDFLAGS="-L$(python -c 'import sys; print(sys.prefix)')/lib"
           uv pip install -e ".[full,fla]"
-          uv pip install -e ".[mamba]" --no-cache-dir --no-build-isolation
+          # Kernels install through the sha256-pinned c++20 patch pipeline
+          # (scripts/install_mamba.sh), not the mamba extra's direct source
+          # install: torch 2.14's ATen headers set a C++20 floor while
+          # mamba-ssm 2.3.2.post1's setup.py hardcodes c++17 (blocker
+          # evidence: run 40140203118; upstream PR #1000 flips the same four
+          # flags and stays unmerged; the release wheel matrix stops at torch
+          # 2.10, so a prebuilt wheel can never serve this aarch64 box on
+          # modern torch). TUNA is this box's working PyPI route (user-level
+          # uv mirror config, owner-approved 2026-10-24); the script's sha256
+          # pin enforces byte integrity regardless of route. The pyproject
+          # mamba extra keeps pinning versions and stays the end-user
+          # torch<2.12 fast path — CI exercises the script pipeline
+          # deliberately. Interim: until item 261025-e4w raises the torch
+          # ceiling, this lane builds the patched sdist under torch 2.11 —
+          # intentional (exercises the c++20 patch before the fleet jump;
+          # same nvcc 13.0 toolchain, and torch 2.11 headers state a
+          # C++17-or-later floor, which C++20 satisfies).
+          uv pip install --python .venv/bin/python pip
+          bash scripts/install_mamba.sh --python .venv/bin/python --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
       # No continue-on-error here: a failing mamba test must fail the job.
       # Hung runs are bounded by the per-test --timeout=300 from pytest addopts
@@ -817,11 +836,17 @@ jobs:
         uses: actions/cache@v4
         with:
           path: wheelhouse-mamba
-          key: mamba-conv1d-1.7.0-ssm-2.3.2.post1-${{ runner.arch }}-${{ steps.wheelkeys.outputs.py }}-torch${{ steps.wheelkeys.outputs.torch }}
+          # The patch marker in the key below is the discriminator: a wheel
+          # cached before the c++20 patch must never restore even under an
+          # identical torch version.
+          key: mamba-conv1d-1.7.0-ssm-2.3.2.post1-cxx20patch-${{ runner.arch }}-${{ steps.wheelkeys.outputs.py }}-torch${{ steps.wheelkeys.outputs.torch }}
 
       - name: "Stage 0: build/install mamba kernels (cached wheelhouse, project venv)"
-        # Cached-wheelhouse variant of the test-mamba install flags
-        # (--no-build-isolation source compile): the lora pair's _gate_mamba
+        # Cached-wheelhouse variant of the test-mamba kernel install: the
+        # wheelhouse is built by the sha256-pinned c++20 patch pipeline in
+        # scripts/install_mamba.sh (run 40140203118 blocker evidence; upstream
+        # PR #1000 unmerged; release wheels stop at torch 2.10), so the cached
+        # mamba_ssm wheel is the patched build. The lora pair's _gate_mamba
         # probes mamba_ssm in the RUNNING interpreter, so the kernels land
         # in the project venv (08-08 dev-box precedent). Versions mirror
         # the pyproject mamba extra pins.
@@ -829,8 +854,7 @@ jobs:
           if ! ls wheelhouse-mamba/causal_conv1d-*.whl wheelhouse-mamba/mamba_ssm-*.whl >/dev/null 2>&1; then
             mkdir -p wheelhouse-mamba
             uv pip install --python .venv/bin/python pip
-            .venv/bin/python -m pip wheel "causal_conv1d==1.7.0" "mamba-ssm==2.3.2.post1" \
-              --no-build-isolation --no-cache-dir -w wheelhouse-mamba
+            bash scripts/install_mamba.sh --python .venv/bin/python --index-url https://pypi.tuna.tsinghua.edu.cn/simple --wheelhouse wheelhouse-mamba --no-install
           fi
           uv pip install wheelhouse-mamba/causal_conv1d-*.whl wheelhouse-mamba/mamba_ssm-*.whl
 
