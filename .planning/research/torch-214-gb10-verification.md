@@ -82,3 +82,24 @@ mamba-ssm/causal_conv1d 对 torch 2.14.x 的源码编译与运行兼容性。**�
 
 dispatch 时在 `.planning/async-jobs/` 建 manifest（沿用 19-07-nightly.json 字段格式，
 `plan_id` 用 `spike-torch-214`），终态回填 run id + 三条通过标准的逐项结论。
+
+## 结论(2026-10-25,run 40140203118 — 三次 dispatch 后完成)
+
+**通过标准 a:✅ PASS** — torch 2.14.1+cu130 解析并安装成功(TUNA 通道,433MB/15s;394 包全套环境绿;transformers 5.17.0 共存)。
+
+**通过标准 b:❌ FAIL —— 真阻断(torch 侧)** — `mamba-ssm==2.3.2.post1` 源码编译失败:
+- 根因:setup.py 硬编码 `-std=c++17`,而 torch≥2.12 的 ATen 头文件要求 C++20:
+  `ATen/ATen.h:5: error: #error C++20 or later compatible compiler is required to use ATen.`
+  (selective_scan.cpp 第一个翻译单元即死)
+- 上游 releases 无 linux_aarch64 wheel(guess-URL `...cu13torch2.14...cp311-linux_aarch64.whl` 404 → 回退源码编译)→ GB10 必须源码编译 → 被阻断
+- `causal-conv1d==1.7.0` 未出现在 "Failed to build" 中(判定:编译绿;仅 mamba-ssm 阻断)
+
+**通过标准 c:未达(mamba lane 因编译失败未跑到 census)**;以 coverage-nightly census 为替代证据:
+**2 failed / 3215 passed / 22 skipped(2h07m)**——dnallm 套件本体与 torch 2.14 高度兼容。两个失败:
+1. `test_notebook_execution[notebooks/embedding_attention.ipynb]`:**v1.4 惰性门面回归,与 torch 无关** —— Phase 25 把 `dnallm/__init__.py` 改为 PEP 562 惰性后,`import dnallm` 不再急切导入 models/datahandling/… → transformers_compat shim(补 `find_pruneable_heads_and_indices`)不再被激活;notebook cell 里 `import dnallm # activate ... compat` 的前提失效。main(merge-base f7a7fcb)是急切导入,故 main nightly 不受影响。spike 是 v1.4 树首次跑 notebook census(v1.4 零矩阵暴露的又一实例,与 ty 门禁缺口同类)。
+2. `test_trainer_real_model::test_sample_datasets`:300s pytest-timeout,单次出现,暂无法归因(torch 2.14 性能变化或偶发,需复跑分类)。
+
+**判定:ceiling raise `<2.15` 不能落 v1.4**(mamba-ssm 阻断未解)。候选路径:(a) 放弃本轮 raise,保持 `<2.12`,等 mamba-ssm 上游;(b) 调研 mamba-ssm 新版(tilelang/cutlass-dsl 栈,GB10 sm_120 支持未知);(c) sdist 构建标志补丁(-std=c++17→c++20)本地先验证"仅改标志是否足够"(可能还有后续 API 断裂)。
+v1.4 惰性门面回归须独立修复(与 ceiling 决策解耦,属 v1.4→main 合并前必修)。
+
+**执行注记**:三次 dispatch —— ①40064966892(装依赖死于 pypi.org 断流;TUNA 镜像修复);②40103520749(Set up job 死于 codeload.github.com 断流;SHA 钉死 + action 缓存预填修复);③40140203118 完成实验。spike 分支 ci.yml 带 SHA 钉死(勿合并);`.scratch/prefill-actions.sh` 预填脚本(blob-hash 全验)。
