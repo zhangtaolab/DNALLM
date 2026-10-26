@@ -16,7 +16,13 @@ The workflows are triggered on:
   - **03:00 UTC** (cron `0 3 * * *`) — fires `coverage-nightly` (full coverage census) and `test-mamba` (kernel-build leg)
   - **05:30 UTC** (cron `30 5 * * *`) — fires `example-nightly` (example-execution census; D-06 stagger, queue-serialized on the single `dnallm-nightly` runner)
   - GitHub runs cron schedules only from the default branch
-- **Manual workflow dispatch** — each nightly job's gate admits `workflow_dispatch` (on-demand census/calibration runs), and dispatch is the ONLY trigger of the `feasibility.yml` spike (runner confirmation for the GB10 feasibility verdicts; never push/PR/schedule, so PR-authored code cannot reach the self-hosted box)
+- **Manual workflow dispatch** — each nightly job's gate admits `workflow_dispatch` (on-demand census/calibration runs), and dispatch is the ONLY trigger of the `feasibility.yml` spike (runner confirmation for the GB10 feasibility verdicts; never push/PR/schedule, so PR-authored code cannot reach the self-hosted box). Since 2026-10-26 the nightly lanes are also per-lane selectable on dispatch via three boolean inputs — `run_coverage_nightly`, `run_example_nightly`, `run_test_mamba` — all defaulting to `true`, so a dispatch sent with no flags still fires all three (an all-lanes dispatch is ~6h queue-serialized on the single `dnallm-nightly` runner, and the Actions REST API cancels runs, not individual jobs, so a misaimed dispatch cannot be trimmed after the fact). The job gates read the `inputs` context because it keeps boolean inputs as booleans, while `github.event.inputs` hands them over as strings. To run exactly one lane:
+
+  ```bash
+  gh workflow run ci.yml --ref v1.4 -f run_example_nightly=true -f run_coverage_nightly=false -f run_test_mamba=false
+  ```
+
+  which dispatches the example-nightly lane only.
 
 ## 🔧 Jobs
 
