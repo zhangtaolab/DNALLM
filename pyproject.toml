@@ -186,7 +186,7 @@ fla = [
     # fla.ops.* kernels need it -- declare the triton-lang-org fork wheel,
     # Windows-only, exact band (no floating). Linux resolvers see the marker
     # evaluate false and never pull it.
-    "triton-windows>=3.7.1.post27,<3.8; platform_system == 'Windows'",
+    "triton-windows>=3.7.1.post27,<3.9; platform_system == 'Windows'",
 ]
 
 #mamba = [
