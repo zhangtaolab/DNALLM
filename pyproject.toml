@@ -81,7 +81,7 @@ Documentation = "https://zhangtaolab.github.io/DNALLM/"
 [project.optional-dependencies]
 dev = [
     "dnallm[test,notebook]",
-    "ruff==0.17.1",
+    "ruff==0.17.2",
     "pre-commit>=3.6.0",
     "logomaker>=0.8.2",
     "pybedtools>=0.11.0; platform_system != 'Windows'",
