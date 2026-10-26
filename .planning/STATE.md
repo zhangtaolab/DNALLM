@@ -3,10 +3,10 @@ gsd_state_version: "1.0"
 milestone: v1.4
 status: Awaiting next milestone
 stopped_at: Phase 26 complete — all phases complete
-last_updated: "2026-10-26T00:09:01.279Z"
+last_updated: "2026-10-26T03:54:07.577Z"
 last_activity: 2026-10-26
 last_activity_desc: "Quick 261024-dtw complete — mamba Predictor MPS passthrough + darwin real-device smoke + FAQ fix (3 commits, 509 mamba-surface tests green; earlier: env rebuild, ty risk, PlantHelixSeek confirm, torch 2.14.1)"
-state_head: 9bf4b5462444607726178a8a0d5c4aa8567688e4
+state_head: c626966c95e48b8593e1f2bcecf44e2afb082316
 progress:
   total_phases: 5
   completed_phases: 5
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-22)
 Phase: Milestone v1.4 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-26 - Completed quick task 261026-b34: per-lane workflow_dispatch selection for nightly CI lanes
+Last activity: 2026-10-26 - Completed quick task 261026-g13: uv cache scoped off self-hosted nightly lanes + run 40247981840 census receipts recorded
 
 ## Performance Metrics
 
@@ -129,6 +129,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/
 | 261025-vvw | Add regression test for config loader | 2026-10-25 | c0c6476 | /home/forrest/Github/DNALLM/.planning/quick/261025-vvw-add-regression-test-for-config-loader |
 | 261026-aij | Recalibrate example-nightly D-03 census assertion 216/217 -> 222/223 on v1.4 (+6 from 0885416) + dated 09 rollup note + D-12 path refresh | 2026-10-26 | 73f85bd | [261026-aij-recalibrate-the-example-nightly-d-03-cen](./quick/261026-aij-recalibrate-the-example-nightly-d-03-cen/) |
 | 261026-b34 | Per-lane workflow_dispatch selection for nightly lanes (run_coverage_nightly/run_example_nightly/run_test_mamba booleans, default true) + workflows README dispatch docs | 2026-10-26 | 9bf4b54 | [261026-b34-add-per-lane-workflow-dispatch-selection](./quick/261026-b34-add-per-lane-workflow-dispatch-selection/) |
+| 261026-g13 | Drop GitHub-side uv cache steps from self-hosted nightly lanes (27GB > 10GB cap + stalled uploads, local ~/.cache/uv persists) + record run 40247981840 census receipts in 09 rollup | 2026-10-26 | c626966 | [261026-g13-disable-github-side-uv-cache-save-on-sel](./quick/261026-g13-disable-github-side-uv-cache-save-on-sel/) |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
