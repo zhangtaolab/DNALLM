@@ -557,13 +557,14 @@ jobs:
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
-      - name: Cache uv dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/uv
-          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-uv-
+      # 261026-g13 (2026-10-26): the GitHub-side uv cache step that stood here is deleted. Run
+      # 40247981840: the post-job save compressed ~/.cache/uv into a 26.97 GB cache.tzst against
+      # the 10 GB GitHub Actions cache hard cap, so the save can never succeed — and the stalled
+      # Azure-blob upload blocked the single dnallm-nightly runner 40+ min until an operator
+      # SIGKILL concluded the run. Restore is removed too: this lane's own run 40169504816
+      # ("Failed to restore" timeout) is the same dead-socket stall class. This persistent box's
+      # local ~/.cache/uv is the warm path (owner rule: never cleaned); the GitHub layer only
+      # pays off on ephemeral hosted runners — test / test-cuda / coverage-gate keep theirs.
 
       # D-11 (owner decision 2026-10-05): the models.lock-keyed hub cache
       # restore that stood here is removed — cold pulls are proven (65-min
@@ -761,13 +762,14 @@ jobs:
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
-      - name: Cache uv dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/uv
-          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-uv-
+      # 261026-g13 (2026-10-26): same removal as coverage-nightly — the GitHub-side uv cache
+      # step is gone. Run 40247981840 (this lane, dispatched at 0171b00): its post-job save
+      # packed ~/.cache/uv into a 26.97 GB cache.tzst vs the 10 GB GitHub Actions cache hard
+      # cap — an impossible save whose stalled Azure-blob upload held the single dnallm-nightly
+      # runner 40+ min until an operator SIGKILL ended the run. Restore is dropped as well: run
+      # 40169504816's "Failed to restore" timeout is the same dead-socket stall class. The
+      # box's persistent local ~/.cache/uv is the warm path (owner rule: never cleaned); the
+      # GitHub layer only pays off on ephemeral hosted runners — test / test-cuda / coverage-gate keep theirs.
 
       # D-11 (owner decision 2026-10-05): the models.lock-keyed hub cache
       # restore that stood here is removed — cold pulls are proven (65-min
