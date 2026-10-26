@@ -141,7 +141,7 @@ mcp = [
     # import. 1.107.x is the dev-green series; if a transitive constraint
     # rejects it, resolution now fails LOUDLY naming the capper instead of
     # landing on the broken 1.22.
-    "pydantic-ai>=1.107.0,<2",
+    "pydantic-ai>=1.107.0,<3",
 ]
 full = [
     "dnallm[dev,test,notebook,mcp]",
