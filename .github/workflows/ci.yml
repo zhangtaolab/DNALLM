@@ -24,7 +24,35 @@ on:
       # until the actual merge to main or explicit owner removal.
   pull_request:
     branches: [ main, master, dev ]
+  # Per-lane dispatch selection (2026-10-26): a manual dispatch used to
+  # fire ALL three nightly lanes (coverage-nightly ~4h, example-nightly
+  # ~1.5h, test-mamba ~25min+build), queue-serialized on the single
+  # dnallm-nightly runner (~6h total), and the Actions REST API cancels
+  # runs, not individual jobs (run 40246863966: POST /actions/jobs/{id}/
+  # cancel -> 404), so a misaimed dispatch could not be lane-trimmed after
+  # the fact. Each nightly job's dispatch arm below is now ANDed with its
+  # own input; every input defaults true, so a no-flag dispatch stays
+  # identical to the old all-lanes behavior.
+  # Boolean form: per GitHub docs (events-that-trigger-workflows) the
+  # `inputs` context preserves Boolean values as Booleans instead of
+  # converting them to strings, while `github.event.inputs` renders them
+  # as strings (the dispatch REST API itself only takes string key=value
+  # pairs). Job-level `if` therefore reads `inputs.<flag>`, never
+  # `github.event.inputs.<flag> == 'true'`.
   workflow_dispatch:
+    inputs:
+      run_coverage_nightly:
+        description: "Run the coverage-nightly lane (full census incl. slow) on this dispatch"
+        type: boolean
+        default: true
+      run_example_nightly:
+        description: "Run the example-nightly lane (example execution census) on this dispatch"
+        type: boolean
+        default: true
+      run_test_mamba:
+        description: "Run the test-mamba lane (mamba kernel build + census) on this dispatch"
+        type: boolean
+        default: true
   schedule:
     # D-19: BOTH entries below trigger the whole workflow — GitHub offers no
     # per-cron routing, so each nightly job carries its own cron-string gate
@@ -33,6 +61,9 @@ on:
     # entry fires example-nightly (D-06 stagger, queue-serialized on the
     # single dnallm-nightly runner). Cron schedules fire only from the
     # default branch.
+    # Manual dispatch selects lanes via the three workflow_dispatch boolean
+    # inputs (default true) — each nightly job's gate ANDs its dispatch arm
+    # with its own input; see the workflow_dispatch block above.
     - cron: "0 3 * * *"
     - cron: "30 5 * * *"
 
@@ -278,7 +309,7 @@ jobs:
     # job's evaluation, so the gate selects exactly the 03:00 UTC entry
     # (the 05:30 entry belongs to example-nightly). The dispatch disjunct
     # stays; push/PR must never reach the self-hosted box.
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '0 3 * * *')
+    if: (github.event_name == 'workflow_dispatch' && inputs.run_test_mamba) || (github.event_name == 'schedule' && github.event.schedule == '0 3 * * *')
     # The recurring per-run CUDA kernel source build is the long pole
     # (the patch pipeline builds uncached into a fresh uv venv per run, so
     # the mamba-ssm/causal_conv1d compile repeats every run, not just the
@@ -470,7 +501,7 @@ jobs:
     # D-19: cron-string gate — selects exactly the 03:00 UTC schedule
     # entry (the 05:30 entry belongs to example-nightly) while keeping the
     # dispatch disjunct; push/PR must never reach the self-hosted box.
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '0 3 * * *')
+    if: (github.event_name == 'workflow_dispatch' && inputs.run_coverage_nightly) || (github.event_name == 'schedule' && github.event.schedule == '0 3 * * *')
     # D-12 MEASURED rewrite (runs 37345067326 / 37377004230 / 37432001711;
     # wall minutes from run logs, never proportional estimates): the full
     # census measured 1:27:14 in 37345067326 (1928P/4F/15S — the 4 failures
@@ -633,7 +664,7 @@ jobs:
     # entry (the D-06 stagger, 2.5h after the 03:00 coverage run) while
     # keeping the dispatch disjunct; push/PR must never reach the
     # self-hosted box.
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '30 5 * * *')
+    if: (github.event_name == 'workflow_dispatch' && inputs.run_example_nightly) || (github.event_name == 'schedule' && github.event.schedule == '30 5 * * *')
     # D-07 staged-serial ordering contract (VRAM/port coexistence, MCP-02):
     #   stage 0    install + shared caches + runner-inventory probes
     #              (D-04: evo provisioning deleted; D-11: no model cache)
