@@ -419,3 +419,28 @@ proven by example-nightly run 37550730293 at the re-pin HEAD; the next
 example-nightly dispatch at this re-pin HEAD records the green gate for
 222/223 (05:30 UTC schedule or owner dispatch — no auto-dispatch from the
 executor, same self-hosted queue discipline as Phase 13 D-04).
+
+## Runner proof — run 40247981840 (2026-10-26, quick 261026-g13)
+
+This section fills the pending-runner-proof slot left by the v1.4-line
+recalibration note above (222/223).
+
+- Run 40247981840 was a manual single-lane dispatch on 2026-10-26 at commit
+  0171b00, via the new `run_example_nightly` input (the 261026-b34 per-lane
+  selection).
+- The "Stage 0.5: census collection assertion (D-03)" step concluded
+  SUCCESS at the recalibrated 222/223 — the exact proof this slot was
+  waiting for.
+- Stage 1 ran 217 passed / 5 skipped / 1 deselected.
+- Stage 2 MCP succeeded on both transports: streamable-http and sse.
+- The D-08 fail-soft summary succeeded with zero non-zero exits.
+- All 21 substantive steps were green.
+- The run's overall verdict was failure solely from "Post Cache uv
+  dependencies" — an operator SIGKILL of the hung 26.97 GB cache.tzst
+  upload, doomed by the 10 GB GitHub cache cap. That verdict is
+  infrastructure, not census; the census receipts above are the proof this
+  slot records.
+
+The same quick task removed the GitHub-side uv-cache steps from the
+coverage-nightly and example-nightly lanes in ci.yml, so this failure class
+cannot recur on the nightly lanes.
