@@ -4,11 +4,11 @@ milestone: v1.4
 current_phase: 27
 current_phase_name: Transformers 4/5 Model Compatibility Census
 status: executing
-stopped_at: Completed 27-01-PLAN.md
-last_updated: "2026-10-27T07:41:16.585Z"
+stopped_at: Completed 27-02-PLAN.md
+last_updated: "2026-10-27T08:53:48.525Z"
 last_activity: 2026-10-27
 last_activity_desc: Phase 27 execution started
-state_head: 74144c5625dfe76b500c823854079c66ba8ba1a4
+state_head: b2480a53aa49ab5fb775e287becf7bcd0c6f6bff
 progress:
   total_phases: 1
   completed_phases: 5
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-22)
 ## Current Position
 
 Phase: 27 (Transformers 4/5 Model Compatibility Census) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-10-27 — Phase 27 execution started
 
@@ -58,6 +58,7 @@ Last activity: 2026-10-27 — Phase 27 execution started
 | Phase 26 P01 | 10 min | 3 tasks | 3 files |
 | Phase 26 P02 | 6 min | 2 tasks | 2 files |
 | Phase 27 P01 | 74 min | 3 tasks | 3 files |
+| Phase 27 P02 | 38min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -111,6 +112,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 27]: 27-01: load layer passes torch_dtype (plan-literal) with a kwarg-free retry + fp32 cast for 4.x-era remote from_pretrained implementations that forward unknown kwargs to __init__; ModelScope fetches its default revision (commit shas are not fetchable) while the HF route pins the census sha
 - [Phase 27]: 27-01: load failures report forward_ok=false (no successful forward ran) with ok=false + error naming the phase, so the D-03 bool gate holds; D-04 giants are a no-op (zero evo rows in the roster, research A6 confirmed)
 - [Phase 27]: 27-01: two census-blocked verdicts committed honestly — GenerTeam/GENERanno-eukaryote-1.2b-base repo id absent on ModelScope and HF (direct 404; nearest siblings are 0.5b) and chengCCC/CrossDNA_pretrain ships no root config.json (checkpoints under 8.1M/28.6M/71.6M/519M)
+- [Phase 27]: 27-02: census-driven rung scope - only MEASURED failure classes got rungs (apply_chunking_to_forward alias + load-boundary bookkeeping); research-predicted classes (is_torch_fx_available, from_legacy_cache, ROPE) never surfaced in the census and got none (D-06: census is the truth)
+- [Phase 27]: 27-02: 6mer/PlantCAD2 load failures were census-tool misroutes (AutoModel loading native classes for task-keyed auto_map checkpoints), fixed by task-appropriate Auto* routing in the tool - recovered-green records carry no disposition by design
+- [Phase 27]: 27-02: gena imports restored by _patch_apply_chunking_to_forward but dispositions stay skip - base's checkpoint token_type_ids buffer carries garbage (3.9e12 vs type_vocab_size 2, version-independent defect) and bigbird needs external deepspeed; the rung name rides inside each skip reason
+- [Phase 27]: 27-02: _finalize_model_loading is STATIC at transformers 5.17 - the bookkeeping rung's wrapper is shape-adaptive and also installs the legacy tie_weights arity bridge at the same boundary (the skipped-post_init entry leaves both 5.x protocol pieces missing)
 
 ### Pending Todos
 
@@ -155,8 +160,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-27T07:41:16.569Z
-Stopped at: Completed 27-01-PLAN.md
+Last session: 2026-10-27T08:53:48.503Z
+Stopped at: Completed 27-02-PLAN.md
 Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)
