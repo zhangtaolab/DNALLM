@@ -3,12 +3,12 @@ gsd_state_version: "1.0"
 milestone: v1.4
 current_phase: 27
 current_phase_name: Transformers 4/5 Model Compatibility Census
-status: Awaiting next milestone
-stopped_at: Phase 27 context gathered
-last_updated: "2026-10-27T06:15:49.251Z"
-last_activity: 2026-10-26
-last_activity_desc: "Quick 261024-dtw complete — mamba Predictor MPS passthrough + darwin real-device smoke + FAQ fix (3 commits, 509 mamba-surface tests green; earlier: env rebuild, ty risk, PlantHelixSeek confirm, torch 2.14.1)"
-state_head: ba4235ef8c4156facfc7c33fcd5593fb423474db
+status: executing
+stopped_at: Completed 27-01-PLAN.md
+last_updated: "2026-10-27T07:41:16.585Z"
+last_activity: 2026-10-27
+last_activity_desc: Phase 27 execution started
+state_head: 74144c5625dfe76b500c823854079c66ba8ba1a4
 progress:
   total_phases: 1
   completed_phases: 5
@@ -24,14 +24,14 @@ milestone_name: Pre-flight UX & Registry-as-Truth-Source
 See: .planning/PROJECT.md (updated 2026-10-22)
 
 **Core value:** One terminal flow takes a user from their own data to a validated, model-compatible config, with the model registry as the runtime single source of truth (Track A first) — suite, coverage gate, and CI honest-green throughout.
-**Current focus:** v1.4 milestone complete and archived — start next cycle with /gsd-new-milestone
+**Current focus:** Phase 27 — Transformers 4/5 Model Compatibility Census
 
 ## Current Position
 
-Phase: 27 (Transformers 4/5 Model Compatibility Census) — READY TO EXECUTE
-Plan: —
-Status: In Progress — Phase 27 (Transformers 4/5 Model Compatibility Census) added to v1.4 line
-Last activity: 2026-10-26 - Completed quick task 261026-g13: uv cache scoped off self-hosted nightly lanes + run 40247981840 census receipts recorded
+Phase: 27 (Transformers 4/5 Model Compatibility Census) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-10-27 — Phase 27 execution started
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Last activity: 2026-10-26 - Completed quick task 261026-g13: uv cache scoped off
 | Phase 25 P13 | 8min | 2 tasks | 3 files |
 | Phase 26 P01 | 10 min | 3 tasks | 3 files |
 | Phase 26 P02 | 6 min | 2 tasks | 2 files |
+| Phase 27 P01 | 74 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 25]: Field hints render under their Input for all twelve hinted fields, with no copy change
 - [Phase 26]: MCP consistency checker (26-01): direct yaml.safe_load route; label_names head rule matches num_labels; ERROR findings fatal in both modes; coverage 98pct — Keeps the checker independent of validator schema drift; a None-entry-vs-config-value label claim is real drift; unreadable committed files are breakage not drift; branch test beats sitting on the coverage gate
 - [Phase 26]: MCP listing (26-02): status word mapping loaded greater-than enabled greater-than disabled greater-than available; repo-id route before entry-name route; unmatched configured keys visible, never phantom rows; no truncation until 10x registry growth — Loaded wins over enabled in the status column because callability is what the menu promises; both routes keep the registry-name key space; visibility beats silent dropping because the 26-01 checker finding is the durable backstop
+- [Phase 27]: 27-01: census probes execute each fetched snapshot dir as a synthetic package (relative + absolute sibling imports resolve like transformers dynamic modules); probe paths stay absolute without symlink resolution (HF snapshots are extensionless blob symlinks)
+- [Phase 27]: 27-01: load layer passes torch_dtype (plan-literal) with a kwarg-free retry + fp32 cast for 4.x-era remote from_pretrained implementations that forward unknown kwargs to __init__; ModelScope fetches its default revision (commit shas are not fetchable) while the HF route pins the census sha
+- [Phase 27]: 27-01: load failures report forward_ok=false (no successful forward ran) with ok=false + error naming the phase, so the D-03 bool gate holds; D-04 giants are a no-op (zero evo rows in the roster, research A6 confirmed)
+- [Phase 27]: 27-01: two census-blocked verdicts committed honestly — GenerTeam/GENERanno-eukaryote-1.2b-base repo id absent on ModelScope and HF (direct 404; nearest siblings are 0.5b) and chengCCC/CrossDNA_pretrain ships no root config.json (checkpoints under 8.1M/28.6M/71.6M/519M)
 
 ### Pending Todos
 
@@ -150,9 +155,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-27T05:04:02.475Z
-Stopped at: Phase 27 context gathered
-Resume file: .planning/phases/27-transformers-4-5-model-compatibility-census/27-CONTEXT.md
+Last session: 2026-10-27T07:41:16.569Z
+Stopped at: Completed 27-01-PLAN.md
+Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)
 
