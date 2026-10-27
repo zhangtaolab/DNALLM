@@ -556,3 +556,78 @@ class TestShimPassLoadSelection:
         # the zhangtaolab entry is the (parked) representative; the sibling
         # only infers from it, so nothing loads.
         assert calls == []
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# disposition completeness (27-02 Task 3)
+# ─────────────────────────────────────────────────────────────────────────────
+
+COMPAT_SHIM = REPO_ROOT / "dnallm" / "utils" / "transformers_compat.py"
+
+
+class TestDispositionCompleteness:
+    """Every measured failure carries an explicit disposition.
+
+    A record counts as a failure record when its current or previous status
+    is ``import-fail`` or ``census-blocked``, or its load evidence shows a
+    failed load or forward. Each must carry a ``disposition`` object with
+    exactly one of ``fix`` (a ``_patch_*`` rung name that must exist in
+    ``dnallm/utils/transformers_compat.py``, or a descriptive tool-fix
+    string) or ``skip`` (a concrete structural reason longer than a bare
+    word). Records with no failure signal carry no disposition key at all.
+    """
+
+    ARTIFACT = REPO_ROOT / "tests" / "models" / "compat_census.json"
+
+    @staticmethod
+    def _is_failure_record(record: dict) -> bool:
+        status = record.get("status")
+        previous = record.get("previous_status")
+        load = record.get("load")
+        return bool(
+            status in ("import-fail", "census-blocked")
+            or previous == "import-fail"
+            or (
+                isinstance(load, dict)
+                and (load.get("ok") is False or load.get("forward_ok") is False)
+            )
+        )
+
+    def _entries(self) -> list[dict]:
+        return census.read_artifact(self.ARTIFACT)
+
+    def test_artifact_holds_the_full_roster_in_order(self) -> None:
+        entries = self._entries()
+        assert len(entries) == 49
+        assert [r["repo"] for r in entries] == [e.model for e in census.pretrained_roster()]
+
+    def test_every_failure_record_carries_a_well_formed_disposition(self) -> None:
+        failures = [r for r in self._entries() if self._is_failure_record(r)]
+        assert failures, "expected at least one failure record in the artifact"
+        shim_source = COMPAT_SHIM.read_text(encoding="utf-8")
+        for record in failures:
+            repo = record["repo"]
+            disposition = record.get("disposition")
+            assert isinstance(disposition, dict), f"{repo}: disposition must be an object"
+            keys = set(disposition)
+            assert keys <= {"fix", "skip"}, f"{repo}: unknown disposition keys {keys}"
+            assert len(keys) == 1, f"{repo}: exactly one disposition key, got {keys}"
+            if "fix" in disposition:
+                value = disposition["fix"]
+                assert isinstance(value, str), f"{repo}: fix value must be a string"
+                assert value.strip(), f"{repo}: empty fix value"
+                if value.startswith("_patch_"):
+                    assert f"def {value}(" in shim_source, (
+                        f"{repo}: fix rung {value} does not exist in transformers_compat.py"
+                    )
+            else:
+                reason = disposition["skip"]
+                assert isinstance(reason, str), f"{repo}: skip reason must be a string"
+                assert len(reason.strip()) > 10, f"{repo}: placeholder skip reason {reason!r}"
+
+    def test_passing_records_carry_no_disposition_key(self) -> None:
+        for record in self._entries():
+            if not self._is_failure_record(record):
+                assert "disposition" not in record, (
+                    f"{record['repo']}: passing records must not carry a disposition"
+                )

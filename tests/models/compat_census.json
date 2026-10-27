@@ -512,6 +512,9 @@
         "device": "cuda",
         "duration_s": 1.696
       },
+      "disposition": {
+        "skip": "remote bert_layers.py builds its ALiBi tensor eagerly in __init__ (rebuild_alibi_tensor line 399: torch.Tensor(list) stays on cpu while torch.arange lands on meta); transformers 5 constructs models on the meta device where 4.x built on cpu, so the meta x cpu multiply crashes before any weight loads - no removed transformers API is involved"
+      },
       "fetched_at": "2026-10-27T08:39:24Z"
     },
     {
@@ -533,6 +536,9 @@
         "output_shape": null,
         "device": "cuda",
         "duration_s": 42.271
+      },
+      "disposition": {
+        "skip": "checkpoint data defect: the persisted bert.embeddings.token_type_ids buffer starts with 3901475131392 while type_vocab_size=2, so the token_type_ids=None buffer-default forward crashes (IndexError on cpu, device-side assert on cuda) on any transformers version; the import itself was restored by the _patch_apply_chunking_to_forward rung (see previous_status)"
       },
       "fetched_at": "2026-10-27T08:39:32Z",
       "previous_status": "import-fail"
@@ -556,6 +562,9 @@
         "output_shape": null,
         "device": "cuda",
         "duration_s": 29.025
+      },
+      "disposition": {
+        "skip": "remote modeling_bert.py (bigbird block-sparse attention) imports the external deepspeed package, which is outside dnallm's dependency set - not a transformers API removal; the import itself was restored by the _patch_apply_chunking_to_forward rung (see previous_status)"
       },
       "fetched_at": "2026-10-27T08:39:37Z",
       "previous_status": "import-fail"
@@ -595,6 +604,9 @@
       "family": "GenerTeam",
       "is_family_rep": true,
       "load": null,
+      "disposition": {
+        "skip": "repo id exists on neither ModelScope nor hf-mirror (direct 404; nearest published siblings are 0.5b-base variants) - registry-data correction belongs to the 27-03 write-back"
+      },
       "fetched_at": "2026-10-27T08:39:46Z",
       "load_note": "census-blocked: no load evidence (see failing_import)"
     },
@@ -633,6 +645,9 @@
       "family": "ConvNetForMaskedLM",
       "is_family_rep": true,
       "load": null,
+      "disposition": {
+        "skip": "native architecture ConvNetForMaskedLM was removed from transformers 5.x; restoring it means vendoring an entire architecture implementation, which is outside the per-name rung discipline (dnallm's dnallm/models/special/gpn.py handler requires the external gpn package instead)"
+      },
       "fetched_at": "2026-10-27T08:39:54Z",
       "load_note": "import-fail final after shim pass"
     },
@@ -776,6 +791,9 @@
         "device": "cuda",
         "duration_s": 4.231
       },
+      "disposition": {
+        "skip": "remote modeling_mutbert.py line 808 computes input_shape = input_ids.size()[:-1] ('# modified' in the repo's own source), dropping the sequence dimension for every 2-D input - the model's own forward-contract bug fails identically on transformers 4.x"
+      },
       "fetched_at": "2026-10-27T08:40:17Z"
     },
     {
@@ -829,6 +847,9 @@
       "family": "OLMoModelForCausalLM",
       "is_family_rep": true,
       "load": null,
+      "disposition": {
+        "skip": "remote configuration_olmo.py line 8 imports olmo.config.ModelConfig - an external package outside dnallm's dependency set, not a transformers API removal; installing the third-party olmo package is out of census scope"
+      },
       "fetched_at": "2026-10-27T08:40:32Z",
       "load_note": "import-fail final after shim pass"
     },
@@ -927,6 +948,9 @@
       "family": "chengCCC",
       "is_family_rep": true,
       "load": null,
+      "disposition": {
+        "skip": "repo ships no root config.json - checkpoints live under 8.1M/28.6M/71.6M/519M size-named subdirectories, so the bare repo id is not loadable by AutoConfig/from_pretrained; the per-checkpoint load-path decision belongs to the 27-03 write-back"
+      },
       "fetched_at": "2026-10-27T08:41:09Z",
       "load_note": "census-blocked: no load evidence (see failing_import)"
     }
