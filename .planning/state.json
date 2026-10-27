@@ -1,38 +1,12 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v1.4 — Pre-flight UX & Registry-as-Truth-Source",
-  "phases": [
-    {
-      "number": "22",
-      "name": "Registry Foundation",
-      "status": "complete"
-    },
-    {
-      "number": "23",
-      "name": "Pre-flight Core",
-      "status": "complete"
-    },
-    {
-      "number": "24",
-      "name": "Preset Loading",
-      "status": "complete"
-    },
-    {
-      "number": "25",
-      "name": "Terminal UI & tui Extra",
-      "status": "complete"
-    },
-    {
-      "number": "26",
-      "name": "MCP Consistency",
-      "status": "complete"
-    }
-  ],
+  "milestone": "v1.4",
+  "phases": [],
   "next": {
     "command": "/gsd-progress",
     "label": "Show progress",
     "reason": "Unsure of state — showing progress"
   },
-  "updated_at": "2026-10-22T07:54:00.467Z"
+  "updated_at": "2026-10-27T06:15:49.264Z"
 }
