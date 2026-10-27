@@ -1608,6 +1608,47 @@ DOCS_TABLE_HEADER = ("Model", "What we found", "Details")
 # carry (Pitfall 8 / D-05): the transformers 4 side is inferred, not tested.
 DOCS_FORBIDDEN_CLAIM = "compatible with transformers 4 and 5"
 
+# Plain-language lead sentences for the remote-code-broken family (owner
+# plain-language directive 2026-10-21, G-27-2): each failure row leads with
+# one honest per-class sentence a biologist can act on, and the technical
+# cause survives only as a short parenthetical suffix. Honest per class
+# (D-05 culture): a version-independent model defect is never worded as a
+# library change.
+DOCS_BROKEN_LEADS: dict[str, str] = {
+    "damaged-files": (
+        "the published model files themselves are damaged, so this model "
+        "fails on every version of the library"
+    ),
+    "own-defect": "the model's own code has a defect that makes it fail on every version of the library",
+    "external-package": (
+        "its code needs an extra software package that DNALLM does not "
+        "install, so it cannot be loaded as published"
+    ),
+    "library-change": (
+        "the new library version removed or changed something its code "
+        "depends on, so it cannot be loaded until the model authors update it"
+    ),
+}
+
+# Class map (pattern: docs_blocked_reason): distinctive substrings of the
+# committed registry evidence details, checked most-specific-first, mapped
+# to lead classes. Keys are grounded in the six committed evidence strings;
+# an evidence matching no key is a fail-closed ValueError (the generator
+# refuses to guess a plain wording for an unknown failure shape - the
+# census lane's --verify catches any new broken entry independently).
+DOCS_BROKEN_LEAD_CLASSES: tuple[tuple[str, str], ...] = (
+    ("checkpoint data defect", "damaged-files"),
+    ("forward-contract", "own-defect"),
+    ("outside dnallm's dependency set", "external-package"),
+    ("rebuild_alibi_tensor", "library-change"),
+    ("removed from transformers 5.x", "library-change"),
+    ("not found in transformers", "library-change"),
+)
+
+# The technical cause is demoted to a parenthetical suffix bounded at a
+# word boundary, so no What-we-found cell can dominate the table layout.
+DOCS_TECHNICAL_FRAGMENT_MAX_CHARS = 100
+
 
 def _docs_cell(value: str) -> str:
     """Return a markdown-table-safe cell value, failing closed on breakers.
@@ -1662,6 +1703,53 @@ def docs_broken_cause(evidence: str | None) -> str:
     return cause
 
 
+def docs_broken_lead_class(evidence: str | None) -> str:
+    """Return the plain-language lead class of a remote-code-broken verdict.
+
+    Rule: the first matching key of :data:`DOCS_BROKEN_LEAD_CLASSES`
+    (most-specific-first) over the evidence detail. An evidence string
+    matching no key is an unknown failure shape - the generator refuses to
+    guess a plain wording for it.
+
+    Args:
+        evidence: The entry's ``tf_compat_evidence`` string.
+
+    Returns:
+        The lead-class name (a key of :data:`DOCS_BROKEN_LEADS`).
+
+    Raises:
+        ValueError: When the evidence matches no class key or is empty.
+    """
+    detail = _docs_evidence_detail(evidence)
+    if not detail:
+        raise ValueError("broken entry carries no evidence to classify")
+    for needle, lead_class in DOCS_BROKEN_LEAD_CLASSES:
+        if needle in detail:
+            return lead_class
+    raise ValueError(f"broken evidence matches no plain-language lead class: {detail!r}")
+
+
+def docs_bound_technical_fragment(fragment: str) -> str:
+    """Bound a technical cause fragment at a word boundary.
+
+    Rule: at most :data:`DOCS_TECHNICAL_FRAGMENT_MAX_CHARS` characters; a
+    longer fragment is cut at its last in-bound word boundary (whitespace
+    stripped) and closed with a single trailing ellipsis character.
+
+    Args:
+        fragment: The technical cause clause.
+
+    Returns:
+        The bounded fragment.
+    """
+    if len(fragment) <= DOCS_TECHNICAL_FRAGMENT_MAX_CHARS:
+        return fragment
+    cut = fragment[:DOCS_TECHNICAL_FRAGMENT_MAX_CHARS]
+    if " " in cut:
+        cut = cut[: cut.rfind(" ")].rstrip()
+    return cut + "…"
+
+
 def docs_blocked_reason(evidence: str | None) -> str:
     """Return the plain-language reason of a census-blocked verdict.
 
@@ -1708,7 +1796,9 @@ def docs_status_cell(entry) -> str:
         cause = docs_broken_cause(entry.tf_compat_evidence)
         if not cause:
             raise ValueError(f"broken entry {entry.model} carries no cause evidence")
-        return f"Not usable with the current transformers - fails at {cause}"
+        lead = DOCS_BROKEN_LEADS[docs_broken_lead_class(entry.tf_compat_evidence)]
+        fragment = docs_bound_technical_fragment(cause)
+        return f"Not usable with the current transformers - {lead} (technical: {fragment})"
     if status == "census-blocked":
         reason = docs_blocked_reason(entry.tf_compat_evidence)
         if not reason:

@@ -37,12 +37,12 @@ Of the 49 preset models, the team found 19 working as-is, 21 with their program 
 | Caduceus-PS | Tested loading its code; full run inferred from the family model | `kuleshov-group/caduceus-ps_seqlen-131k_d_model-256_n_layer-16` (full run tested on `kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16`) |
 | CrossDNA | Could not be checked (its repository does not provide a usable configuration file at the top level) | `chengCCC/CrossDNA_pretrain` |
 | DNABERT | Tested loading its code; full run inferred from the family model | `zhihan1996/DNA_bert_6` (full run tested on `zhangtaolab/plant-dnabert-BPE`) |
-| DNABERT-2 | Not usable with the current transformers - fails at remote bert_layers.py builds its ALiBi tensor eagerly in __init__ (rebuild_alibi_tensor line 399: torch.Tensor(list) stays on cpu while torch.arange lands on meta) | `zhihan1996/DNABERT-2-117M` |
-| GENA-LM | Not usable with the current transformers - fails at checkpoint data defect: the persisted bert.embeddings.token_type_ids buffer starts with 3901475131392 while type_vocab_size=2, so the token_type_ids=None buffer-default forward crashes (IndexError on cpu, device-side assert on cuda) on any transformers version | `AIRI-Institute/gena-lm-bert-base` |
-| GENA-LM-BigBird | Not usable with the current transformers - fails at remote modeling_bert.py (bigbird block-sparse attention) imports the external deepspeed package, which is outside dnallm's dependency set - not a transformers API removal | `AIRI-Institute/gena-lm-bigbird-base-sparse` |
+| DNABERT-2 | Not usable with the current transformers - the new library version removed or changed something its code depends on, so it cannot be loaded until the model authors update it (technical: remote bert_layers.py builds its ALiBi tensor eagerly in __init__ (rebuild_alibi_tensor line 399:…) | `zhihan1996/DNABERT-2-117M` |
+| GENA-LM | Not usable with the current transformers - the published model files themselves are damaged, so this model fails on every version of the library (technical: checkpoint data defect: the persisted bert.embeddings.token_type_ids buffer starts with…) | `AIRI-Institute/gena-lm-bert-base` |
+| GENA-LM-BigBird | Not usable with the current transformers - its code needs an extra software package that DNALLM does not install, so it cannot be loaded as published (technical: remote modeling_bert.py (bigbird block-sparse attention) imports the external deepspeed package,…) | `AIRI-Institute/gena-lm-bigbird-base-sparse` |
 | GENERanno | Could not be checked (its repository could not be reached on either download site) | `GenerTeam/GENERanno-eukaryote-1.2b-base` |
 | GENERator | Tested working | `GenerTeam/GENERator-eukaryote-1.2b-base` |
-| GPN | Not usable with the current transformers - fails at ConvNetForMaskedLM not found in transformers 5.17.0 | `songlab/gpn-brassicales` |
+| GPN | Not usable with the current transformers - the new library version removed or changed something its code depends on, so it cannot be loaded until the model authors update it (technical: ConvNetForMaskedLM not found in transformers 5.17.0) | `songlab/gpn-brassicales` |
 | GROVER | Tested loading its code; full run inferred from the family model | `PoetschLab/GROVER` (full run tested on `zhangtaolab/plant-dnabert-BPE`) |
 | GenomeOcean | Tested working | `pGenomeOcean/GenomeOcean-100M` |
 | HyenaDNA | Tested working | `LongSafari/hyenadna-small-32k-seqlen-hf` |
@@ -50,9 +50,9 @@ Of the 49 preset models, the team found 19 working as-is, 21 with their program 
 | LucaOne | Tested working | `LucaGroup/LucaOne-default-step36M` |
 | Mistral-DNA | Tested working | `RaphaelMourad/Mistral-DNA-v1-138M-hg38` |
 | ModernBERT-DNA | Tested loading its code; full run inferred from the family model | `RaphaelMourad/ModernBERT-DNA-v1-37M-hg38` (full run tested on `zhangtaolab/plant-dnamodernbert-BPE`) |
-| MutBERT | Not usable with the current transformers - fails at remote modeling_mutbert.py line 808 computes input_shape = input_ids.size()[:-1] ('# modified' in the repo's own source), dropping the sequence dimension for every 2-D input - the model's own forward-contract bug fails identically on transformers 4.x | `JadenLong/MutBERT-Human-Ref` |
+| MutBERT | Not usable with the current transformers - the model's own code has a defect that makes it fail on every version of the library (technical: remote modeling_mutbert.py line 808 computes input_shape = input_ids.size()[:-1] ('# modified' in…) | `JadenLong/MutBERT-Human-Ref` |
 | Nucleotide Transformer | Tested loading its code; full run inferred from the family model | `InstaDeepAI/nucleotide-transformer-v2-100m-multi-species` (full run tested on `zhangtaolab/plant-nucleotide-transformer-BPE`) |
-| Omni-DNA | Not usable with the current transformers - fails at remote configuration_olmo.py line 8 imports olmo.config.ModelConfig | `zehui127/Omni-DNA-116M` |
+| Omni-DNA | Not usable with the current transformers - its code needs an extra software package that DNALLM does not install, so it cannot be loaded as published (technical: remote configuration_olmo.py line 8 imports olmo.config.ModelConfig) | `zehui127/Omni-DNA-116M` |
 | OmniNA | Tested working | `XLS/OmniNA-66m` |
 | PlantBiMoE | Tested working | `lgq12697/PlantBiMoE` |
 | PlantCAD2 | Tested working | `kuleshov-group/PlantCAD2-Small-l24-d0768` |
