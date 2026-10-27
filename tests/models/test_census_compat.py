@@ -420,6 +420,74 @@ class TestLoadProgram:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# probe subprocess environment (untrusted remote code must not see runner creds)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestProbeEnvSanitization:
+    """Probe subprocesses never inherit runner credentials (WR-03).
+
+    The children execute arbitrary trust_remote_code fetched from third-party
+    repos; on the dispatch lane the parent environment carries GITHUB_TOKEN,
+    RUNNER_*, and ACTIONS_* state.
+    """
+
+    @staticmethod
+    def _capture_subprocess(monkeypatch, stdout: str) -> dict:
+        captured: dict = {}
+
+        def fake_run(argv, **kwargs):
+            captured["argv"] = argv
+            captured["kwargs"] = kwargs
+            return SimpleNamespace(returncode=0, stdout=stdout, stderr="")
+
+        monkeypatch.setattr(census.subprocess, "run", fake_run)
+        return captured
+
+    @staticmethod
+    def _seed_runner_env(monkeypatch) -> None:
+        monkeypatch.setenv("GITHUB_TOKEN", "gh-secret")
+        monkeypatch.setenv("RUNNER_TRACKING_ID", "runner-secret")
+        monkeypatch.setenv("ACTIONS_RUNTIME_TOKEN", "actions-secret")
+        monkeypatch.setenv("HF_HOME", "/cache/hf")
+
+    def test_sanitized_env_helper_strips_blocked_prefixes(self, monkeypatch) -> None:
+        self._seed_runner_env(monkeypatch)
+        env = census.sanitized_probe_env()
+        assert "GITHUB_TOKEN" not in env
+        assert "RUNNER_TRACKING_ID" not in env
+        assert "ACTIONS_RUNTIME_TOKEN" not in env
+        assert env["HF_HOME"] == "/cache/hf"
+
+    def test_import_probe_passes_sanitized_env(self, monkeypatch) -> None:
+        self._seed_runner_env(monkeypatch)
+        captured = self._capture_subprocess(monkeypatch, '{"ok": true}')
+        verdict = census.run_import_probe([("mod", "/abs/mod.py")])
+        assert verdict == {"ok": True}
+        env = captured["kwargs"]["env"]
+        assert "GITHUB_TOKEN" not in env
+        assert "RUNNER_TRACKING_ID" not in env
+        assert "ACTIONS_RUNTIME_TOKEN" not in env
+        assert env["HF_HOME"] == "/cache/hf"  # interpreter/hub plumbing survives
+
+    def test_load_probe_passes_sanitized_env(self, monkeypatch) -> None:
+        self._seed_runner_env(monkeypatch)
+        monkeypatch.setattr(census, "fetch_code_only", lambda repo: None)
+        captured = self._capture_subprocess(
+            monkeypatch, '{"ok": true, "forward_ok": true, "device": "cpu"}'
+        )
+        record = _record({"repo": "org/repo"})
+        load = census.run_load_probe(record)
+        assert load["ok"] is True
+        assert load["forward_ok"] is True
+        env = captured["kwargs"]["env"]
+        assert "GITHUB_TOKEN" not in env
+        assert "RUNNER_TRACKING_ID" not in env
+        assert "ACTIONS_RUNTIME_TOKEN" not in env
+        assert env["HF_HOME"] == "/cache/hf"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 27-02 shim pass: task-appropriate class routing, previous-status preservation,
 # and load selection over prior evidence
 # ─────────────────────────────────────────────────────────────────────────────

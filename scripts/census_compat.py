@@ -49,6 +49,12 @@ UNREACHABLE_MARKER = "unreachable on both hubs"
 PROBE_TIMEOUT_S = 120
 TRACEBACK_TAIL_LINES = 15
 
+# Probe subprocesses execute untrusted trust_remote_code fetched from
+# third-party repos; they must never see runner credentials or CI state
+# (WR-03). Everything under these prefixes is stripped from the child env;
+# interpreter/venv, hub cache, and CUDA plumbing pass through untouched.
+BLOCKED_PROBE_ENV_PREFIXES = ("GITHUB_", "RUNNER_", "ACTIONS_")
+
 _SYMBOL_PATTERNS = (
     re.compile(r"cannot import name '([^']+)'"),
     # Require a module receiver: ``'NoneType' object has no attribute 'loader'``
@@ -612,6 +618,26 @@ def build_probe_program(jobs: list[tuple[str, str]]) -> str:
     ])
 
 
+def sanitized_probe_env() -> dict[str, str]:
+    """Return the probe subprocess env with runner credentials stripped (WR-03).
+
+    The probe children execute arbitrary ``trust_remote_code`` fetched from
+    third-party repos; on the dispatch lane the parent is a GitHub runner
+    process whose environment carries ``GITHUB_TOKEN`` (scoped
+    ``contents: read``), ``RUNNER_*`` paths, and other CI state. Everything
+    under :data:`BLOCKED_PROBE_ENV_PREFIXES` is removed; the children keep
+    their interpreter/venv, hub cache, and CUDA plumbing untouched.
+
+    Returns:
+        A fresh mapping safe to pass as ``subprocess.run(env=...)``.
+    """
+    return {
+        key: value
+        for key, value in os.environ.items()
+        if not key.startswith(BLOCKED_PROBE_ENV_PREFIXES)
+    }
+
+
 def run_import_probe(jobs: list[tuple[str, str]], timeout: int = PROBE_TIMEOUT_S) -> dict:
     """Run one isolated import probe and return its JSON verdict.
 
@@ -632,6 +658,7 @@ def run_import_probe(jobs: list[tuple[str, str]], timeout: int = PROBE_TIMEOUT_S
             text=True,
             timeout=timeout,
             check=False,
+            env=sanitized_probe_env(),
         )
     except subprocess.TimeoutExpired:
         return {"ok": False, "traceback": f"import probe timed out after {timeout}s"}
@@ -1005,6 +1032,7 @@ def run_load_probe(record: dict) -> dict:
             text=True,
             timeout=LOAD_TIMEOUT_S,
             check=False,
+            env=sanitized_probe_env(),
         )
     except subprocess.TimeoutExpired:
         return _empty_load(f"load probe timed out after {LOAD_TIMEOUT_S}s")
