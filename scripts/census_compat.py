@@ -1193,8 +1193,13 @@ def run_census(artifact_path: Path, selected: list[str] | None, with_loads: bool
             representatives (the only path allowed to fetch weights).
 
     Returns:
-        0 on a clean run, 1 when any entry is census-blocked by unreachability
-        (loud failure), 2 for a usage error.
+        0 when the census ran to completion. Entries unreachable on both
+        hubs are recorded census evidence, not a run failure: each stays a
+        ``census-blocked`` record carrying the unreachable marker and is
+        reported loudly, and the verdict gate (``--verify`` against the
+        committed registry, or the ``--write-registry`` mapping) decides
+        whether a census-blocked verdict is committed-known or drift. 1 for
+        artifact read/write errors, 2 for a usage error.
     """
     roster = pretrained_roster()
     roster_order = [entry.model for entry in roster]
@@ -1245,8 +1250,14 @@ def run_census(artifact_path: Path, selected: list[str] | None, with_loads: bool
 
     print(f"Census complete: {len(records)} entry/entries censused -> {artifact_path}")
     if unreachable:
+        # Recorded evidence, not a run failure (CR-01): the unreachable
+        # entries stay census-blocked records above, and the verdict gate
+        # decides their significance — a committed-known unreachable entry
+        # matches its committed census-blocked field, a newly unreachable
+        # one disagrees with its committed verdict. Reported loudly either
+        # way, never a silent pass: the exit code must not conflate
+        # committed-known unreachability with infrastructure failure.
         print(f"CENSUS BLOCKED ({len(unreachable)} unreachable on both hubs): {unreachable}")
-        return 1
     return 0
 
 
@@ -1977,7 +1988,12 @@ def main(argv: list[str] | None = None) -> int:
         argv: Argument list (defaults to ``sys.argv[1:]``).
 
     Returns:
-        Process exit code: 0 clean, 1 census-blocked evidence, 2 usage error.
+        Process exit code: 0 clean, 1 for a census artifact error or a
+        failed ``--verify`` verdict diff, 2 for a usage error. With
+        ``--run --verify`` composed, a hard census error and a verdict
+        disagreement each fail the run independently (``run_rc or
+        verify_rc``) — the verdict diff is never masked by the run's exit
+        code, and the run's hard errors are never masked by a green diff.
     """
     args = parse_args(sys.argv[1:] if argv is None else argv)
     if args.emit_docs is not None:
@@ -2007,7 +2023,13 @@ def main(argv: list[str] | None = None) -> int:
         run_rc = run_census(Path(args.artifact), selected, args.with_loads)
     if args.verify:
         verify_rc = verify_registry(Path(args.artifact))
-        return run_rc if run_rc != 0 else verify_rc
+        # CR-01: both failure classes surface independently. The previous
+        # ``run_rc if run_rc != 0 else verify_rc`` discarded the verification
+        # result whenever the run exited nonzero — which it always did for a
+        # committed-known unreachable repo — so the composed dispatch lane
+        # could never exit 0 and "red" could not distinguish real drift from
+        # baseline.
+        return run_rc or verify_rc
     return run_rc
 
 

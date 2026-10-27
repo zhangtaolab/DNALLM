@@ -78,15 +78,28 @@ jobs:
         if: steps.gpu-check.outputs.has_gpu == 'true'
         # Fresh census (imports + family-representative load/forward) then
         # the fail-closed diff against the committed tf_compat_* fields: any
-        # verdict disagreement, any roster gap, an unreachable repo, or a
-        # transformers version drift exits non-zero. NO `|| true` masking —
-        # a red step means real drift or infrastructure failure, and both
-        # must surface (the upload below still runs via its if: always()).
+        # verdict disagreement, any roster gap, or a transformers version
+        # drift exits non-zero. NO `|| true` masking — a red step means real
+        # drift or infrastructure failure, and both must surface (the upload
+        # below still runs via its if: always()).
+        #
+        # The fresh artifact is SEEDED from the committed census (CR-01):
+        # the hand-authored 27-02 dispositions (skip/fix judgments) exist
+        # only there, and merge_records carries them onto unchanged
+        # verdicts, so the fresh run can map every record and this lane can
+        # be green when the world agrees. A genuine verdict change drops its
+        # stale disposition and disagrees with the committed field — exactly
+        # the drift this lane exists to catch. Unreachable repos are census
+        # evidence, not a lane failure by themselves: they surface as loud
+        # census-blocked records and are gated by the verdict diff (a
+        # committed-known unreachable entry matches its committed
+        # census-blocked field; a newly unreachable one does not).
         # The runner cannot reach the default Hugging Face endpoint: the
         # census tool hard-codes ModelScope-first + the hf-mirror endpoint;
         # no hub URL is added here.
         run: |
           source .venv/bin/activate
+          cp tests/models/compat_census.json census-artifacts/census-fresh.json
           python scripts/census_compat.py --run --with-loads --verify --artifact census-artifacts/census-fresh.json
 
       - name: Upload fresh census evidence

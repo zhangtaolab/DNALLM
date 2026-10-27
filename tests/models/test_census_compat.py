@@ -17,6 +17,7 @@ import importlib.util
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import ClassVar
 
 import pytest
@@ -506,6 +507,148 @@ class TestDispositionCarryForward:
         merged = census.merge_records([existing], [fresh], ["org/repo"])
         assert "disposition" not in merged[0]
         assert "previous_status" not in merged[0]
+
+
+class TestRunCensusUnreachableRecording:
+    """Unreachable repos are recorded census evidence, not a run failure (CR-01).
+
+    The exit code must not conflate committed-known unreachability (a
+    census-blocked verdict the diff gate compares) with infrastructure
+    failure; the loud CENSUS BLOCKED report keeps it a visible outcome.
+    """
+
+    def test_unreachable_entry_reports_loudly_and_exits_zero(
+        self, monkeypatch, tmp_path, capsys
+    ) -> None:
+        def fake_roster():
+            return [SimpleNamespace(model="org/reachable"), SimpleNamespace(model="org/gone")]
+
+        def fake_census_entry(entry):
+            if entry.model == "org/gone":
+                return _record({
+                    "repo": "org/gone",
+                    "status": "census-blocked",
+                    "class": None,
+                    "failing_import": (
+                        "unreachable on both hubs (ModelScope then https://hf-mirror.com)"
+                    ),
+                })
+            return _record({"repo": "org/reachable"})
+
+        monkeypatch.setattr(census, "pretrained_roster", fake_roster)
+        monkeypatch.setattr(census, "census_entry", fake_census_entry)
+        artifact = tmp_path / "census.json"
+        assert census.run_census(artifact, None, with_loads=False) == 0
+        out = capsys.readouterr().out
+        assert "CENSUS BLOCKED (1 unreachable on both hubs)" in out
+        assert "org/gone" in out
+        written = census.read_artifact(artifact)
+        assert [r["repo"] for r in written] == ["org/reachable", "org/gone"]
+        assert written[1]["status"] == "census-blocked"
+        assert "unreachable on both hubs" in written[1]["failing_import"]
+
+
+class TestMainExitComposition:
+    """--run --verify surfaces both failure classes independently (CR-01)."""
+
+    @staticmethod
+    def _stub(monkeypatch, run_rc: int, verify_rc: int) -> list[str]:
+        calls: list[str] = []
+
+        def fake_run_census(*args, **kwargs):
+            calls.append("run")
+            return run_rc
+
+        def fake_verify_registry(*args, **kwargs):
+            calls.append("verify")
+            return verify_rc
+
+        monkeypatch.setattr(census, "run_census", fake_run_census)
+        monkeypatch.setattr(census, "verify_registry", fake_verify_registry)
+        return calls
+
+    def test_green_run_and_verify_exit_zero(self, monkeypatch) -> None:
+        calls = self._stub(monkeypatch, run_rc=0, verify_rc=0)
+        assert census.main(["--run", "--verify", "--artifact", "x.json"]) == 0
+        assert calls == ["run", "verify"]
+
+    def test_verify_failure_surfaces_despite_clean_run(self, monkeypatch) -> None:
+        self._stub(monkeypatch, run_rc=0, verify_rc=1)
+        # Pre-CR-01 the verify result was discarded behind any nonzero run
+        # code; here the run is clean, so this always surfaced — but the
+        # composition below must keep it that way.
+        assert census.main(["--run", "--verify", "--artifact", "x.json"]) == 1
+
+    def test_run_failure_surfaces_despite_clean_verify(self, monkeypatch) -> None:
+        # A hard census error (artifact IO) must fail the lane even when the
+        # verdict diff itself is green — the composition is `run_rc or
+        # verify_rc`, never verify-only.
+        self._stub(monkeypatch, run_rc=1, verify_rc=0)
+        assert census.main(["--run", "--verify", "--artifact", "x.json"]) == 1
+
+    def test_verify_only_does_not_run_the_census(self, monkeypatch) -> None:
+        calls = self._stub(monkeypatch, run_rc=1, verify_rc=0)
+        assert census.main(["--verify", "--artifact", "x.json"]) == 0
+        assert calls == ["verify"]
+
+
+def _fresh_shape(record: dict) -> dict:
+    """Return a record as a fresh census re-measurement would produce it.
+
+    Dispositions and previous_status stamps are hand-authored and never
+    written by the tool; a green prior load parks as ``None`` on the fresh
+    run (apply_loads skips the re-probe and merge_records carries the
+    evidence forward).
+    """
+    fresh = {
+        key: value for key, value in record.items() if key not in ("disposition", "previous_status")
+    }
+    load = fresh.get("load")
+    if isinstance(load, dict) and load.get("ok") is True and load.get("forward_ok") is True:
+        fresh["load"] = None
+    return fresh
+
+
+class TestSeededFreshRunVerification:
+    """The dispatch-lane composition, end to end and offline (CR-01).
+
+    Seed the artifact from the committed census, merge a fresh
+    (disposition-free) re-measurement with unchanged verdicts, and the
+    verdict diff against the committed registry fields stays green. Before
+    CR-01 this composition could never exit 0: the fresh records were
+    unmappable without dispositions and the committed-known unreachable repo
+    failed the run outright.
+    """
+
+    ARTIFACT = REPO_ROOT / "tests" / "models" / "compat_census.json"
+
+    @staticmethod
+    def _needs_disposition(record: dict) -> bool:
+        load = record.get("load")
+        return bool(
+            record["status"] in ("import-fail", "census-blocked")
+            or record.get("previous_status") == "import-fail"
+            or (
+                isinstance(load, dict)
+                and (load.get("ok") is False or load.get("forward_ok") is False)
+            )
+        )
+
+    def test_unchanged_verdicts_merge_to_a_green_verify(self, tmp_path, monkeypatch) -> None:
+        committed = census.read_artifact(self.ARTIFACT)
+        fresh = [_fresh_shape(record) for record in census.read_artifact(self.ARTIFACT)]
+        roster = census.pretrained_roster()
+        merged = census.merge_records(committed, fresh, [entry.model for entry in roster])
+        # Every failure record's frozen judgment survived the merge.
+        assert all("disposition" in record for record in merged if self._needs_disposition(record))
+        artifact = tmp_path / "census-seeded.json"
+        census.write_artifact(artifact, merged)
+        # Pin the census subject to the committed stamp so the test stays
+        # green across the CI transformers matrix (the drift check itself is
+        # exercised by the lane).
+        tested = sorted({e.tf_compat_tested for e in roster if e.tf_compat_tested})
+        monkeypatch.setattr(census, "transformers_version", lambda: tested[-1])
+        assert census.verify_registry(artifact) == 0
 
 
 class TestShimPassLoadSelection:
