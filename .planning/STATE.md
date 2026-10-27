@@ -2,17 +2,16 @@
 gsd_state_version: "1.0"
 milestone: v1.4
 status: Awaiting next milestone
-stopped_at: Phase 26 complete — all phases complete
-last_updated: "2026-10-26T03:54:07.577Z"
+stopped_at: Phase 27 context gathered
+last_updated: "2026-10-27T05:04:02.488Z"
 last_activity: 2026-10-26
 last_activity_desc: "Quick 261024-dtw complete — mamba Predictor MPS passthrough + darwin real-device smoke + FAQ fix (3 commits, 509 mamba-surface tests green; earlier: env rebuild, ty risk, PlantHelixSeek confirm, torch 2.14.1)"
-state_head: c626966c95e48b8593e1f2bcecf44e2afb082316
+state_head: 27df3d52c0d6afd480bde19068d76f5597caa8c8
 progress:
-  total_phases: 5
+  total_phases: 1
   completed_phases: 5
-  total_plans: 23
+  total_plans: 0
   completed_plans: 23
-  percent: 100
 milestone_name: Pre-flight UX & Registry-as-Truth-Source
 current_phase: 26
 ---
@@ -150,9 +149,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-25
-Stopped at: torch-214 follow-through SHIPPED via quick-batch 261025-e4u (3/3 complete, verifiers passed; profile switched to balanced mid-batch): e4v sha256-pinned sdist c++20 patch pipeline (628067a/8b6ae10/ef91f8d; executor found pip executes unverified setup.py pre-hash → replaced with stdlib PEP 503 fetch + pre-download index-hash cross-check) + e4w ceiling raise 7x <2.12→<2.15 citing run 40140203118 (f00e90d, + dependabot cycle-record) + e4x lazy-facade shim fix via dnallm/_compat_activation.py meta-path lazy activation (c146060/612a95f/fac22a0; red→green tests, 100% module coverage, light path 0.17-0.19s unchanged; one post-verify doc-line gap fixed + re-verified passed). OWNER WATCH (not automated): first lockfile-free nightly after f00e90d implicitly jumps the fleet to torch 2.14.x — watch one full 03:00/05:30 UTC cycle; rollback = revert f00e90d alone. Follow-ups queued: stale torch-2.12 claims in docs/getting_started/installation.md (155, 174-175, 260-267, 269) + docs/faq/models_troubleshooting.md:26 + pyproject:180 comment nit; test_sample_datasets 300s timeout singleton re-classification on next census; delete spike/torch-214-verification branch (SHA-pinned ci.yml, DO NOT merge). Prior-session records (spike dispatch history, B+C experiment, infra recovery) preserved in .planning/research/torch-214-gb10-verification.md + async-jobs/spike-torch-214.json.
-Resume file: None
+Last session: 2026-10-27T05:04:02.475Z
+Stopped at: Phase 27 context gathered
+Resume file: .planning/phases/27-transformers-4-5-model-compatibility-census/27-CONTEXT.md
 
 ### Prior session record (2026-10-24, Mac side — retained)
 
