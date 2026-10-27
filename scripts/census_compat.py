@@ -51,7 +51,9 @@ TRACEBACK_TAIL_LINES = 15
 
 _SYMBOL_PATTERNS = (
     re.compile(r"cannot import name '([^']+)'"),
-    re.compile(r"has no attribute '([^']+)'"),
+    # Require a module receiver: ``'NoneType' object has no attribute 'loader'``
+    # is importlib plumbing, not a transformers symbol.
+    re.compile(r"module '[^']+' has no attribute '([^']+)'"),
     re.compile(r"name '([^']+)' is not defined"),
     re.compile(r"No module named '([^']+)'"),
 )
@@ -420,6 +422,23 @@ def read_config(snapshot_dir: str) -> dict:
     return data
 
 
+def describe_config_problem(snapshot_dir: str, error: ValueError) -> str:
+    """Return a self-contained reason when the fetched config.json is unusable.
+
+    Names the snapshot's top-level layout, so a blocked verdict explains itself
+    (for example a repo that stores checkpoints under size-named
+    subdirectories and ships no root config.json).
+    """
+    snapshot = Path(snapshot_dir)
+    if (snapshot / "config.json").is_file():
+        return str(error)
+    try:
+        entries = sorted(item.name for item in snapshot.iterdir())[:10]
+    except OSError:
+        return str(error)
+    return f"{error}; snapshot top-level entries: {entries}"
+
+
 def unresolved_architecture(architectures: list) -> str | None:
     """Return the first architecture name not resolvable in installed transformers.
 
@@ -469,11 +488,16 @@ def _auto_map_items(config: dict) -> list[tuple[str, str]]:
 
 
 def _job_for(file_stem: str, base_dir: str) -> tuple[str, str] | None:
-    """Return a (module name, absolute path) probe job for a fetched file, or None."""
+    """Return a (module name, absolute path) probe job for a fetched file, or None.
+
+    The path is made absolute WITHOUT resolving symlinks: HF-hub snapshots are
+    symlinks into an extensionless ``blobs/<sha>`` store, and resolving them
+    would strip the ``.py`` suffix the import machinery keys its loader on.
+    """
     path = Path(base_dir) / f"{file_stem}.py"
     if not path.is_file():
         return None
-    return file_stem, str(path.resolve())
+    return file_stem, str(path.absolute())
 
 
 def _dedupe_jobs(jobs: list[tuple[str, str]]) -> list[tuple[str, str]]:
@@ -577,6 +601,8 @@ def build_probe_program(jobs: list[tuple[str, str]]) -> str:
         "        package = '_census_remote_%d' % directories.index(directory)",
         "        qualified = package + '.' + module_name",
         "        spec = importlib.util.spec_from_file_location(qualified, path)",
+        "        if spec is None or spec.loader is None:",
+        "            raise RuntimeError('cannot build an import spec for %s' % path)",
         "        module = importlib.util.module_from_spec(spec)",
         "        sys.modules[qualified] = module",
         "        spec.loader.exec_module(module)",
@@ -778,7 +804,7 @@ def census_entry(entry) -> dict:
             None,
             "census-blocked",
             fetched_at=fetched_at,
-            failing_import=str(error),
+            failing_import=describe_config_problem(snapshot_dir, error),
         )
     code_class = classify_config(config)
     family = family_key(entry.model, config)

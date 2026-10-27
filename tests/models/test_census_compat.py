@@ -124,6 +124,17 @@ Traceback (most recent call last):
 RuntimeError: boom
 """
 
+# HF-hub snapshot symlinks once resolved into extensionless blob paths, so
+# spec_from_file_location returned None; this is the plumbing error the census
+# must never report as a transformers symbol.
+_IMPORTLIB_PLUMBING_TRACEBACK = """\
+Traceback (most recent call last):
+  File "<string>", line 27, in <module>
+    module = importlib.util.module_from_spec(spec)
+  File "<frozen importlib._bootstrap>", line 810, in module_from_spec
+AttributeError: 'NoneType' object has no attribute 'loader'
+"""
+
 
 class TestFailingImportExtraction:
     """The parent extracts the failing import from the captured traceback, never stderr regex."""
@@ -145,6 +156,9 @@ class TestFailingImportExtraction:
 
     def test_describe_returns_none_for_uninformative_traceback(self) -> None:
         assert census.describe_failing_import("") is None
+
+    def test_importlib_plumbing_attribute_is_not_a_failing_symbol(self) -> None:
+        assert census.describe_failing_import(_IMPORTLIB_PLUMBING_TRACEBACK) is None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -234,3 +248,23 @@ class TestArtifactRoundTrip:
             pass
         else:  # pragma: no cover - the guard is the point of the test
             raise AssertionError("read_artifact did not fail on an unparseable artifact")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# config problem description (self-contained blocked verdicts)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestConfigProblemDescription:
+    """A blocked verdict must explain itself without a second fetch."""
+
+    def test_missing_config_names_snapshot_layout(self, tmp_path) -> None:
+        (tmp_path / "519M").mkdir()
+        (tmp_path / "8.1M").mkdir()
+        described = census.describe_config_problem(str(tmp_path), ValueError("config.json absent"))
+        assert "config.json absent" in described
+        assert "519M" in described
+
+    def test_present_config_keeps_plain_error(self, tmp_path) -> None:
+        (tmp_path / "config.json").write_text("{}", encoding="utf-8")
+        assert census.describe_config_problem(str(tmp_path), ValueError("boom")) == "boom"
