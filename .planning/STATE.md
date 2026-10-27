@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-22)
 
 Phase: Milestone v1.4 complete
 Plan: —
-Status: Awaiting next milestone
+Status: In Progress — Phase 27 (Transformers 4/5 Model Compatibility Census) added to v1.4 line
 Last activity: 2026-10-26 - Completed quick task 261026-g13: uv cache scoped off self-hosted nightly lanes + run 40247981840 census receipts recorded
 
 ## Performance Metrics
@@ -63,6 +63,7 @@ Last activity: 2026-10-26 - Completed quick task 261026-g13: uv cache scoped off
 ### Roadmap Evolution
 
 - v1.4 roadmap created (2026-10-20): 5 phases (22–26) honoring the REQUIREMENTS traceability mapping and the research-converged dependency order — registry loader → pre-flight core → `load_preset_model` rewire → TUI → MCP consistency
+- Phase 27 added: Transformers 4/5 Model Compatibility Census (owner-directed 2026-10-27; v1.4 line reopened post-archive for this phase — 238-model registry × transformers 4/5 import-level matrix, shim-or-typed-skip disposition)
 
 ### Decisions
 
