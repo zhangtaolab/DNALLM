@@ -268,3 +268,113 @@ class TestConfigProblemDescription:
     def test_present_config_keeps_plain_error(self, tmp_path) -> None:
         (tmp_path / "config.json").write_text("{}", encoding="utf-8")
         assert census.describe_config_problem(str(tmp_path), ValueError("boom")) == "boom"
+
+
+def _family_record(repo: str, status: str = "arch-ok", family: str = "EsmForMaskedLM") -> dict:
+    """Return a synthetic record shaped for family-grouping tests."""
+    return _record({
+        "repo": repo,
+        "class": "remote",
+        "status": status,
+        "family": family,
+        "is_family_rep": False,
+    })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# family grouping and representative selection (D-02b)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestFamilyGrouping:
+    """Family key = architectures[0], else the repo namespace; lab-first reps."""
+
+    def test_same_architecture_shares_family(self) -> None:
+        first = census.family_key("org/one", {"architectures": ["EsmForMaskedLM"]})
+        second = census.family_key("other/two", {"architectures": ["EsmForMaskedLM"]})
+        assert first == second == "EsmForMaskedLM"
+
+    def test_missing_architectures_falls_back_to_namespace(self) -> None:
+        assert census.family_key("org/repo", {}) == "org"
+        assert census.family_key("org/repo", {"architectures": []}) == "org"
+        assert census.family_key("org/repo", None) == "org"
+
+    def test_lab_entry_is_preferred_representative(self) -> None:
+        records = [_family_record("third/party"), _family_record("zhangtaolab/lab")]
+        census.assign_families(records)
+        assert [r["is_family_rep"] for r in records] == [False, True]
+
+    def test_first_entry_is_representative_without_lab_entry(self) -> None:
+        records = [_family_record("a/first"), _family_record("b/second")]
+        census.assign_families(records)
+        assert [r["is_family_rep"] for r in records] == [True, False]
+
+    def test_singleton_family_represents_itself(self) -> None:
+        records = [_family_record("only/one")]
+        census.assign_families(records)
+        assert records[0]["is_family_rep"] is True
+
+    def test_exactly_one_representative_per_family(self) -> None:
+        records = [
+            _family_record("third/a"),
+            _family_record("zhangtaolab/b"),
+            _family_record("zhangtaolab/c"),
+        ]
+        census.assign_families(records)
+        assert sum(1 for r in records if r["is_family_rep"]) == 1
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# load-layer notes and program shape (offline; no subprocess)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestLoadNotes:
+    """Honest labeling for entries the load layer does not measure."""
+
+    def test_import_fail_rep_parks_pending_shim_and_sibling_names_it(self) -> None:
+        records = [
+            _family_record("zhangtaolab/rep", status="import-fail"),
+            _family_record("third/sibling", status="arch-ok"),
+        ]
+        census.assign_families(records)
+        census.apply_loads(records)
+        assert records[0]["load"] is None
+        assert records[0]["load_note"] == "import-fail pending shim"
+        assert records[1]["load"] is None
+        assert "zhangtaolab/rep" in records[1]["load_note"]
+
+    def test_census_blocked_carries_no_load_evidence(self) -> None:
+        records = [_family_record("gener/anno", status="census-blocked", family="GenerTeam")]
+        census.assign_families(records)
+        census.apply_loads(records)
+        assert records[0]["load"] is None
+        assert "census-blocked" in records[0]["load_note"]
+
+
+class TestLoadProgram:
+    """The load child mirrors the probe ordering and pins the stamped revision."""
+
+    def test_dnallm_import_precedes_remote_dependencies(self) -> None:
+        program = census.build_load_program("org/repo", "ms", ["EsmForMaskedLM"], "abc123")
+        assert program.index("import dnallm") < program.index("import torch")
+        assert program.index("import dnallm") < program.index("from transformers import")
+        assert "revision = 'abc123'" in program
+
+    def test_unpinned_revision_is_not_passed_through(self) -> None:
+        program = census.build_load_program("org/repo", "hf", [], "unpinned@2026-10-27T00:00:00Z")
+        assert "revision = None" in program
+        assert "'trust_remote_code': True" in program
+        assert "'dtype': torch.float32" in program or "'torch_dtype': torch.float32" in program
+
+    def test_model_scope_route_never_passes_a_sha_revision(self) -> None:
+        # ModelScope resolves branch/tag names only; a commit sha raises
+        # NotExistError and would fail every ms load before any weights fetch.
+        program = census.build_load_program("org/repo", "ms", [], "abc123")
+        assert "download_kwargs" not in program
+        assert "        source = snapshot_download(model_id=repo)" in program
+        assert "if hub != 'ms' and revision:" in program
+
+    def test_hf_route_pins_the_stamped_sha(self) -> None:
+        program = census.build_load_program("org/repo", "hf", [], "abc123")
+        assert "load_kwargs['revision'] = revision" in program

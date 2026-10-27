@@ -814,6 +814,235 @@ def census_entry(entry) -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Family-representative load sampling (D-02b / D-03)
+# ─────────────────────────────────────────────────────────────────────────────
+
+LOAD_TIMEOUT_S = 1800
+LOAD_SEED = 27
+LOAD_SEQUENCE_LENGTH = 32
+
+
+def build_load_program(repo: str, hub: str, architectures: list, revision: str) -> str:
+    """Build the isolated child program for one load + short real forward.
+
+    The pass bar is D-03: construction and weight loading alone do not count —
+    one short real forward must run. Any load or forward failure becomes an
+    evidence payload, never a child crash.
+
+    Args:
+        repo: The repo id.
+        hub: The census-stamped serving hub (``ms`` or ``hf``).
+        architectures: The fetched config's ``architectures`` list.
+        revision: The stamped revision (a sha pins the HF fetch; ModelScope
+            accepts branch/tag names only, so it fetches the default revision
+            and the census stamp stays the provenance).
+
+    Returns:
+        The ``python -c`` program source.
+    """
+    pinned = revision if revision and not str(revision).startswith("unpinned") else None
+    return "\n".join([
+        "import os",
+        f"os.environ['HF_ENDPOINT'] = {HF_MIRROR!r}",
+        "import json",
+        "import time",
+        "import traceback",
+        "import dnallm  # arms transformers_compat.apply_patches() before any remote import",
+        "import torch",
+        "from transformers import AutoConfig, AutoModel, AutoModelForCausalLM, AutoModelForMaskedLM",
+        f"repo = {repo!r}",
+        f"hub = {hub!r}",
+        f"architectures = {architectures!r}",
+        f"revision = {pinned!r}",
+        "device = 'cuda' if torch.cuda.is_available() else 'cpu'",
+        # No successful forward has run yet; a load failure therefore reports
+        # forward_ok False (the record's ok/error fields name the phase).
+        "result = {'ok': False, 'error': None, 'forward_ok': False, "
+        "'output_shape': None, 'device': device, 'duration_s': 0.0}",
+        "start = time.time()",
+        "try:",
+        "    if hub == 'ms':",
+        "        from modelscope.hub.snapshot_download import snapshot_download",
+        "        # ModelScope accepts branch/tag names only; the census sha is",
+        "        # provenance, not a fetchable revision (commit shas raise",
+        "        # NotExistError live). The census stamp remains on the record.",
+        "        source = snapshot_download(model_id=repo)",
+        "    else:",
+        "        source = repo",
+        "    config = AutoConfig.from_pretrained(source, trust_remote_code=True)",
+        "    architecture = architectures[0] if architectures else ''",
+        "    if architecture.endswith('ForCausalLM'):",
+        "        model_class = AutoModelForCausalLM",
+        "    elif architecture.endswith('ForMaskedLM'):",
+        "        model_class = AutoModelForMaskedLM",
+        "    else:",
+        "        model_class = AutoModel",
+        # torch_dtype (not dtype): 4.x-era remote code defines its own
+        # from_pretrained and forwards unknown kwargs to __init__, where
+        # ``dtype`` breaks (verified live on prokbert-mini). transformers 5
+        # still honors torch_dtype, warning once.
+        "    load_kwargs = {'trust_remote_code': True, 'torch_dtype': torch.float32}",
+        "    if hub != 'ms' and revision:",
+        "        load_kwargs['revision'] = revision",
+        "    try:",
+        "        model = model_class.from_pretrained(source, **load_kwargs)",
+        "    except TypeError as kwarg_error:",
+        "        # Some 4.x-era remote classes define their own from_pretrained and",
+        "        # forward unknown kwargs to __init__ (prokbert-mini). A real user",
+        "        # load without the dtype kwarg works; retry kwarg-free and cast.",
+        "        if 'torch_dtype' not in str(kwarg_error):",
+        "            raise",
+        "        fallback_kwargs = {k: v for k, v in load_kwargs.items() if k != 'torch_dtype'}",
+        "        model = model_class.from_pretrained(source, **fallback_kwargs)",
+        "        model = model.to(torch.float32)",
+        "    model.to(device)",
+        "    model.eval()",
+        "    result['ok'] = True",
+        "    try:",
+        "        vocab_size = int(getattr(config, 'vocab_size', 0) "
+        "or getattr(model.config, 'vocab_size', 0))",
+        f"        generator = torch.Generator().manual_seed({LOAD_SEED})",
+        f"        input_ids = torch.randint(1, vocab_size, (1, {LOAD_SEQUENCE_LENGTH}), "
+        "generator=generator).to(device)",
+        "        with torch.no_grad():",
+        "            output = model(input_ids)",
+        "        if isinstance(output, (tuple, list)):",
+        "            tensor = output[0]",
+        "        elif hasattr(output, 'logits'):",
+        "            tensor = output.logits",
+        "        elif hasattr(output, 'last_hidden_state'):",
+        "            tensor = output.last_hidden_state",
+        "        else:",
+        "            tensor = output",
+        "        result['output_shape'] = str(tuple(tensor.shape))",
+        "        result['forward_ok'] = True",
+        "    except Exception:",
+        "        result['forward_ok'] = False",
+        "        result['error'] = traceback.format_exc()[-2000:]",
+        "except Exception:",
+        "    result['error'] = traceback.format_exc()[-2000:]",
+        "result['duration_s'] = round(time.time() - start, 3)",
+        "print(json.dumps(result))",
+    ])
+
+
+def _current_device() -> str:
+    """Return the box's census device label (``cuda`` when available, else ``cpu``)."""
+    try:
+        import torch
+    except ImportError:  # pragma: no cover - torch is a hard dependency of this environment
+        return "cpu"
+    return "cuda" if torch.cuda.is_available() else "cpu"
+
+
+def _empty_load(error: str) -> dict:
+    """Return a failed load record carrying the given reason."""
+    return {
+        "ok": False,
+        "error": error,
+        "forward_ok": False,
+        "output_shape": None,
+        "device": _current_device(),
+        "duration_s": 0.0,
+    }
+
+
+def run_load_probe(record: dict) -> dict:
+    """Load one family representative and run one short real forward.
+
+    Args:
+        record: The representative's evidence record (repo/hub/revision).
+
+    Returns:
+        The D-02b load record (``ok``, ``error``, ``forward_ok``,
+        ``output_shape``, ``device``, ``duration_s``). Load and forward
+        failures are evidence, never a crash of the census run.
+    """
+    architectures: list = []
+    fetched = fetch_code_only(record["repo"])
+    if fetched is not None:
+        try:
+            architectures = read_config(fetched[0]).get("architectures") or []
+        except ValueError:
+            architectures = []
+    program = build_load_program(record["repo"], record["hub"], architectures, record["revision"])
+    try:
+        completed = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true] - fixed argv, no shell
+            [sys.executable, "-c", program],
+            capture_output=True,
+            text=True,
+            timeout=LOAD_TIMEOUT_S,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return _empty_load(f"load probe timed out after {LOAD_TIMEOUT_S}s")
+    for line in reversed(completed.stdout.splitlines()):
+        stripped = line.strip()
+        if not stripped.startswith("{"):
+            continue
+        try:
+            payload = json.loads(stripped)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict) and "ok" in payload:
+            forward_ok = payload.get("forward_ok")
+            return {
+                "ok": bool(payload.get("ok")),
+                "error": payload.get("error"),
+                "forward_ok": forward_ok if isinstance(forward_ok, bool) else False,
+                "output_shape": payload.get("output_shape"),
+                "device": payload.get("device") or _current_device(),
+                "duration_s": float(payload.get("duration_s") or 0.0),
+            }
+    tail = "\n".join(
+        (completed.stderr or completed.stdout).strip().splitlines()[-TRACEBACK_TAIL_LINES:]
+    )
+    return _empty_load(f"load probe produced no JSON verdict (exit {completed.returncode})\n{tail}")
+
+
+def apply_loads(records: list[dict]) -> None:
+    """Add the D-02b load layer: load + short forward per family representative.
+
+    Non-representatives carry ``load: null`` plus an honest ``load_note``
+    naming their representative; ``import-fail`` entries stay parked as
+    "pending shim" (their loads happen after the 27-02 fix); ``census-blocked``
+    entries carry no load evidence. Mutates records in place.
+
+    Args:
+        records: Evidence records in registry file order (after
+            :func:`assign_families`).
+    """
+    representatives = {r["family"]: r["repo"] for r in records if r["is_family_rep"]}
+    for record in records:
+        rep = representatives.get(record["family"])
+        suffix = (
+            ""
+            if record["is_family_rep"] or rep is None
+            else f" (inferred from family representative {rep})"
+        )
+        if record["status"] == "import-fail":
+            record["load"] = None
+            record["load_note"] = "import-fail pending shim" + suffix
+            continue
+        if record["status"] == "census-blocked":
+            record["load"] = None
+            record["load_note"] = "census-blocked: no load evidence (see failing_import)" + suffix
+            continue
+        if not record["is_family_rep"]:
+            record["load"] = None
+            record["load_note"] = f"inferred from family representative {rep}"
+            continue
+        print(f"loading {record['repo']} [{record['family']}] ...", flush=True)
+        record["load"] = run_load_probe(record)
+        load = record["load"]
+        print(
+            f"  ok={load['ok']} forward_ok={load['forward_ok']} "
+            f"shape={load['output_shape']} device={load['device']} {load['duration_s']}s",
+            flush=True,
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Run orchestration
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -861,12 +1090,14 @@ def merge_records(existing: list[dict], fresh: list[dict], roster_order: list[st
     return ordered
 
 
-def run_census(artifact_path: Path, selected: list[str] | None) -> int:
+def run_census(artifact_path: Path, selected: list[str] | None, with_loads: bool = False) -> int:
     """Census the (optionally filtered) pretrained roster and write the artifact.
 
     Args:
         artifact_path: Destination artifact path.
         selected: Repo ids to census, or None for the full roster.
+        with_loads: Also run the D-02b load+forward layer for family
+            representatives (the only path allowed to fetch weights).
 
     Returns:
         0 on a clean run, 1 when any entry is census-blocked by unreachability
@@ -895,6 +1126,8 @@ def run_census(artifact_path: Path, selected: list[str] | None) -> int:
             unreachable.append(record["repo"])
 
     assign_families(records)
+    if with_loads:
+        apply_loads(records)
 
     merged = records
     if artifact_path.exists():
@@ -957,16 +1190,10 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
-    if args.with_loads:
-        print(
-            "ERROR: --with-loads is not implemented yet (lands in this plan's Task 3)",
-            file=sys.stderr,
-        )
-        return 2
     selected = (
         [item.strip() for item in args.entries.split(",") if item.strip()] if args.entries else None
     )
-    return run_census(Path(args.artifact), selected)
+    return run_census(Path(args.artifact), selected, args.with_loads)
 
 
 if __name__ == "__main__":

@@ -12,8 +12,15 @@
       "traceback_tail": null,
       "family": "BertForMaskedLM",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T06:58:32Z"
+      "load": {
+        "ok": true,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 8005)",
+        "device": "cuda",
+        "duration_s": 4.286
+      },
+      "fetched_at": "2026-10-27T07:23:16Z"
     },
     {
       "repo": "zhangtaolab/plant-dnagemma-BPE",
@@ -27,8 +34,15 @@
       "traceback_tail": null,
       "family": "GemmaForCausalLM",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T06:58:36Z"
+      "load": {
+        "ok": true,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 8002)",
+        "device": "cuda",
+        "duration_s": 46.461
+      },
+      "fetched_at": "2026-10-27T07:23:22Z"
     },
     {
       "repo": "zhangtaolab/plant-dnagpt-BPE",
@@ -42,8 +56,15 @@
       "traceback_tail": null,
       "family": "GPT2LMHeadModel",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T06:58:38Z"
+      "load": {
+        "ok": true,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 768)",
+        "device": "cuda",
+        "duration_s": 3.748
+      },
+      "fetched_at": "2026-10-27T07:23:24Z"
     },
     {
       "repo": "zhangtaolab/plant-dnamamba-BPE",
@@ -57,8 +78,15 @@
       "traceback_tail": null,
       "family": "MambaForCausalLM",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T06:58:41Z"
+      "load": {
+        "ok": true,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 8000)",
+        "device": "cuda",
+        "duration_s": 19.148
+      },
+      "fetched_at": "2026-10-27T07:23:26Z"
     },
     {
       "repo": "zhangtaolab/plant-nucleotide-transformer-BPE",
@@ -72,8 +100,15 @@
       "traceback_tail": null,
       "family": "EsmForMaskedLM",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T06:58:49Z"
+      "load": {
+        "ok": true,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 8003)",
+        "device": "cuda",
+        "duration_s": 4.721
+      },
+      "fetched_at": "2026-10-27T07:23:33Z"
     },
     {
       "repo": "zhangtaolab/plant-dnamodernbert-BPE",
@@ -87,8 +122,15 @@
       "traceback_tail": null,
       "family": "ModernBertForMaskedLM",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T06:58:54Z"
+      "load": {
+        "ok": true,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 8002)",
+        "device": "cuda",
+        "duration_s": 34.802
+      },
+      "fetched_at": "2026-10-27T07:23:38Z"
     },
     {
       "repo": "zhangtaolab/plant-dnabert-6mer",
@@ -103,7 +145,8 @@
       "family": "BertForMaskedLM",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T06:58:56Z"
+      "fetched_at": "2026-10-27T07:23:41Z",
+      "load_note": "inferred from family representative zhangtaolab/plant-dnabert-BPE"
     },
     {
       "repo": "zhangtaolab/plant-dnabert-singlebase",
@@ -118,7 +161,8 @@
       "family": "BertForMaskedLM",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T06:58:59Z"
+      "fetched_at": "2026-10-27T07:23:44Z",
+      "load_note": "inferred from family representative zhangtaolab/plant-dnabert-BPE"
     },
     {
       "repo": "zhangtaolab/plant-dnagemma-6mer",
@@ -133,7 +177,8 @@
       "family": "GemmaForCausalLM",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T06:59:01Z"
+      "fetched_at": "2026-10-27T07:23:46Z",
+      "load_note": "inferred from family representative zhangtaolab/plant-dnagemma-BPE"
     },
     {
       "repo": "zhangtaolab/plant-dnagemma-singlebase",
@@ -148,7 +193,8 @@
       "family": "GemmaForCausalLM",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T06:59:04Z"
+      "fetched_at": "2026-10-27T07:23:48Z",
+      "load_note": "inferred from family representative zhangtaolab/plant-dnagemma-BPE"
     },
     {
       "repo": "zhangtaolab/plant-dnagpt-6mer",
@@ -163,7 +209,8 @@
       "family": "GPT2LMHeadModel",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T06:59:06Z"
+      "fetched_at": "2026-10-27T07:23:50Z",
+      "load_note": "inferred from family representative zhangtaolab/plant-dnagpt-BPE"
     },
     {
       "repo": "zhangtaolab/plant-dnagpt-singlebase",
@@ -178,7 +225,8 @@
       "family": "GPT2LMHeadModel",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T06:59:09Z"
+      "fetched_at": "2026-10-27T07:23:54Z",
+      "load_note": "inferred from family representative zhangtaolab/plant-dnagpt-BPE"
     },
     {
       "repo": "zhangtaolab/plant-nucleotide-transformer-6mer",
@@ -192,8 +240,15 @@
       "traceback_tail": null,
       "family": "EsmForSequenceClassification",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T06:59:11Z"
+      "load": {
+        "ok": false,
+        "error": "home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/transformers/models/auto/auto_factory.py\", line 402, in from_pretrained\n    return model_class.from_pretrained(\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^\n        pretrained_model_name_or_path, *model_args, config=config, **hub_kwargs, **kwargs\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/transformers/modeling_utils.py\", line 4267, in from_pretrained\n    model = cls(config, *model_args, **model_kwargs)\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/transformers/models/esm/modeling_esm.py\", line 640, in __init__\n    self.rotary_embeddings = EsmRotaryEmbedding(config=config)\n                             ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/transformers/utils/deprecation.py\", line 171, in wrapped_func\n    return func(*args, **kwargs)\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/transformers/models/esm/modeling_esm.py\", line 119, in __init__\n    curr_inv_freq, curr_attention_scaling = self.compute_default_rope_parameters(self.config)\n                                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/transformers/utils/deprecation.py\", line 171, in wrapped_func\n    return func(*args, **kwargs)\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/transformers/models/esm/modeling_esm.py\", line 136, in compute_default_rope_parameters\n    base = config.rope_theta\n           ^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/Github/DNALLM/dnallm/utils/transformers_compat.py\", line 559, in _pretrained_config_getattr\n    raise AttributeError(f\"'{type(self).__name__}' object has no attribute '{name}'\") from None\nAttributeError: 'EsmConfig' object has no attribute 'rope_theta'\n",
+        "forward_ok": false,
+        "output_shape": null,
+        "device": "cuda",
+        "duration_s": 22.87
+      },
+      "fetched_at": "2026-10-27T07:23:58Z"
     },
     {
       "repo": "zhangtaolab/plant-nucleotide-transformer-singlebase",
@@ -208,7 +263,8 @@
       "family": "EsmForSequenceClassification",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T06:59:17Z"
+      "fetched_at": "2026-10-27T07:24:05Z",
+      "load_note": "inferred from family representative zhangtaolab/plant-nucleotide-transformer-6mer"
     },
     {
       "repo": "zhangtaolab/plant-dnamamba-2mer",
@@ -223,7 +279,8 @@
       "family": "MambaForCausalLM",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T06:59:21Z"
+      "fetched_at": "2026-10-27T07:24:11Z",
+      "load_note": "inferred from family representative zhangtaolab/plant-dnamamba-BPE"
     },
     {
       "repo": "zhangtaolab/plant-dnamamba-3mer",
@@ -238,7 +295,8 @@
       "family": "MambaForCausalLM",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T06:59:28Z"
+      "fetched_at": "2026-10-27T07:24:19Z",
+      "load_note": "inferred from family representative zhangtaolab/plant-dnamamba-BPE"
     },
     {
       "repo": "zhangtaolab/plant-dnamamba-4mer",
@@ -253,7 +311,8 @@
       "family": "MambaForCausalLM",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T06:59:34Z"
+      "fetched_at": "2026-10-27T07:24:25Z",
+      "load_note": "inferred from family representative zhangtaolab/plant-dnamamba-BPE"
     },
     {
       "repo": "zhangtaolab/plant-dnamamba-5mer",
@@ -268,7 +327,8 @@
       "family": "MambaForCausalLM",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T06:59:41Z"
+      "fetched_at": "2026-10-27T07:24:33Z",
+      "load_note": "inferred from family representative zhangtaolab/plant-dnamamba-BPE"
     },
     {
       "repo": "zhangtaolab/plant-dnamamba-6mer",
@@ -283,7 +343,8 @@
       "family": "MambaForCausalLM",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T06:59:48Z"
+      "fetched_at": "2026-10-27T07:24:40Z",
+      "load_note": "inferred from family representative zhangtaolab/plant-dnamamba-BPE"
     },
     {
       "repo": "zhangtaolab/plant-dnamamba-singlebase",
@@ -298,7 +359,8 @@
       "family": "MambaForCausalLM",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T06:59:55Z"
+      "fetched_at": "2026-10-27T07:24:48Z",
+      "load_note": "inferred from family representative zhangtaolab/plant-dnamamba-BPE"
     },
     {
       "repo": "zhangtaolab/plant-dnamodernbert-singlebase",
@@ -313,7 +375,8 @@
       "family": "ModernBertForMaskedLM",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T07:00:02Z"
+      "fetched_at": "2026-10-27T07:24:56Z",
+      "load_note": "inferred from family representative zhangtaolab/plant-dnamodernbert-BPE"
     },
     {
       "repo": "InstaDeepAI/agro-nucleotide-transformer-1b",
@@ -328,7 +391,8 @@
       "family": "EsmForMaskedLM",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T07:00:05Z"
+      "fetched_at": "2026-10-27T07:25:00Z",
+      "load_note": "inferred from family representative zhangtaolab/plant-nucleotide-transformer-BPE"
     },
     {
       "repo": "kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16",
@@ -342,8 +406,15 @@
       "traceback_tail": null,
       "family": "CaduceusForMaskedLM",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T07:00:09Z"
+      "load": {
+        "ok": true,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 16)",
+        "device": "cuda",
+        "duration_s": 5.255
+      },
+      "fetched_at": "2026-10-27T07:25:02Z"
     },
     {
       "repo": "kuleshov-group/caduceus-ps_seqlen-131k_d_model-256_n_layer-16",
@@ -358,7 +429,8 @@
       "family": "CaduceusForMaskedLM",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T07:00:16Z"
+      "fetched_at": "2026-10-27T07:25:10Z",
+      "load_note": "inferred from family representative kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16"
     },
     {
       "repo": "kuleshov-group/PlantCaduceus_l32",
@@ -372,8 +444,15 @@
       "traceback_tail": null,
       "family": "Caduceus",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T07:00:24Z"
+      "load": {
+        "ok": false,
+        "error": "Traceback (most recent call last):\n  File \"<string>\", line 36, in <module>\n    model = model_class.from_pretrained(source, **load_kwargs)\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/transformers/models/auto/auto_factory.py\", line 385, in from_pretrained\n    return model_class.from_pretrained(\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^\n        pretrained_model_name_or_path, *model_args, config=config, **hub_kwargs, **kwargs\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/transformers/modeling_utils.py\", line 4314, in from_pretrained\n    loading_info = cls._finalize_model_loading(model, load_config, loading_info)\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/transformers/modeling_utils.py\", line 4482, in _finalize_model_loading\n    model._move_missing_keys_from_meta_to_device(\n    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^\n        loading_info.missing_and_mismatched(),\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    ...<2 lines>...\n        load_config.hf_quantizer,\n        ^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/transformers/modeling_utils.py\", line 4730, in _move_missing_keys_from_meta_to_device\n    for key in missing_keys - self.all_tied_weights_keys.keys():\n                              ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py\", line 1968, in __getattr__\n    raise AttributeError(\n        f\"'{type(self).__name__}' object has no attribute '{name}'\"\n    )\nAttributeError: 'Caduceus' object has no attribute 'all_tied_weights_keys'. Did you mean: '_tied_weights_keys'?\n",
+        "forward_ok": false,
+        "output_shape": null,
+        "device": "cuda",
+        "duration_s": 3.599
+      },
+      "fetched_at": "2026-10-27T07:25:18Z"
     },
     {
       "repo": "kuleshov-group/PlantCAD2-Small-l24-d0768",
@@ -387,8 +466,15 @@
       "traceback_tail": null,
       "family": "CaduceusForSequenceClassification",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T07:00:31Z"
+      "load": {
+        "ok": false,
+        "error": "Traceback (most recent call last):\n  File \"<string>\", line 36, in <module>\n    model = model_class.from_pretrained(source, **load_kwargs)\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/transformers/models/auto/auto_factory.py\", line 385, in from_pretrained\n    return model_class.from_pretrained(\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^\n        pretrained_model_name_or_path, *model_args, config=config, **hub_kwargs, **kwargs\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/transformers/modeling_utils.py\", line 4314, in from_pretrained\n    loading_info = cls._finalize_model_loading(model, load_config, loading_info)\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/transformers/modeling_utils.py\", line 4482, in _finalize_model_loading\n    model._move_missing_keys_from_meta_to_device(\n    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^\n        loading_info.missing_and_mismatched(),\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    ...<2 lines>...\n        load_config.hf_quantizer,\n        ^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/transformers/modeling_utils.py\", line 4730, in _move_missing_keys_from_meta_to_device\n    for key in missing_keys - self.all_tied_weights_keys.keys():\n                              ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py\", line 1968, in __getattr__\n    raise AttributeError(\n        f\"'{type(self).__name__}' object has no attribute '{name}'\"\n    )\nAttributeError: 'Caduceus' object has no attribute 'all_tied_weights_keys'. Did you mean: '_tied_weights_keys'?\n",
+        "forward_ok": false,
+        "output_shape": null,
+        "device": "cuda",
+        "duration_s": 5.11
+      },
+      "fetched_at": "2026-10-27T07:25:27Z"
     },
     {
       "repo": "zhihan1996/DNA_bert_6",
@@ -403,7 +489,8 @@
       "family": "BertForMaskedLM",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T07:00:38Z"
+      "fetched_at": "2026-10-27T07:25:37Z",
+      "load_note": "inferred from family representative zhangtaolab/plant-dnabert-BPE"
     },
     {
       "repo": "zhihan1996/DNABERT-2-117M",
@@ -417,8 +504,15 @@
       "traceback_tail": null,
       "family": "zhihan1996",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T07:00:46Z"
+      "load": {
+        "ok": false,
+        "error": "val_frame.py\", line 1263, in _fn\n    return fn(*args, **kwargs)\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/_prims_common/wrappers.py\", line 152, in _fn\n    result = fn(**bound.arguments)\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/_refs/__init__.py\", line 1171, in _ref\n    output = prim(a, b)\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/_refs/__init__.py\", line 1790, in mul\n    return prims.mul(a, b)\n           ~~~~~~~~~^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/_ops.py\", line 865, in __call__\n    return self._op(*args, **kwargs)\n           ~~~~~~~~^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/_library/fake_impl.py\", line 111, in meta_kernel\n    return fake_impl_holder.kernel(*args, **kwargs)\n           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/_library/utils.py\", line 23, in __call__\n    return self.func(*args, **kwargs)\n           ~~~~~~~~~^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/library.py\", line 1496, in inner\n    return func(*args, **kwargs)\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/_library/custom_ops.py\", line 636, in fake_impl\n    return self._abstract_fn(*args, **kwargs)\n           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/_prims/__init__.py\", line 420, in _prim_elementwise_meta\n    utils.check_same_device(*args_, allow_cpu_scalar_tensors=True)\n    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/_prims_common/__init__.py\", line 917, in check_same_device\n    raise RuntimeError(msg)\nRuntimeError: Tensor on device meta is not on the expected device cpu!\n",
+        "forward_ok": false,
+        "output_shape": null,
+        "device": "cuda",
+        "duration_s": 2.016
+      },
+      "fetched_at": "2026-10-27T07:25:42Z"
     },
     {
       "repo": "AIRI-Institute/gena-lm-bert-base",
@@ -433,7 +527,8 @@
       "family": "BertForPretraining",
       "is_family_rep": true,
       "load": null,
-      "fetched_at": "2026-10-27T07:00:50Z"
+      "fetched_at": "2026-10-27T07:25:49Z",
+      "load_note": "import-fail pending shim"
     },
     {
       "repo": "AIRI-Institute/gena-lm-bigbird-base-sparse",
@@ -448,7 +543,8 @@
       "family": "BertForPreTraining",
       "is_family_rep": true,
       "load": null,
-      "fetched_at": "2026-10-27T07:00:56Z"
+      "fetched_at": "2026-10-27T07:25:55Z",
+      "load_note": "import-fail pending shim"
     },
     {
       "repo": "GenerTeam/GENERator-eukaryote-1.2b-base",
@@ -462,15 +558,22 @@
       "traceback_tail": null,
       "family": "GENERatorForCausalLM",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T07:01:00Z"
+      "load": {
+        "ok": true,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 4128)",
+        "device": "cuda",
+        "duration_s": 32.354
+      },
+      "fetched_at": "2026-10-27T07:25:59Z"
     },
     {
       "repo": "GenerTeam/GENERanno-eukaryote-1.2b-base",
       "name": "GENERanno",
       "class": null,
       "hub": "ms",
-      "revision": "unpinned@2026-10-27T07:01:06Z",
+      "revision": "unpinned@2026-10-27T07:26:05Z",
       "transformers": "5.17.0",
       "status": "census-blocked",
       "failing_import": "unreachable on both hubs (ModelScope then https://hf-mirror.com)",
@@ -478,7 +581,8 @@
       "family": "GenerTeam",
       "is_family_rep": true,
       "load": null,
-      "fetched_at": "2026-10-27T07:01:06Z"
+      "fetched_at": "2026-10-27T07:26:05Z",
+      "load_note": "census-blocked: no load evidence (see failing_import)"
     },
     {
       "repo": "pGenomeOcean/GenomeOcean-100M",
@@ -492,8 +596,15 @@
       "traceback_tail": null,
       "family": "MistralForCausalLM",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T07:01:11Z"
+      "load": {
+        "ok": true,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 4096)",
+        "device": "cuda",
+        "duration_s": 2.988
+      },
+      "fetched_at": "2026-10-27T07:26:10Z"
     },
     {
       "repo": "songlab/gpn-brassicales",
@@ -508,7 +619,8 @@
       "family": "ConvNetForMaskedLM",
       "is_family_rep": true,
       "load": null,
-      "fetched_at": "2026-10-27T07:01:15Z"
+      "fetched_at": "2026-10-27T07:26:14Z",
+      "load_note": "import-fail pending shim"
     },
     {
       "repo": "PoetschLab/GROVER",
@@ -523,7 +635,8 @@
       "family": "BertForMaskedLM",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T07:01:17Z"
+      "fetched_at": "2026-10-27T07:26:19Z",
+      "load_note": "inferred from family representative zhangtaolab/plant-dnabert-BPE"
     },
     {
       "repo": "LongSafari/hyenadna-small-32k-seqlen-hf",
@@ -537,8 +650,15 @@
       "traceback_tail": null,
       "family": "HyenaDNAForCausalLM",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T07:01:20Z"
+      "load": {
+        "ok": true,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 16)",
+        "device": "cuda",
+        "duration_s": 2.008
+      },
+      "fetched_at": "2026-10-27T07:26:23Z"
     },
     {
       "repo": "LucaGroup/LucaOne-default-step36M",
@@ -552,8 +672,15 @@
       "traceback_tail": null,
       "family": "LucaGPLMForMaskedLM",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T07:01:25Z"
+      "load": {
+        "ok": true,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 39)",
+        "device": "cuda",
+        "duration_s": 40.948
+      },
+      "fetched_at": "2026-10-27T07:26:29Z"
     },
     {
       "repo": "RaphaelMourad/Jamba-DNA-v1-114M-hg38",
@@ -567,8 +694,15 @@
       "traceback_tail": null,
       "family": "JambaForCausalLM",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T07:01:30Z"
+      "load": {
+        "ok": true,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 4096)",
+        "device": "cuda",
+        "duration_s": 3.122
+      },
+      "fetched_at": "2026-10-27T07:26:35Z"
     },
     {
       "repo": "RaphaelMourad/Mistral-DNA-v1-138M-hg38",
@@ -582,8 +716,15 @@
       "traceback_tail": null,
       "family": "MixtralForCausalLM",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T07:01:33Z"
+      "load": {
+        "ok": true,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 4096)",
+        "device": "cuda",
+        "duration_s": 1.985
+      },
+      "fetched_at": "2026-10-27T07:26:39Z"
     },
     {
       "repo": "RaphaelMourad/ModernBERT-DNA-v1-37M-hg38",
@@ -598,7 +739,8 @@
       "family": "ModernBertForMaskedLM",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T07:01:37Z"
+      "fetched_at": "2026-10-27T07:26:42Z",
+      "load_note": "inferred from family representative zhangtaolab/plant-dnamodernbert-BPE"
     },
     {
       "repo": "JadenLong/MutBERT-Human-Ref",
@@ -612,8 +754,15 @@
       "traceback_tail": null,
       "family": "JadenLong",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T07:01:41Z"
+      "load": {
+        "ok": true,
+        "error": "Traceback (most recent call last):\n  File \"<string>\", line 45, in <module>\n    output = model(input_ids)\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py\", line 1779, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py\", line 1790, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/home/forrest/.cache/huggingface/modules/transformers_modules/JadenLong/MutBERT_hyphen_Human_hyphen_Ref/fe04deaf62e242c9d33f842ea20985513a8dd51a/modeling_mutbert.py\", line 817, in forward\n    batch_size, seq_length = input_shape\n    ^^^^^^^^^^^^^^^^^^^^^^\nValueError: not enough values to unpack (expected 2, got 1)\n",
+        "forward_ok": false,
+        "output_shape": null,
+        "device": "cuda",
+        "duration_s": 4.452
+      },
+      "fetched_at": "2026-10-27T07:26:46Z"
     },
     {
       "repo": "InstaDeepAI/nucleotide-transformer-v2-100m-multi-species",
@@ -628,7 +777,8 @@
       "family": "EsmForMaskedLM",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T07:01:47Z"
+      "fetched_at": "2026-10-27T07:26:50Z",
+      "load_note": "inferred from family representative zhangtaolab/plant-nucleotide-transformer-BPE"
     },
     {
       "repo": "XLS/OmniNA-66m",
@@ -642,8 +792,15 @@
       "traceback_tail": null,
       "family": "LlamaForCausalLM",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T07:01:51Z"
+      "load": {
+        "ok": true,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 32001)",
+        "device": "cuda",
+        "duration_s": 4.52
+      },
+      "fetched_at": "2026-10-27T07:26:54Z"
     },
     {
       "repo": "zehui127/Omni-DNA-116M",
@@ -658,7 +815,8 @@
       "family": "OLMoModelForCausalLM",
       "is_family_rep": true,
       "load": null,
-      "fetched_at": "2026-10-27T07:01:53Z"
+      "fetched_at": "2026-10-27T07:27:00Z",
+      "load_note": "import-fail pending shim"
     },
     {
       "repo": "neuralbioinfo/prokbert-mini",
@@ -672,8 +830,15 @@
       "traceback_tail": null,
       "family": "ProkBertForMaskedLM",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T07:02:02Z"
+      "load": {
+        "ok": true,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 4101)",
+        "device": "cuda",
+        "duration_s": 13.874
+      },
+      "fetched_at": "2026-10-27T07:37:51Z"
     },
     {
       "repo": "zhangtaolab/PlantHelixSeek",
@@ -687,8 +852,15 @@
       "traceback_tail": null,
       "family": "HelixSeekForMaskedLM",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T07:02:12Z"
+      "load": {
+        "ok": true,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 11)",
+        "device": "cuda",
+        "duration_s": 134.907
+      },
+      "fetched_at": "2026-10-27T07:27:14Z"
     },
     {
       "repo": "zhangtaolab/FungiHelixSeek",
@@ -703,7 +875,8 @@
       "family": "HelixSeekForMaskedLM",
       "is_family_rep": false,
       "load": null,
-      "fetched_at": "2026-10-27T07:02:20Z"
+      "fetched_at": "2026-10-27T07:27:21Z",
+      "load_note": "inferred from family representative zhangtaolab/PlantHelixSeek"
     },
     {
       "repo": "lgq12697/PlantBiMoE",
@@ -717,8 +890,15 @@
       "traceback_tail": null,
       "family": "PlantbimoeForMaskedLM",
       "is_family_rep": true,
-      "load": null,
-      "fetched_at": "2026-10-27T07:02:28Z"
+      "load": {
+        "ok": true,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 12)",
+        "device": "cuda",
+        "duration_s": 31.769
+      },
+      "fetched_at": "2026-10-27T07:27:29Z"
     },
     {
       "repo": "chengCCC/CrossDNA_pretrain",
@@ -733,7 +913,8 @@
       "family": "chengCCC",
       "is_family_rep": true,
       "load": null,
-      "fetched_at": "2026-10-27T07:02:34Z"
+      "fetched_at": "2026-10-27T07:27:36Z",
+      "load_note": "census-blocked: no load evidence (see failing_import)"
     }
   ]
 }
