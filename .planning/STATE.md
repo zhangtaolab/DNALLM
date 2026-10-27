@@ -1,19 +1,20 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.4
+current_phase: 27
+current_phase_name: Transformers 4/5 Model Compatibility Census
 status: Awaiting next milestone
 stopped_at: Phase 27 context gathered
-last_updated: "2026-10-27T05:04:02.488Z"
+last_updated: "2026-10-27T06:15:49.251Z"
 last_activity: 2026-10-26
 last_activity_desc: "Quick 261024-dtw complete — mamba Predictor MPS passthrough + darwin real-device smoke + FAQ fix (3 commits, 509 mamba-surface tests green; earlier: env rebuild, ty risk, PlantHelixSeek confirm, torch 2.14.1)"
-state_head: 27df3d52c0d6afd480bde19068d76f5597caa8c8
+state_head: ba4235ef8c4156facfc7c33fcd5593fb423474db
 progress:
   total_phases: 1
   completed_phases: 5
-  total_plans: 0
+  total_plans: 4
   completed_plans: 23
 milestone_name: Pre-flight UX & Registry-as-Truth-Source
-current_phase: 26
 ---
 
 # Project State
@@ -27,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-22)
 
 ## Current Position
 
-Phase: Milestone v1.4 complete
+Phase: 27 (Transformers 4/5 Model Compatibility Census) — READY TO EXECUTE
 Plan: —
 Status: In Progress — Phase 27 (Transformers 4/5 Model Compatibility Census) added to v1.4 line
 Last activity: 2026-10-26 - Completed quick task 261026-g13: uv cache scoped off self-hosted nightly lanes + run 40247981840 census receipts recorded

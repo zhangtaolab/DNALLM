@@ -29,7 +29,14 @@
 **Plans:** 4 plans
 
 Plans:
+**Wave 1**
 - [ ] 27-01-PLAN.md — Census tool + evidence run (fetch/probe/load-sample the 49 pretrained entries under transformers 5.17.0; committed evidence artifact)
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 27-02-PLAN.md — Shim rungs from census evidence (TDD per fixable failure, D-02a shim-verification loads, dispositions)
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 27-03-PLAN.md — Registry write-back (tf_compat_* fields on the 49 pretrained rows + REG-03 test extension)
+
+**Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 27-04-PLAN.md — Docs table + CI drift gate + dispatch-only re-verification lane
