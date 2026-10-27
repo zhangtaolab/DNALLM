@@ -409,27 +409,33 @@ NATIVE_21 = [  # no auto_map: resolve via transformers' own classes (already sui
 | A7 | New registry field names (`compat_status`-family) — schema is planner discretion per CONTEXT; no name is pre-locked | Pattern 3 | None — discretion delegated |
 | A8 | `transformers>=4.49,<6` open range means future 5.x bumps (e.g. 5.19+ device-type query rung precedent) can shift verdicts; the version stamp field mitigates | D-08 | Low — drift gate + dependabot note already encode the re-verify duty |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All four are substantively resolved by the Phase 27 plans; each entry carries a Resolution line citing the adopting plan/task.
 
 1. **D-04 giants vs the verified roster**
    - What we know: evo-1/evo-2 appear nowhere in `model_info.yaml` (verified: zero case-insensitive matches); the 49-entry census contains no evo rows. D-04 speaks as if they are censused ("import-verified only" labels).
    - What's unclear: whether the owner wants evo-1/evo-2 appended as extra rows (they load via `special/evo.py`, outside the trust_remote_code surface and outside the registry), or D-04 was scoped to the broader pre-discussion framing.
    - Recommendation: planner treats the 49 registry entries as the census universe (D-01 is explicit and later) and records D-04 as "no-op for this roster; giants clause applies only if extra rows are added". Flag to owner at plan review if evo rows are wanted.
+   - Resolution (RESOLVED): verified no-op — zero evo rows exist in `model_info.yaml` (research A6), so the 49-entry roster (D-01) is the census universe and no giant-exclusion clause applies to it; recorded in 27-01 Task 3 and its SUMMARY.
 
 2. **Census tool shape: standalone script vs pytest-collected lane**
    - What we know: CONTEXT leaves it to discretion; both precedents exist (`scripts/audit_skips.py` standalone; example-nightly stage-0.5 pytest collection assertion inside a workflow).
    - What's unclear: whether the import census should be pytest-collected (giving per-entry test IDs and skip machinery) or a script emitting a JSON artifact consumed by the write-back step.
    - Recommendation: script for the fetch+probe+census core (subprocess isolation is awkward inside pytest; artifacts feed the write-back), plus a small pytest gate test that validates the COMMITTED registry fields/artifact for internal consistency on standard lanes (offline, no network). This matches D-08's two layers exactly.
+   - Resolution (RESOLVED): standalone script core — `scripts/census_compat.py` (plan 27-01) — plus offline pytest gates on standard lanes (27-03 Task 3 artifact↔registry consistency test; 27-04 Task 2 docs-drift gate): exactly D-08's two layers.
 
 3. **`5-only` bucket semantics under D-05 single-environment evidence**
    - What we know: D-05 retains the roadmap taxonomy but forbids claiming 4.x testing; `5-only` expected empty.
    - What's unclear: the exact label a "passes 5.17 import+sampled-load" entry gets in the registry field (`both`? `tf5-tested`?) so the docs table can carry the honest two-sided labeling.
    - Recommendation: registry status vocabulary should be evidence-descriptive (e.g. `verified-tf5` / `shim-required-tf5` / `remote-code-broken`) and the DOCS table maps it to the taxonomy with the honest inferred/tested footnote — keeps the registry free of the 4-side inference while the docs carry the owner-approved bilingual labels.
+   - Resolution (RESOLVED): evidence-descriptive vocabulary adopted as `tf_compat_status: Literal["verified-tf5", "import-verified-tf5", "shim-required-tf5", "remote-code-broken", "census-blocked"]` (27-03 objective + Task 1); the docs table (27-04 Task 1) maps it to the taxonomy with the owner-approved inferred/tested footnotes.
 
 4. **Where sampled-load failures that are NOT import-level failures get dispositioned**
    - What we know: D-02b samples one representative per family; a family rep could fail at load/forward (class the import census never sees).
    - What's unclear: does that failure shim-fix the family entry, or mark just the representative?
    - Recommendation: same census-first discipline (D-06) — capture evidence, fix if fixable, and record per-entry (the representative's verdict + evidence) so family siblings carry an honest "inferred from family representative" note.
+   - Resolution (RESOLVED): per-entry disposition records — every failure (import, load, or forward) carries `{"fix": "<rung>"}` or `{"skip": "<structural reason>"}` in the committed artifact (27-02 Task 3), and non-representative siblings carry the honest `load_note` "inferred from family representative <rep-repo>" (27-01 Task 3).
 
 ## Environment Availability
 
