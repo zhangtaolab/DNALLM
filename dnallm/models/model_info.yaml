@@ -3,6 +3,9 @@ pretrained:
     model: "zhangtaolab/plant-dnabert-BPE"
     tokenizer_type: "DebertaV2Tokenizer"
     max_length: 512
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnabert-BPE@6e4f65b3f1758517d0cc5737dee4d1bcf4b97095"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -10,6 +13,9 @@ pretrained:
     model: "zhangtaolab/plant-dnagemma-BPE"
     tokenizer_type: "GemmaTokenizer"
     max_length: 1024
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnagemma-BPE@0b7eba46d4cb0e41b6fd1b56e15914a31617e3f9"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
@@ -17,6 +23,9 @@ pretrained:
     model: "zhangtaolab/plant-dnagpt-BPE"
     tokenizer_type: "GPT2Tokenizer"
     max_length: 1024
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnagpt-BPE@1311a7f1186ba69351727a5705137294a7ca6651"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
@@ -24,6 +33,9 @@ pretrained:
     model: "zhangtaolab/plant-dnamamba-BPE"
     tokenizer_type: "GPTNeoXTokenizer"
     max_length: 512
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnamamba-BPE@547d92a4d76b391c47816bc4ccf9d2cd88904e57"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
@@ -31,6 +43,9 @@ pretrained:
     model: "zhangtaolab/plant-nucleotide-transformer-BPE"
     tokenizer_type: "EsmTokenizer"
     max_length: 2050
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-nucleotide-transformer-BPE@e66bf2535aa2fc3297f677195d6b7e122c3a0510"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -38,6 +53,9 @@ pretrained:
     model: "zhangtaolab/plant-dnamodernbert-BPE"
     tokenizer_type: "PreTrainedTokenizer"
     max_length: 8192
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnamodernbert-BPE@b5b4a4d46cff0ea4426db10a95d2f541b527763d"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -45,6 +63,9 @@ pretrained:
     model: "zhangtaolab/plant-dnabert-6mer"
     tokenizer_type: "EsmTokenizer"
     max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnabert-6mer@c299564ed06f519edff11bb70c72191c1fbe884e; load inferred from family representative zhangtaolab/plant-dnabert-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
       task_type: "mask"
@@ -52,6 +73,9 @@ pretrained:
     model: "zhangtaolab/plant-dnabert-singlebase"
     tokenizer_type: "EsmTokenizer"
     max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnabert-singlebase@6927a516e1ed553cbec0e996f597df96ec909128; load inferred from family representative zhangtaolab/plant-dnabert-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
       task_type: "mask"
@@ -59,6 +83,9 @@ pretrained:
     model: "zhangtaolab/plant-dnagemma-6mer"
     tokenizer_type: "EsmTokenizer"
     max_length: 1024
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnagemma-6mer@9c909f497236920e5cdc06139d9505c4635409b9; load inferred from family representative zhangtaolab/plant-dnagemma-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
       task_type: "generation"
@@ -66,6 +93,9 @@ pretrained:
     model: "zhangtaolab/plant-dnagemma-singlebase"
     tokenizer_type: "EsmTokenizer"
     max_length: 1024
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnagemma-singlebase@b6355b189a7aa149676f639b4e151f830710361d; load inferred from family representative zhangtaolab/plant-dnagemma-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
       task_type: "generation"
@@ -73,6 +103,9 @@ pretrained:
     model: "zhangtaolab/plant-dnagpt-6mer"
     tokenizer_type: "EsmTokenizer"
     max_length: 1024
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnagpt-6mer@2a59c2f251329442711aa90fcf28e0456fd3189a; load inferred from family representative zhangtaolab/plant-dnagpt-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
       task_type: "generation"
@@ -80,6 +113,9 @@ pretrained:
     model: "zhangtaolab/plant-dnagpt-singlebase"
     tokenizer_type: "EsmTokenizer"
     max_length: 1024
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnagpt-singlebase@e385e48b2dbcd9557e32b51b3cc88f1d24644c31; load inferred from family representative zhangtaolab/plant-dnagpt-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
       task_type: "generation"
@@ -87,6 +123,9 @@ pretrained:
     model: "zhangtaolab/plant-nucleotide-transformer-6mer"
     tokenizer_type: "EsmTokenizer"
     max_length: 2050
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-nucleotide-transformer-6mer@381f8a9d15c0b9e829bad6375858373df501541a"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
       task_type: "mask"
@@ -94,6 +133,9 @@ pretrained:
     model: "zhangtaolab/plant-nucleotide-transformer-singlebase"
     tokenizer_type: "EsmTokenizer"
     max_length: 2050
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-nucleotide-transformer-singlebase@d81ae674203d57cc5f63a02e31f35467f70d7d16; load inferred from family representative zhangtaolab/plant-nucleotide-transformer-6mer"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
       task_type: "mask"
@@ -101,6 +143,9 @@ pretrained:
     model: "zhangtaolab/plant-dnamamba-2mer"
     tokenizer_type: "EsmTokenizer"
     max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnamamba-2mer@4f155e06017a09cff835604586120d87fb955636; load inferred from family representative zhangtaolab/plant-dnamamba-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding with 2mer tokenizer."
       task_type: "generation"
@@ -108,6 +153,9 @@ pretrained:
     model: "zhangtaolab/plant-dnamamba-3mer"
     tokenizer_type: "EsmTokenizer"
     max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnamamba-3mer@a09d321e59a45ebbc94fe140092b6b0688d85e93; load inferred from family representative zhangtaolab/plant-dnamamba-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding with 3mer tokenizer."
       task_type: "generation"
@@ -115,6 +163,9 @@ pretrained:
     model: "zhangtaolab/plant-dnamamba-4mer"
     tokenizer_type: "EsmTokenizer"
     max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnamamba-4mer@d0cfa8c844a72af46ea85086e07ae46db63d6d0f; load inferred from family representative zhangtaolab/plant-dnamamba-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding with 4mer tokenizer."
       task_type: "generation"
@@ -122,6 +173,9 @@ pretrained:
     model: "zhangtaolab/plant-dnamamba-5mer"
     tokenizer_type: "EsmTokenizer"
     max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnamamba-5mer@db5ce97b72ef7895d257e629f69a1d6197e8c850; load inferred from family representative zhangtaolab/plant-dnamamba-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding with 5mer tokenizer."
       task_type: "generation"
@@ -129,6 +183,9 @@ pretrained:
     model: "zhangtaolab/plant-dnamamba-6mer"
     tokenizer_type: "EsmTokenizer"
     max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnamamba-6mer@11fa90ab6f6d37123ab096a2de1042b0fa7c6792; load inferred from family representative zhangtaolab/plant-dnamamba-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
       task_type: "generation"
@@ -136,6 +193,9 @@ pretrained:
     model: "zhangtaolab/plant-dnamamba-singlebase"
     tokenizer_type: "EsmTokenizer"
     max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnamamba-singlebase@73c6556f91c06b2760b10941915b017580710da9; load inferred from family representative zhangtaolab/plant-dnamamba-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
       task_type: "generation"
@@ -143,6 +203,9 @@ pretrained:
     model: "zhangtaolab/plant-dnamodernbert-singlebase"
     tokenizer_type: "PreTrainedTokenizer"
     max_length: 8192
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnamodernbert-singlebase@4e305489f96e959a1087cbca8c00b53fb109f066; load inferred from family representative zhangtaolab/plant-dnamodernbert-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
       task_type: "mask"
@@ -150,6 +213,9 @@ pretrained:
     model: "InstaDeepAI/agro-nucleotide-transformer-1b"
     tokenizer_type: "EsmTokenizer"
     max_length: 1026
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "hf InstaDeepAI/agro-nucleotide-transformer-1b@b0e1ea1f53a2bf5bb29f8eab7a7e553bf06c1ab1; load inferred from family representative zhangtaolab/plant-nucleotide-transformer-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -157,6 +223,9 @@ pretrained:
     model: "kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16"
     tokenizer_type: "CaduceusTokenizer"
     max_length: 131072
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16@b0477522ac5d044ad03578aa724ec8e4bdbd405b"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -164,6 +233,9 @@ pretrained:
     model: "kuleshov-group/caduceus-ps_seqlen-131k_d_model-256_n_layer-16"
     tokenizer_type: "CaduceusTokenizer"
     max_length: 131072
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "hf kuleshov-group/caduceus-ps_seqlen-131k_d_model-256_n_layer-16@d89eeb853136ea64da7feb3d0c8e909771b17ae6; load inferred from family representative kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -171,6 +243,9 @@ pretrained:
     model: "kuleshov-group/PlantCaduceus_l32"
     tokenizer_type: "PreTrainedTokenizerFast"
     max_length: 512
+    tf_compat_status: shim-required-tf5
+    tf_compat_evidence: "hf kuleshov-group/PlantCaduceus_l32@e624c13c3d35415348b854c87a218893b23564f7; load+forward verified via rung _patch_tied_weights_bookkeeping_on_load"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -178,12 +253,18 @@ pretrained:
     model: "kuleshov-group/PlantCAD2-Small-l24-d0768"
     tokenizer_type: "PreTrainedTokenizerFast"
     max_length: 8192
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf kuleshov-group/PlantCAD2-Small-l24-d0768@f756c255cb76e9f538c3acec04acf4214ed03fb3"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "DNABERT"
     model: "zhihan1996/DNA_bert_6"
     max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "hf zhihan1996/DNA_bert_6@c56e67ea5827e0ddc67ef059addcf71569b1216e; load inferred from family representative zhangtaolab/plant-dnabert-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -191,6 +272,9 @@ pretrained:
     model: "zhihan1996/DNABERT-2-117M"
     tokenizer_type: "PreTrainedTokenizerFast"
     max_length: 512
+    tf_compat_status: remote-code-broken
+    tf_compat_evidence: "hf zhihan1996/DNABERT-2-117M@7bce263b15377fc15361f52cfab88f8b586abda0; remote bert_layers.py builds its ALiBi tensor eagerly in __init__ (rebuild_alibi_tensor line 399: torch.Tensor(list) stays on cpu while torch.arange lands on meta); transformers 5 constructs models on the meta device where 4.x built on cpu, so the meta x cpu multiply crashes before any weight loads - no removed transformers API is involved"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -198,6 +282,9 @@ pretrained:
     model: "AIRI-Institute/gena-lm-bert-base"
     tokenizer_type: "PreTrainedTokenizerFast"
     max_length: 512
+    tf_compat_status: remote-code-broken
+    tf_compat_evidence: "hf AIRI-Institute/gena-lm-bert-base@416f055300346a5830ca49438daf5f4e136ed9a8; checkpoint data defect: the persisted bert.embeddings.token_type_ids buffer starts with 3901475131392 while type_vocab_size=2, so the token_type_ids=None buffer-default forward crashes (IndexError on cpu, device-side assert on cuda) on any transformers version; the import itself was restored by the _patch_apply_chunking_to_forward rung (see previous_status)"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -205,6 +292,9 @@ pretrained:
     model: "AIRI-Institute/gena-lm-bigbird-base-sparse"
     tokenizer_type: "PreTrainedTokenizerFast"
     max_length: 4096
+    tf_compat_status: remote-code-broken
+    tf_compat_evidence: "hf AIRI-Institute/gena-lm-bigbird-base-sparse@3a9028d36137341c10df771c3bd93de530d74594; remote modeling_bert.py (bigbird block-sparse attention) imports the external deepspeed package, which is outside dnallm's dependency set - not a transformers API removal; the import itself was restored by the _patch_apply_chunking_to_forward rung (see previous_status)"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -212,12 +302,18 @@ pretrained:
     model: "GenerTeam/GENERator-eukaryote-1.2b-base"
     tokenizer_type: "DNAKmerTokenizer"
     max_length: 16384
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf GenerTeam/GENERator-eukaryote-1.2b-base@5e872c94264891f9adf59d8ea64e426bb68badb5"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "GENERanno"
     model: "GenerTeam/GENERanno-eukaryote-1.2b-base"
     max_length: 8192
+    tf_compat_status: census-blocked
+    tf_compat_evidence: "ms GenerTeam/GENERanno-eukaryote-1.2b-base@unpinned@2026-10-27T08:39:46Z; unreachable on both hubs (ModelScope then https://hf-mirror.com)"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
@@ -225,6 +321,9 @@ pretrained:
     model: "pGenomeOcean/GenomeOcean-100M"
     tokenizer_type: "PreTrainedTokenizerFast"
     max_length: 32768
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf pGenomeOcean/GenomeOcean-100M@44b24d0f3b2a6d5dd8a0113ebda51f1615374000"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
@@ -232,6 +331,9 @@ pretrained:
     model: "songlab/gpn-brassicales"
     tokenizer_type: "PreTrainedTokenizerFast"
     max_length: 512
+    tf_compat_status: remote-code-broken
+    tf_compat_evidence: "hf songlab/gpn-brassicales@eb9c35d0d18571abe84390d22e74f2b21d319ce3; failing import: ConvNetForMaskedLM not found in transformers 5.17.0; native architecture ConvNetForMaskedLM was removed from transformers 5.x; restoring it means vendoring an entire architecture implementation, which is outside the per-name rung discipline (dnallm's dnallm/models/special/gpn.py handler requires the external gpn package instead)"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -239,6 +341,9 @@ pretrained:
     model: "PoetschLab/GROVER"
     tokenizer_type: "PreTrainedTokenizerFast"
     max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "hf PoetschLab/GROVER@6b223110f0d6963e849f55bc2a2f3cff0e38c7a4; load inferred from family representative zhangtaolab/plant-dnabert-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -246,6 +351,9 @@ pretrained:
     model: "LongSafari/hyenadna-small-32k-seqlen-hf"
     tokenizer_type: "HyenaDNATokenizer"
     max_length: 32770
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf LongSafari/hyenadna-small-32k-seqlen-hf@8fe770c78eb13fe33bf81501612faeddf4d6f331"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
@@ -253,6 +361,9 @@ pretrained:
     model: "LucaGroup/LucaOne-default-step36M"
     tokenizer_type: "LucaGPLMTokenizer"
     max_length: 4096
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf LucaGroup/LucaOne-default-step36M@f0d2807eb097a1507b911022d979b502cd62b74c"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -260,6 +371,9 @@ pretrained:
     model: "RaphaelMourad/Jamba-DNA-v1-114M-hg38"
     tokenizer_type: "PreTrainedTokenizerFast"
     max_length: 4096
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf RaphaelMourad/Jamba-DNA-v1-114M-hg38@4078cf3177d244d4b9ebe259e11bbdca3324eaad"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
@@ -267,6 +381,9 @@ pretrained:
     model: "RaphaelMourad/Mistral-DNA-v1-138M-hg38"
     tokenizer_type: "PreTrainedTokenizerFast"
     max_length: 512
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf RaphaelMourad/Mistral-DNA-v1-138M-hg38@4c3c8c7b44fae10e63b5902d27c8699feeca7a56"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
@@ -274,6 +391,9 @@ pretrained:
     model: "RaphaelMourad/ModernBERT-DNA-v1-37M-hg38"
     tokenizer_type: "PreTrainedTokenizerFast"
     max_length: 8192
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "hf RaphaelMourad/ModernBERT-DNA-v1-37M-hg38@f0898c773bc52e9ab9d0251a7d8990b41feb5dd7; load inferred from family representative zhangtaolab/plant-dnamodernbert-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -281,6 +401,9 @@ pretrained:
     model: "JadenLong/MutBERT-Human-Ref"
     tokenizer_type: "PreTrainedTokenizerFast"
     max_length: 512
+    tf_compat_status: remote-code-broken
+    tf_compat_evidence: "hf JadenLong/MutBERT-Human-Ref@fe04deaf62e242c9d33f842ea20985513a8dd51a; remote modeling_mutbert.py line 808 computes input_shape = input_ids.size()[:-1] ('# modified' in the repo's own source), dropping the sequence dimension for every 2-D input - the model's own forward-contract bug fails identically on transformers 4.x"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -288,12 +411,18 @@ pretrained:
     model: "InstaDeepAI/nucleotide-transformer-v2-100m-multi-species"
     tokenizer_type: "EsmTokenizer"
     max_length: 2050
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "hf InstaDeepAI/nucleotide-transformer-v2-100m-multi-species@f34324c6fde36a4f635f0f1f06cac5d25acd6798; load inferred from family representative zhangtaolab/plant-nucleotide-transformer-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "OmniNA"
     model: "XLS/OmniNA-66m"
     max_length: 2048
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf XLS/OmniNA-66m@2c5e876a22b04cb8a99b059e6bdfa667b20d103a"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
@@ -301,6 +430,9 @@ pretrained:
     model: "zehui127/Omni-DNA-116M"
     tokenizer_type: "PreTrainedTokenizerFast"
     max_length: 250
+    tf_compat_status: remote-code-broken
+    tf_compat_evidence: "hf zehui127/Omni-DNA-116M@8a602a8324e1c29aff91112a7b78cad841d4c9d5; failing import: olmo; remote configuration_olmo.py line 8 imports olmo.config.ModelConfig - an external package outside dnallm's dependency set, not a transformers API removal; installing the third-party olmo package is out of census scope"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
@@ -308,6 +440,9 @@ pretrained:
     model: "neuralbioinfo/prokbert-mini"
     tokenizer_type: "LCATokenizer"
     max_length: 1024
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf neuralbioinfo/prokbert-mini@feb2520a43cd9cdb5b3d8477e47209dbcb55d1dc"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -315,6 +450,9 @@ pretrained:
     model: "zhangtaolab/PlantHelixSeek"
     tokenizer_type: "EsmTokenizer"
     max_length: 8192
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/PlantHelixSeek@fe3bdace03314b97700efd5b3f328c672c7bb1a9"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -322,6 +460,9 @@ pretrained:
     model: "zhangtaolab/FungiHelixSeek"
     tokenizer_type: "EsmTokenizer"
     max_length: 8192
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/FungiHelixSeek@0fbfc2649bb47d34727d2057508dca0a60dffeda; load inferred from family representative zhangtaolab/PlantHelixSeek"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Kingdom-scale fungal DNA foundation model (hybrid linear-attention/Transformer MoE, 263M total / ~112M active, singleBase tokenizer)."
       task_type: "mask"
@@ -329,6 +470,9 @@ pretrained:
     model: "lgq12697/PlantBiMoE"
     tokenizer_type: "PlantbimoeTokenizer"
     max_length: 32768
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "ms lgq12697/PlantBiMoE@bee38b1496c38edd3de4d7e3cd2c2ee725c1300f"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Plant genome foundation model (BiMamba + SparseMoE hybrid, 86.95M total / 63.93M active, single-base tokenizer, trained on 42 plant species)."
       task_type: "mask"
@@ -337,6 +481,9 @@ pretrained:
     model: "chengCCC/CrossDNA_pretrain"
     tokenizer_type: "CrossDNATokenizer"
     max_length: 1024
+    tf_compat_status: census-blocked
+    tf_compat_evidence: "hf chengCCC/CrossDNA_pretrain@cd118dc45eaa0f2debb05f03ed0290fe56a78ab1; cannot read fetched config.json at /home/forrest/.cache/huggingface/hub/models--chengCCC--CrossDNA_pretrain/snapshots/cd118dc45eaa0f2debb05f03ed0290fe56a78ab1/config.json: [Errno 2] No such file or directory: '/home/forrest/.cache/huggingface/hub/models--chengCCC--CrossDNA_pretrain/snapshots/cd118dc45eaa0f2debb05f03ed0290fe56a78ab1/config.json'; snapshot top-level entries: ['28.6M', '519M', '71.6M', '8.1M']"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -2028,3 +2175,15 @@ finetuned:
 #   this registry.
 # Probe and insertion tooling is intentionally uncommitted (gitignored .scratch/,
 #   owner convention 2026-10-20).
+# Registry compatibility census: tf_compat_status / tf_compat_evidence / tf_compat_tested (Phase 27-03, 2026-10-27).
+# Method: import census plus sampled load/forward evidence under transformers
+#   5.17.0 over all 49 pretrained entries; frozen evidence artifact:
+#   tests/models/compat_census.json (27-02, dispositions complete).
+# Coverage rule: all 49 pretrained entries carry the fields; finetuned entries
+#   inherit from their bases and carry no tf_compat_* keys.
+# tf_compat_tested records what was ACTUALLY tested: transformers 5.17.0 only.
+#   The transformers 4 side is inferred (model code written in the transformers 4
+#   era), never separately tested (D-05); inference wording is a docs-layer
+#   concern (27-04).
+# Tooling: scripts/census_compat.py --write-registry --apply (committed,
+#   re-runnable; anchored text insertion only - never a YAML round-trip).

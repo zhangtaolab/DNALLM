@@ -9,6 +9,7 @@ values mislead without any runtime error — these structure tests are the
 enforcement layer (quick task 261020-kwt).
 """
 
+import re
 from pathlib import Path
 
 import dnallm
@@ -203,9 +204,10 @@ def test_pretrained_entries_carry_no_base_model() -> None:
 EXPECTED_FINETUNED_COUNT = 187
 
 # Provenance sentinels: the kwt freeze-provenance block (2026-10-03) plus the
-# 22-02 enrichment provenance block appended at end of file. Each sentinel
-# must appear exactly once, verbatim — the blocks are unrecoverable once lost
-# (Pitfall 3), so their presence is pinned here (REG-03).
+# 22-02 enrichment and 27-03 census provenance blocks appended at end of file.
+# Each sentinel must appear exactly once, verbatim — the blocks are
+# unrecoverable once lost (Pitfall 3), so their presence is pinned here
+# (REG-03).
 PROVENANCE_SENTINELS = (
     "# PlantHelixSeek finetuned checkpoints (Phase 06-01 registry freeze, 2026-10-03).",
     "# Checkpoint commit shas (trust_remote_code provenance):",
@@ -213,6 +215,7 @@ PROVENANCE_SENTINELS = (
     "#   PlantHelixSeek-Anno 6d39386ab562b2a9a3d3581ebe28e235383c8d3c",
     "# Freeze tooling is intentionally uncommitted (owner constraint 2026-10-02): it ran",
     "# Registry enrichment: tokenizer_type / max_length (Phase 22-02, 2026-10-20).",
+    "# Registry compatibility census: tf_compat_status / tf_compat_evidence / tf_compat_tested (Phase 27-03, 2026-10-27).",
 )
 
 # Spot pins (T-22-05 mitigation): load-bearing enrichment values measured by
@@ -328,3 +331,108 @@ def test_spot_pinned_enrichment_values() -> None:
     for repo, expected in SPOT_PINNED_TOKENIZER_TYPES.items():
         assert repo in by_repo, repo
         assert by_repo[repo].get("tokenizer_type") == expected, repo
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 27-03 compat census write-back integrity (D-07) — extension only; nothing
+# above this section is modified beyond the PROVENANCE_SENTINELS entry the
+# plan requires. The write-back added tf_compat_status / tf_compat_evidence /
+# tf_compat_tested to the 49 pretrained rows via
+# scripts/census_compat.py --write-registry --apply (anchored text insertion
+# only) plus a dated provenance block at end of file. Frozen evidence:
+# tests/models/compat_census.json (27-02).
+# ─────────────────────────────────────────────────────────────────────────────
+
+# The five-value verdict vocabulary (mirrors RegistryEntry's Literal).
+TF_COMPAT_VOCABULARY = {
+    "verified-tf5",
+    "import-verified-tf5",
+    "shim-required-tf5",
+    "remote-code-broken",
+    "census-blocked",
+}
+
+# Measured distribution of the committed write-back (49 rows): 19 verified
+# (green family-representative loads), 21 import-verified (siblings), 1
+# shim-required (PlantCaduceus_l32 via rung 13), 6 remote-code-broken (2
+# import-fail + 4 structurally failed load/forward), 2 census-blocked.
+EXPECTED_REMOTE_CODE_BROKEN = 6
+EXPECTED_SHIM_REQUIRED = 1
+
+COMPAT_SHIM_SOURCE = Path(dnallm.__file__).parent / "utils" / "transformers_compat.py"
+
+
+def test_all_pretrained_entries_carry_compat_fields() -> None:
+    """All 49 pretrained entries carry the three tf_compat_* fields with valid values."""
+    offenders = []
+    for entry in _pretrained():
+        repo = entry["model"]
+        if entry.get("tf_compat_status") not in TF_COMPAT_VOCABULARY:
+            offenders.append((repo, "status", entry.get("tf_compat_status")))
+        if entry.get("tf_compat_tested") != "5.17.0":
+            offenders.append((repo, "tested", entry.get("tf_compat_tested")))
+        evidence = entry.get("tf_compat_evidence")
+        if not isinstance(evidence, str) or not evidence:
+            offenders.append((repo, "evidence", evidence))
+    assert offenders == []
+
+
+def test_no_finetuned_entry_carries_compat_fields() -> None:
+    """tf_compat_* is a pretrained-only field — finetuned entries inherit (D-01)."""
+    offenders = [e["model"] for e in _finetuned() if any(k.startswith("tf_compat_") for k in e)]
+    assert offenders == []
+
+
+def test_remote_code_broken_evidence_names_failing_import() -> None:
+    """Every remote-code-broken evidence differs from the bare stamp and names its cause.
+
+    The detail must mention transformers or a dotted symbol/module path, so a
+    reader sees WHY the entry is broken — the exact failing import for
+    import-time failures, the structural reason for load/forward failures.
+    """
+    broken = [e for e in _pretrained() if e.get("tf_compat_status") == "remote-code-broken"]
+    assert len(broken) == EXPECTED_REMOTE_CODE_BROKEN
+    for entry in broken:
+        repo = entry["model"]
+        evidence = entry["tf_compat_evidence"]
+        assert ";" in evidence, f"{repo}: evidence carries no detail beyond the hub stamp"
+        detail = evidence.split(";", 1)[1].strip()
+        assert detail, f"{repo}: empty evidence detail"
+        assert "transformers" in detail or re.search(r"\w+\.\w+", detail), (
+            f"{repo}: evidence detail names no transformers symbol or dotted path: {detail!r}"
+        )
+
+
+def test_shim_required_evidence_names_rung() -> None:
+    """Every shim-required evidence names a real _patch_* rung in transformers_compat.py.
+
+    Reads the shim source in the test: the rung's existence is confirmed
+    independently of the census artifact's claim.
+    """
+    shim_source = COMPAT_SHIM_SOURCE.read_text(encoding="utf-8")
+    shim_required = [e for e in _pretrained() if e.get("tf_compat_status") == "shim-required-tf5"]
+    assert len(shim_required) == EXPECTED_SHIM_REQUIRED
+    for entry in shim_required:
+        repo = entry["model"]
+        rungs = re.findall(r"_patch_[a-z0-9_]+", entry["tf_compat_evidence"])
+        assert rungs, f"{repo}: shim-required evidence names no _patch_* rung"
+        for rung in rungs:
+            assert f"def {rung}(" in shim_source, (
+                f"{repo}: rung {rung} does not exist in transformers_compat.py"
+            )
+
+
+def test_compat_field_values_present_never_degenerate() -> None:
+    """A present tf_compat_* field is a non-empty str with status in the vocabulary.
+
+    Sibling of the 22-02 enrichment degenerate-value guard: gaps surface as
+    absent keys; a present key is never null/empty/out-of-vocabulary.
+    """
+    for entry in _pretrained() + _finetuned():
+        if "tf_compat_status" in entry:
+            assert entry["tf_compat_status"] in TF_COMPAT_VOCABULARY, entry["model"]
+        for field in ("tf_compat_evidence", "tf_compat_tested"):
+            if field in entry:
+                value = entry[field]
+                assert isinstance(value, str), f"{entry['model']}: {field} is {type(value)}"
+                assert value, f"{entry['model']}: {field} is empty"
