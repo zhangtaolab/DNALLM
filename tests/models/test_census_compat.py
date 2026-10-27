@@ -378,3 +378,181 @@ class TestLoadProgram:
     def test_hf_route_pins_the_stamped_sha(self) -> None:
         program = census.build_load_program("org/repo", "hf", [], "abc123")
         assert "load_kwargs['revision'] = revision" in program
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 27-02 shim pass: task-appropriate class routing, previous-status preservation,
+# and load selection over prior evidence
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestLoadClassRouting:
+    """Task-appropriate Auto* routing for checkpoints (27-02 fix).
+
+    A remote checkpoint's auto_map keys its task-specific classes (e.g.
+    ``AutoModelForSequenceClassification``); loading through the matching
+    Auto* class honors the intended remote class instead of falling back to
+    a native architecture under the generic AutoModel route (the measured
+    6mer/PlantCAD2 misroutes of the 27-01 load layer).
+    """
+
+    def test_sequence_classification_routes_to_its_auto_class(self) -> None:
+        assert (
+            census.resolve_load_class_name("EsmForSequenceClassification")
+            == "AutoModelForSequenceClassification"
+        )
+        assert (
+            census.resolve_load_class_name("CaduceusForSequenceClassification")
+            == "AutoModelForSequenceClassification"
+        )
+
+    def test_token_classification_routes_to_its_auto_class(self) -> None:
+        assert (
+            census.resolve_load_class_name("EsmForTokenClassification")
+            == "AutoModelForTokenClassification"
+        )
+
+    def test_causal_and_masked_routing_is_unchanged(self) -> None:
+        assert census.resolve_load_class_name("MambaForCausalLM") == "AutoModelForCausalLM"
+        assert census.resolve_load_class_name("EsmForMaskedLM") == "AutoModelForMaskedLM"
+
+    def test_bare_backbone_falls_back_to_auto_model(self) -> None:
+        assert census.resolve_load_class_name("Caduceus") == "AutoModel"
+        assert census.resolve_load_class_name("BertForPreTraining") == "AutoModel"
+        assert census.resolve_load_class_name("") == "AutoModel"
+        assert census.resolve_load_class_name(None) == "AutoModel"
+
+    def test_load_program_uses_the_resolved_class(self) -> None:
+        program = census.build_load_program(
+            "org/repo", "hf", ["EsmForSequenceClassification"], "abc123"
+        )
+        assert "'AutoModelForSequenceClassification'" in program
+
+
+class TestPreviousStatusPreservation:
+    """merge_records stamps previous_status on every verdict change."""
+
+    def test_recovered_import_stamps_previous_status(self) -> None:
+        existing = [_family_record("org/repo", status="import-fail")]
+        fresh = [_family_record("org/repo", status="import-ok")]
+        merged = census.merge_records(existing, fresh, ["org/repo"])
+        assert merged[0]["status"] == "import-ok"
+        assert merged[0]["previous_status"] == "import-fail"
+
+    def test_unchanged_verdict_is_not_stamped(self) -> None:
+        existing = [_family_record("org/repo", status="import-ok")]
+        fresh = [_family_record("org/repo", status="import-ok")]
+        merged = census.merge_records(existing, fresh, ["org/repo"])
+        assert "previous_status" not in merged[0]
+
+    def test_failed_load_does_not_count_as_verdict_change(self) -> None:
+        # load outcome is not the status; an import-ok entry that keeps
+        # failing at load carries no previous_status.
+        before = _family_record("org/repo", status="import-ok")
+        before["load"] = {"ok": False, "forward_ok": False}
+        after = _family_record("org/repo", status="import-ok")
+        after["load"] = {"ok": False, "forward_ok": False}
+        merged = census.merge_records([before], [after], ["org/repo"])
+        assert "previous_status" not in merged[0]
+
+
+class TestShimPassLoadSelection:
+    """apply_loads over prior evidence: recovered imports load, green loads
+    carry, failed loads re-probe, still-failing entries park as final."""
+
+    @staticmethod
+    def _probe_stub(monkeypatch, outcomes):
+        """Record probe calls and return canned outcomes per repo."""
+        calls = []
+
+        def fake_probe(record):
+            calls.append(record["repo"])
+            return outcomes.get(
+                record["repo"],
+                {
+                    "ok": True,
+                    "error": None,
+                    "forward_ok": True,
+                    "output_shape": "(1, 2)",
+                    "device": "cuda",
+                    "duration_s": 0.1,
+                },
+            )
+
+        monkeypatch.setattr(census, "run_load_probe", fake_probe)
+        return calls
+
+    def test_import_recovered_entry_loads_even_when_not_representative(self, monkeypatch):
+        records = [
+            _family_record("zhangtaolab/rep", status="import-ok"),
+            _family_record("org/other-rep", status="import-ok", family="OtherFamily"),
+            _family_record("org/recovered", status="import-ok", family="OtherFamily"),
+        ]
+        census.assign_families(records)
+        assert records[2]["is_family_rep"] is False  # sanity: not a rep
+        previous = {
+            "org/recovered": _family_record("org/recovered", status="import-fail"),
+        }
+        calls = self._probe_stub(monkeypatch, {})
+        census.apply_loads(records, previous=previous)
+        assert "org/recovered" in calls
+        assert records[2]["load"]["forward_ok"] is True
+
+    def test_previously_green_representative_is_not_reprobed(self, monkeypatch):
+        records = [_family_record("zhangtaolab/rep", status="import-ok")]
+        census.assign_families(records)
+        green = _family_record("zhangtaolab/rep", status="import-ok")
+        green["load"] = {"ok": True, "forward_ok": True}
+        calls = self._probe_stub(monkeypatch, {})
+        census.apply_loads(records, previous={"zhangtaolab/rep": green})
+        assert calls == []
+        assert records[0]["load"] is None  # the merge carries the green load
+
+    def test_previously_failed_representative_is_reprobed(self, monkeypatch):
+        records = [_family_record("zhangtaolab/rep", status="import-ok")]
+        census.assign_families(records)
+        failed = _family_record("zhangtaolab/rep", status="import-ok")
+        failed["load"] = {"ok": False, "error": "boom", "forward_ok": False}
+        calls = self._probe_stub(monkeypatch, {})
+        census.apply_loads(records, previous={"zhangtaolab/rep": failed})
+        assert calls == ["zhangtaolab/rep"]
+        assert records[0]["load"]["ok"] is True
+
+    def test_forward_failed_representative_is_reprobed(self, monkeypatch):
+        records = [_family_record("zhangtaolab/rep", status="import-ok")]
+        census.assign_families(records)
+        forward_failed = _family_record("zhangtaolab/rep", status="import-ok")
+        forward_failed["load"] = {"ok": True, "error": "x", "forward_ok": False}
+        calls = self._probe_stub(monkeypatch, {})
+        census.apply_loads(records, previous={"zhangtaolab/rep": forward_failed})
+        assert calls == ["zhangtaolab/rep"]
+
+    def test_still_import_fail_entry_parks_final(self, monkeypatch):
+        records = [_family_record("zhangtaolab/rep", status="import-fail")]
+        census.assign_families(records)
+        calls = self._probe_stub(monkeypatch, {})
+        previous = {"zhangtaolab/rep": _family_record("zhangtaolab/rep", status="import-fail")}
+        census.apply_loads(records, previous=previous)
+        assert calls == []
+        assert records[0]["load"] is None
+        assert records[0]["load_note"] == "import-fail final after shim pass"
+
+    def test_representative_without_prior_evidence_loads(self, monkeypatch):
+        records = [_family_record("zhangtaolab/rep", status="import-ok")]
+        census.assign_families(records)
+        calls = self._probe_stub(monkeypatch, {})
+        census.apply_loads(records, previous={})
+        assert calls == ["zhangtaolab/rep"]
+
+    def test_no_previous_map_keeps_first_run_behavior(self, monkeypatch):
+        records = [
+            _family_record("zhangtaolab/rep", status="import-fail"),
+            _family_record("third/sibling", status="arch-ok"),
+        ]
+        census.assign_families(records)
+        calls = self._probe_stub(monkeypatch, {})
+        census.apply_loads(records)
+        assert records[0]["load_note"] == "import-fail pending shim"
+        # the zhangtaolab entry is the (parked) representative; the sibling
+        # only infers from it, so nothing loads.
+        assert calls == []

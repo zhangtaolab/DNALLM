@@ -821,6 +821,41 @@ LOAD_TIMEOUT_S = 1800
 LOAD_SEED = 27
 LOAD_SEQUENCE_LENGTH = 32
 
+# Task-appropriate Auto* routing (27-02 fix): a remote checkpoint's auto_map
+# keys its task-specific classes, so the load layer must dispatch through the
+# matching Auto* class. Loading a remote checkpoint through the generic
+# AutoModel route when its auto_map carries only task keys resolves the
+# NATIVE architecture instead (measured live: zhangtaolab/
+# plant-nucleotide-transformer-6mer and kuleshov-group/PlantCAD2-Small
+# misroutes of the 27-01 load layer).
+LOAD_CLASS_SUFFIXES: tuple[tuple[str, str], ...] = (
+    ("ForCausalLM", "AutoModelForCausalLM"),
+    ("ForMaskedLM", "AutoModelForMaskedLM"),
+    ("ForSequenceClassification", "AutoModelForSequenceClassification"),
+    ("ForTokenClassification", "AutoModelForTokenClassification"),
+)
+
+
+def resolve_load_class_name(architecture: str | None) -> str:
+    """Return the task-appropriate Auto* class name for an architecture.
+
+    Mirrors dnallm's own task-type dispatch. The generic ``AutoModel``
+    remains the fallback for bare backbones whose auto_map maps AutoModel
+    (e.g. gena-lm's ``BertForPreTraining`` and the bare ``Caduceus``
+    backbone, which deliberately route through their auto_map AutoModel).
+
+    Args:
+        architecture: The checkpoint config's ``architectures[0]`` (or None).
+
+    Returns:
+        The transformers Auto* class name to load through.
+    """
+    name = architecture or ""
+    for suffix, auto_name in LOAD_CLASS_SUFFIXES:
+        if name.endswith(suffix):
+            return auto_name
+    return "AutoModel"
+
 
 def build_load_program(repo: str, hub: str, architectures: list, revision: str) -> str:
     """Build the isolated child program for one load + short real forward.
@@ -841,6 +876,7 @@ def build_load_program(repo: str, hub: str, architectures: list, revision: str) 
         The ``python -c`` program source.
     """
     pinned = revision if revision and not str(revision).startswith("unpinned") else None
+    auto_class_name = resolve_load_class_name(architectures[0] if architectures else None)
     return "\n".join([
         "import os",
         f"os.environ['HF_ENDPOINT'] = {HF_MIRROR!r}",
@@ -849,11 +885,13 @@ def build_load_program(repo: str, hub: str, architectures: list, revision: str) 
         "import traceback",
         "import dnallm  # arms transformers_compat.apply_patches() before any remote import",
         "import torch",
-        "from transformers import AutoConfig, AutoModel, AutoModelForCausalLM, AutoModelForMaskedLM",
+        "import transformers",
+        "from transformers import AutoConfig",
         f"repo = {repo!r}",
         f"hub = {hub!r}",
         f"architectures = {architectures!r}",
         f"revision = {pinned!r}",
+        f"model_class_name = {auto_class_name!r}",
         "device = 'cuda' if torch.cuda.is_available() else 'cpu'",
         # No successful forward has run yet; a load failure therefore reports
         # forward_ok False (the record's ok/error fields name the phase).
@@ -870,13 +908,7 @@ def build_load_program(repo: str, hub: str, architectures: list, revision: str) 
         "    else:",
         "        source = repo",
         "    config = AutoConfig.from_pretrained(source, trust_remote_code=True)",
-        "    architecture = architectures[0] if architectures else ''",
-        "    if architecture.endswith('ForCausalLM'):",
-        "        model_class = AutoModelForCausalLM",
-        "    elif architecture.endswith('ForMaskedLM'):",
-        "        model_class = AutoModelForMaskedLM",
-        "    else:",
-        "        model_class = AutoModel",
+        "    model_class = getattr(transformers, model_class_name)",
         # torch_dtype (not dtype): 4.x-era remote code defines its own
         # from_pretrained and forwards unknown kwargs to __init__, where
         # ``dtype`` breaks (verified live on prokbert-mini). transformers 5
@@ -1000,17 +1032,34 @@ def run_load_probe(record: dict) -> dict:
     return _empty_load(f"load probe produced no JSON verdict (exit {completed.returncode})\n{tail}")
 
 
-def apply_loads(records: list[dict]) -> None:
+def _previous_load_passed(previous: dict | None) -> bool:
+    """Return True when a prior record's load already cleared the D-03 bar."""
+    if not isinstance(previous, dict):
+        return False
+    load = previous.get("load")
+    return isinstance(load, dict) and load.get("ok") is True and load.get("forward_ok") is True
+
+
+def apply_loads(records: list[dict], previous: dict[str, dict] | None = None) -> None:
     """Add the D-02b load layer: load + short forward per family representative.
 
     Non-representatives carry ``load: null`` plus an honest ``load_note``
-    naming their representative; ``import-fail`` entries stay parked as
-    "pending shim" (their loads happen after the 27-02 fix); ``census-blocked``
-    entries carry no load evidence. Mutates records in place.
+    naming their representative; ``import-fail`` entries stay parked
+    ("pending shim" on a first run, "final after shim pass" once prior
+    evidence exists); ``census-blocked`` entries carry no load evidence.
+
+    With a *previous* artifact (the 27-02 shim pass): an entry whose previous
+    status was ``import-fail`` but whose fresh status imports clean receives
+    its D-02a load in this run even when it is not a family representative;
+    a representative whose previous load already passed keeps that evidence
+    (the merge carries it forward) instead of being re-fetched; a
+    representative whose previous load or forward failed is re-probed.
 
     Args:
         records: Evidence records in registry file order (after
             :func:`assign_families`).
+        previous: Optional ``{repo: prior record}`` map from the existing
+            artifact.
     """
     representatives = {r["family"]: r["repo"] for r in records if r["is_family_rep"]}
     for record in records:
@@ -1020,17 +1069,42 @@ def apply_loads(records: list[dict]) -> None:
             if record["is_family_rep"] or rep is None
             else f" (inferred from family representative {rep})"
         )
+        prior = (previous or {}).get(record["repo"])
         if record["status"] == "import-fail":
             record["load"] = None
-            record["load_note"] = "import-fail pending shim" + suffix
+            note = (
+                "import-fail final after shim pass"
+                if previous is not None
+                else ("import-fail pending shim")
+            )
+            record["load_note"] = note + suffix
             continue
         if record["status"] == "census-blocked":
             record["load"] = None
             record["load_note"] = "census-blocked: no load evidence (see failing_import)" + suffix
             continue
-        if not record["is_family_rep"]:
+        # D-02a: an import recovered by a shim rung must carry its own
+        # load+forward evidence in the run that recovered it.
+        recovered_import = (
+            previous is not None
+            and isinstance(prior, dict)
+            and prior.get("status") == "import-fail"
+            and record["status"] == "import-ok"
+        )
+        if not recovered_import and not record["is_family_rep"]:
             record["load"] = None
             record["load_note"] = f"inferred from family representative {rep}"
+            continue
+        if (
+            not recovered_import
+            and previous is not None
+            and isinstance(prior, dict)
+            and prior.get("status") == record["status"]
+            and _previous_load_passed(prior)
+        ):
+            # Prior evidence already cleared the D-03 bar under the same
+            # verdict; the merge carries it forward untouched.
+            record["load"] = None
             continue
         print(f"loading {record['repo']} [{record['family']}] ...", flush=True)
         record["load"] = run_load_probe(record)
@@ -1050,10 +1124,13 @@ def apply_loads(records: list[dict]) -> None:
 def merge_records(existing: list[dict], fresh: list[dict], roster_order: list[str]) -> list[dict]:
     """Merge fresh records into an existing artifact, preserving registry order.
 
-    A fresh record replaces its repo's existing record. Previously measured
-    load evidence is carried over only when the status is unchanged and the
-    fresh run measured no loads (an import-only re-run must not erase the
-    D-02b layer).
+    A fresh record replaces its repo's existing record. A verdict change
+    stamps ``previous_status`` on the fresh record so the pre-fix evidence
+    stays addressable (the 27-02 shim-pass artifact contract). Previously
+    measured load evidence is carried over only when the status is unchanged
+    and the fresh run measured no loads (an import-only re-run must not erase
+    the D-02b layer, and a representative skipped because its prior load
+    passed keeps that evidence).
 
     Args:
         existing: Records read from the existing artifact.
@@ -1070,6 +1147,12 @@ def merge_records(existing: list[dict], fresh: list[dict], roster_order: list[st
     }
     for record in fresh:
         previous = by_repo.get(record["repo"])
+        if (
+            isinstance(previous, dict)
+            and previous.get("status") != record.get("status")
+            and record.get("status") not in (None,)
+        ):
+            record["previous_status"] = previous["status"]
         if (
             record.get("load") is None
             and previous is not None
@@ -1126,17 +1209,24 @@ def run_census(artifact_path: Path, selected: list[str] | None, with_loads: bool
             unreachable.append(record["repo"])
 
     assign_families(records)
-    if with_loads:
-        apply_loads(records)
-
-    merged = records
+    existing_records: list[dict] | None = None
     if artifact_path.exists():
         try:
-            existing = read_artifact(artifact_path)
+            existing_records = read_artifact(artifact_path)
         except ValueError as error:
             print(f"ERROR: {error}")
             return 1
-        merged = merge_records(existing, records, roster_order)
+    if with_loads:
+        previous = (
+            {r["repo"]: r for r in existing_records if isinstance(r, dict)}
+            if existing_records is not None
+            else None
+        )
+        apply_loads(records, previous=previous)
+
+    merged = records
+    if existing_records is not None:
+        merged = merge_records(existing_records, records, roster_order)
     try:
         write_artifact(artifact_path, merged)
     except ValueError as error:
