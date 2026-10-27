@@ -44,6 +44,67 @@ STATUS_CELLS = {
     "shim-required-tf5": "Works with DNALLM's built-in compatibility fixes (tested)",
 }
 
+# Plain-language leads for the remote-code-broken family (G-27-2, the
+# 2026-10-21 owner directive): a biologist reads the What-we-found cell
+# first, so each failure row leads with one honest per-class sentence and
+# the technical cause is demoted to a short parenthetical suffix. One lead
+# per failure class; a version-independent model defect is never worded as
+# a library change (D-05 honest-labeling culture).
+BROKEN_LEADS = {
+    "damaged-files": (
+        "the published model files themselves are damaged, "
+        "so this model fails on every version of the library"
+    ),
+    "own-defect": (
+        "the model's own code has a defect that makes it fail on every version of the library"
+    ),
+    "external-package": (
+        "its code needs an extra software package that DNALLM does not "
+        "install, so it cannot be loaded as published"
+    ),
+    "library-change": (
+        "the new library version removed or changed something its code "
+        "depends on, so it cannot be loaded until the model authors update it"
+    ),
+}
+
+# The class map: distinctive evidence substrings (most-specific first) to
+# lead classes. Keys are grounded in the six committed evidence details;
+# check order matters only when one detail could match two keys.
+BROKEN_LEAD_CLASSES = (
+    ("checkpoint data defect", "damaged-files"),
+    ("forward-contract", "own-defect"),
+    ("outside dnallm's dependency set", "external-package"),
+    ("rebuild_alibi_tensor", "library-change"),
+    ("removed from transformers 5.x", "library-change"),
+    ("not found in transformers", "library-change"),
+)
+
+# The technical suffix bound: the parenthetical cause is capped at a word
+# boundary so no What-we-found cell can dominate the table layout.
+TECHNICAL_FRAGMENT_MAX_CHARS = 100
+CELL_MAX_CHARS = 300
+
+# The split marker between the plain lead and the technical suffix.
+TECHNICAL_MARKER = " (technical: "
+
+# Lead jargon blocklist (G-27-2): the engineering tokens the UI review
+# cited on the six failure rows. The plain-language lead portion of every
+# broken cell must contain none of them.
+LEAD_JARGON_BLOCKLIST = (
+    "ALiBi",
+    "meta",
+    "tensor",
+    "torch",
+    "token_type_ids",
+    "type_vocab_size",
+    "deepspeed",
+    "olmo",
+    "input_shape",
+    "[:-1]",
+    "__init__",
+)
+
 
 def _pretrained():
     """Return the pretrained registry entries (fail loudly when censused data is absent)."""
@@ -86,6 +147,30 @@ def _blocked_reason(evidence: str | None) -> str:
     return detail.split(";")[0].strip()
 
 
+def _lead_class(evidence: str | None) -> str:
+    """Derive the plain-language lead class for one broken evidence string.
+
+    Fails closed (pytest.fail) when the evidence matches no class key: the
+    gate cannot verify a plain wording the registry never described, so an
+    unmapped failure shape must surface, never pass silently.
+    """
+    detail = _evidence_detail(evidence)
+    for needle, lead_class in BROKEN_LEAD_CLASSES:
+        if needle in detail:
+            return lead_class
+    pytest.fail(f"broken evidence matches no plain-language lead class: {detail!r}")
+
+
+def _bound_fragment(fragment: str) -> str:
+    """Bound the technical fragment at a word boundary (gate's own copy)."""
+    if len(fragment) <= TECHNICAL_FRAGMENT_MAX_CHARS:
+        return fragment
+    cut = fragment[:TECHNICAL_FRAGMENT_MAX_CHARS]
+    if " " in cut:
+        cut = cut[: cut.rfind(" ")].rstrip()
+    return cut + "…"
+
+
 def _expected_status_cell(entry) -> str:
     """Re-derive the expected "What we found" cell for one entry, independently."""
     status = entry.tf_compat_status
@@ -98,7 +183,8 @@ def _expected_status_cell(entry) -> str:
     if status == "remote-code-broken":
         cause = _broken_cause(entry.tf_compat_evidence)
         assert cause, f"broken entry {entry.model} carries no cause evidence"
-        return f"Not usable with the current transformers - fails at {cause}"
+        lead = BROKEN_LEADS[_lead_class(entry.tf_compat_evidence)]
+        return f"Not usable with the current transformers - {lead}{TECHNICAL_MARKER}{_bound_fragment(cause)})"
     if status == "census-blocked":
         reason = _blocked_reason(entry.tf_compat_evidence)
         assert reason, f"blocked entry {entry.model} carries no reason evidence"
@@ -235,3 +321,91 @@ class TestRowsMatchRegistry:
                 f"import-verified row {name!r} must name its family representative "
                 f"{representative!r} in the Details cell"
             )
+
+
+def _broken_rows() -> list[tuple[str, str]]:
+    """Return (name, model) for every committed remote-code-broken entry."""
+    rows = [
+        (entry.name, entry.model)
+        for entry in _pretrained()
+        if entry.tf_compat_status == "remote-code-broken"
+    ]
+    assert rows, "the registry carries no remote-code-broken rows (nothing pins the lead map)"
+    return rows
+
+
+class TestBrokenRowPlainLanguage:
+    """The failure rows lead plain; technical causes are demoted suffixes (G-27-2).
+
+    The 2026-10-21 owner plain-language directive: a biologist reading a
+    "not working" row must get an actionable verdict first (pick another
+    model / blame the right party), with the engineering cause one short
+    parenthetical away.
+    """
+
+    @pytest.mark.parametrize(
+        ("name", "model"),
+        [pytest.param(name, model, id=name) for name, model in _broken_rows()],
+    )
+    def test_broken_cell_is_plain_lead_plus_bounded_technical_suffix(self, name, model):
+        """Each broken cell = plain per-class lead + ' (technical: <bounded cause>)'."""
+        entry = next(e for e in _pretrained() if e.model == model)
+        lead = BROKEN_LEADS[_lead_class(entry.tf_compat_evidence)]
+        cause = _broken_cause(entry.tf_compat_evidence)
+        rows, _ = _parse_table(_read_page())
+        by_name = {row[0]: row for row in rows}
+        assert name in by_name, f"broken model {name!r} missing from the table"
+        expected = (
+            f"Not usable with the current transformers - {lead}"
+            f"{TECHNICAL_MARKER}{_bound_fragment(cause)})"
+        )
+        assert by_name[name][1] == expected
+
+    def test_every_committed_broken_row_maps_to_a_lead_class(self):
+        """No unmapped failure shape on the committed registry (fail-closed pin).
+
+        The generator raises on an unmapped evidence shape; this gate cannot
+        execute the generator (checker independence), so it pins the same
+        fact from the registry side: every committed broken row's evidence
+        must match a class key.
+        """
+        for _name, model in _broken_rows():
+            entry = next(e for e in _pretrained() if e.model == model)
+            detail = _evidence_detail(entry.tf_compat_evidence)
+            matched = [cls for needle, cls in BROKEN_LEAD_CLASSES if needle in detail]
+            assert matched, (
+                f"broken entry {model} matches no lead-class key: {detail!r} -- "
+                "the generator's fail-closed ValueError would also fire here; "
+                "add the class key in lockstep (generator + gate)"
+            )
+
+    @pytest.mark.parametrize(
+        ("name", "model"),
+        [pytest.param(name, model, id=name) for name, model in _broken_rows()],
+    )
+    def test_broken_cell_lead_carries_no_engineering_jargon(self, name, model):
+        """The lead portion of each broken cell contains none of the cited jargon tokens."""
+        rows, _ = _parse_table(_read_page())
+        by_name = {row[0]: row for row in rows}
+        assert name in by_name, f"broken model {name!r} missing from the table"
+        cell = by_name[name][1]
+        assert TECHNICAL_MARKER in cell, (
+            f"broken cell for {name!r} carries no technical-suffix marker -- "
+            "the plain lead and the technical cause must stay separated"
+        )
+        lead = cell.split(TECHNICAL_MARKER, 1)[0]
+        leaked = [token for token in LEAD_JARGON_BLOCKLIST if token in lead]
+        assert not leaked, (
+            f"broken lead for {name!r} leaks engineering jargon {leaked} -- "
+            "the lead must stay plain-language (2026-10-21 directive); the "
+            "technical cause belongs in the parenthetical suffix"
+        )
+
+    def test_every_status_cell_is_at_most_300_chars(self):
+        """Page-wide cap: no What-we-found cell exceeds 300 characters (UI warning c)."""
+        rows, _ = _parse_table(_read_page())
+        offenders = [(row[0], len(row[1])) for row in rows if len(row[1]) > CELL_MAX_CHARS]
+        assert not offenders, (
+            f"What-we-found cells exceed the {CELL_MAX_CHARS}-character cap: {offenders} -- "
+            "bound the technical fragment tighter (generator + gate in lockstep)"
+        )
