@@ -460,6 +460,54 @@ class TestPreviousStatusPreservation:
         assert "previous_status" not in merged[0]
 
 
+class TestDispositionCarryForward:
+    """merge_records preserves dispositions and their evidence trail (WR-01).
+
+    The hand-authored 27-02 judgments (skip/fix dispositions, previous_status
+    stamps) exist only in the committed artifact; a re-run against the
+    default artifact path must never destroy them.
+    """
+
+    def test_unchanged_verdict_keeps_disposition_and_previous_status(self) -> None:
+        existing = _family_record("org/repo", status="import-ok")
+        existing["previous_status"] = "import-fail"
+        existing["disposition"] = {"fix": "_patch_tied_weights_bookkeeping_on_load"}
+        fresh = _family_record("org/repo", status="import-ok")
+        merged = census.merge_records([existing], [fresh], ["org/repo"])
+        assert merged[0]["disposition"] == existing["disposition"]
+        assert merged[0]["previous_status"] == "import-fail"
+
+    def test_disposition_survives_a_reprobed_failed_load(self) -> None:
+        # A representative with a skip disposition is re-probed on every
+        # --with-loads run: the fresh (still failed) load replaces the load
+        # evidence while the skip judgment itself carries.
+        existing = _family_record("org/repo", status="import-ok")
+        existing["load"] = {"ok": False, "error": "boom", "forward_ok": False}
+        existing["disposition"] = {"skip": "checkpoint data defect: vocab size 0"}
+        fresh = _family_record("org/repo", status="import-ok")
+        fresh["load"] = {"ok": False, "error": "boom again", "forward_ok": False}
+        merged = census.merge_records([existing], [fresh], ["org/repo"])
+        assert merged[0]["load"] == fresh["load"]  # fresh load evidence wins
+        assert merged[0]["disposition"] == existing["disposition"]
+
+    def test_verdict_change_drops_the_stale_disposition(self) -> None:
+        # A skip judgment about an import-fail record no longer describes an
+        # import-ok record; the change itself is drift the verdict gate flags.
+        existing = _family_record("org/repo", status="import-fail")
+        existing["disposition"] = {"skip": "native architecture was removed upstream"}
+        fresh = _family_record("org/repo", status="import-ok")
+        merged = census.merge_records([existing], [fresh], ["org/repo"])
+        assert "disposition" not in merged[0]
+        assert merged[0]["previous_status"] == "import-fail"
+
+    def test_unchanged_verdict_without_disposition_gains_none(self) -> None:
+        existing = _family_record("org/repo", status="arch-ok")
+        fresh = _family_record("org/repo", status="arch-ok")
+        merged = census.merge_records([existing], [fresh], ["org/repo"])
+        assert "disposition" not in merged[0]
+        assert "previous_status" not in merged[0]
+
+
 class TestShimPassLoadSelection:
     """apply_loads over prior evidence: recovered imports load, green loads
     carry, failed loads re-probe, still-failing entries park as final."""

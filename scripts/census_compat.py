@@ -1130,7 +1130,13 @@ def merge_records(existing: list[dict], fresh: list[dict], roster_order: list[st
     measured load evidence is carried over only when the status is unchanged
     and the fresh run measured no loads (an import-only re-run must not erase
     the D-02b layer, and a representative skipped because its prior load
-    passed keeps that evidence).
+    passed keeps that evidence). An *unchanged* verdict also carries the
+    hand-authored ``disposition`` (the frozen 27-02 skip/fix judgments) and
+    any prior ``previous_status`` stamp forward — the judgment still
+    describes the same verdict, so a re-run against the default artifact
+    path must not destroy it; a verdict *change* drops the stale disposition
+    (the judgment no longer describes the record) and stamps the immediate
+    prior status instead.
 
     Args:
         existing: Records read from the existing artifact.
@@ -1153,15 +1159,19 @@ def merge_records(existing: list[dict], fresh: list[dict], roster_order: list[st
             and record.get("status") not in (None,)
         ):
             record["previous_status"] = previous["status"]
-        if (
-            record.get("load") is None
-            and previous is not None
-            and previous.get("load") is not None
-            and previous.get("status") == record.get("status")
-        ):
-            record["load"] = previous["load"]
-            if "load_note" in previous:
-                record["load_note"] = previous["load_note"]
+        if isinstance(previous, dict) and previous.get("status") == record.get("status"):
+            # Unchanged verdict: the disposition and its evidence trail
+            # still describe this record. Carried independently of the load
+            # carry below — a re-probed failed load replaces the load
+            # evidence while the skip/fix judgment itself still holds.
+            if "disposition" not in record and "disposition" in previous:
+                record["disposition"] = previous["disposition"]
+            if "previous_status" not in record and "previous_status" in previous:
+                record["previous_status"] = previous["previous_status"]
+            if record.get("load") is None and previous.get("load") is not None:
+                record["load"] = previous["load"]
+                if "load_note" in previous:
+                    record["load_note"] = previous["load_note"]
         by_repo[record["repo"]] = record
     ordered: list[dict] = []
     seen: set[str] = set()
