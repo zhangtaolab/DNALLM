@@ -68,6 +68,26 @@ jobs:
         run: |
           uv venv
           uv pip install -e ".[full]"
+          # Census prerequisites, not optional extras (UAT G-27-1): the
+          # mamba-family remote code (kuleshov-group caduceus, PlantCAD2,
+          # lgq12697/PlantBiMoE) imports mamba_ssm at import-probe time, so
+          # without the kernels the fresh census reports those entries as
+          # unmappable and the lane exits 1 deterministically (red-run
+          # replica evidence: 45 matched / 4 disagreeing, all
+          # ModuleNotFoundError: mamba_ssm). The kernels go through the
+          # sha256-pinned c++20 patch pipeline (scripts/install_mamba.sh),
+          # NEVER the plain .[mamba] extra: the uv source build of that
+          # extra fails on this box (verified) — torch's ATen headers set
+          # a C++20 floor while mamba-ssm 2.3.2.post1's setup.py hardcodes
+          # c++17, and the release wheel matrix stops at torch 2.10, so no
+          # prebuilt wheel can serve this box either. TUNA is this box's
+          # working PyPI route (owner-approved 2026-10-24); the script's
+          # sha256 pin enforces byte integrity regardless of route. The
+          # venv is uv-created, so pip must be bootstrapped first (the
+          # installer aborts without it, naming this exact command). NO
+          # masking: a failed kernel build must redden this lane.
+          uv pip install --python .venv/bin/python pip
+          bash scripts/install_mamba.sh --python .venv/bin/python --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
       - name: Record runner identity
         if: steps.gpu-check.outputs.has_gpu == 'true'

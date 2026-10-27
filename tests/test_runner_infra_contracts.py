@@ -35,10 +35,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import yaml
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 UNIT_FILE = REPO_ROOT / "scripts" / "runner" / "ollama.service"
 RUNNER_README = REPO_ROOT / "scripts" / "runner" / "README.md"
 CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
+CENSUS_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "census_compat.yml"
 
 
 def _load_unit_text() -> str:
@@ -249,4 +252,115 @@ class TestMcpExampleModelSwap:
             "scripts/runner/README.md still references the retired "
             f"{OLD_MODEL_NAME} model ({SWAP_DECISION}) -- sweep the pull, "
             "verify, num_ctx-narrative, and re-probe lines"
+        )
+
+
+# --- Census-lane install-sequence pins (Phase 27, UAT G-27-1) ---
+
+# The exact lines the lane's install step must carry, in order.
+CENSUS_FULL_INSTALL = 'uv pip install -e ".[full]"'
+CENSUS_PIP_BOOTSTRAP = "uv pip install --python .venv/bin/python pip"
+CENSUS_MAMBA_INSTALL = (
+    "bash scripts/install_mamba.sh "
+    "--python .venv/bin/python --index-url https://pypi.tuna.tsinghua.edu.cn/simple"
+)
+CENSUS_RUN_LINE = "python scripts/census_compat.py --run --with-loads --verify"
+
+
+def _load_census_workflow_text() -> str:
+    """Return the committed census lane workflow text (the auditable source)."""
+    return CENSUS_WORKFLOW.read_text(encoding="utf-8")
+
+
+class TestCensusLaneInstallSequence:
+    """Census-lane mamba-kernel install pins (Phase 27, UAT G-27-1).
+
+    The lane's ``.[full]`` install carries no mamba-ssm, but the
+    mamba-family remote code imports ``mamba_ssm`` at import-probe time, so
+    as originally committed the fresh census reported those entries as
+    unmappable and the lane exited 1 deterministically (red-run replica
+    evidence on the runner box: 45 matched / 4 disagreeing entries, exit 1).
+    These pins hold the environmental fix: an editorial revert -- or masking
+    the kernel build -- re-creates the permanently-red lane from UAT G-27-1
+    and fails this fast lane in seconds instead of at the next 4-hour
+    dispatch.
+    """
+
+    def test_install_sequence_full_then_bootstrap_then_mamba_then_census(self) -> None:
+        """pip bootstrap + install_mamba.sh sit between the .[full] install and the run."""
+        text = _load_census_workflow_text()
+        full = text.index(CENSUS_FULL_INSTALL)
+        bootstrap = text.index(CENSUS_PIP_BOOTSTRAP)
+        mamba = text.index(CENSUS_MAMBA_INSTALL)
+        census = text.index(CENSUS_RUN_LINE)
+        assert full < bootstrap < mamba < census, (
+            "census_compat.yml must install the mamba kernels BETWEEN the "
+            f".[full] install and the census run: {CENSUS_FULL_INSTALL!r} < "
+            f"{CENSUS_PIP_BOOTSTRAP!r} < install_mamba.sh < {CENSUS_RUN_LINE!r} "
+            "(UAT G-27-1: without the kernels the mamba-family remote code "
+            "fails its import probe, the census reports those entries as "
+            "unmappable, and the lane is permanently red -- an editorial "
+            "revert or reordering re-creates exactly that)"
+        )
+
+    def test_mamba_installer_invocation_is_the_sanctioned_shape(self) -> None:
+        """The installer is called exactly as the proven ci.yml mamba lane calls it."""
+        text = _load_census_workflow_text()
+        assert CENSUS_MAMBA_INSTALL in text, (
+            "census_compat.yml must invoke the repo's sanctioned pinned "
+            f"installer as `{CENSUS_MAMBA_INSTALL}` -- the plain .[mamba] "
+            "extra cannot build on this box (uv source build fails, "
+            "verified; the release wheel matrix stops at torch 2.10), so "
+            "any other invocation shape re-creates the permanently-red lane "
+            "from UAT G-27-1"
+        )
+
+    def test_no_masked_failure_in_the_lane(self) -> None:
+        """No ``|| true`` masking in any executed line: a failed build must redden the lane."""
+        text = _load_census_workflow_text()
+        # Only executed lines count -- the lane's own comments name the
+        # forbidden shape as prose ("NO `|| true` masking"), which is fine.
+        executed = "\n".join(
+            line for line in text.splitlines() if not line.lstrip().startswith("#")
+        )
+        assert "|| true" not in executed, (
+            "census_compat.yml must never mask a failed step with '|| true' "
+            "(UAT G-27-1 posture): a masked kernel-build failure would green "
+            "the lane while the census still reports the mamba family as "
+            "unmappable -- a silent red-to-green lie"
+        )
+
+    def test_dispatch_only_posture_unchanged(self) -> None:
+        """Triggers, permissions, runner, guard, and timeout are exactly the D-08 posture."""
+        doc = yaml.safe_load(_load_census_workflow_text())
+        # pyyaml gotcha: a bare `on:` key parses as boolean True, and its
+        # bare-scalar value parses as a plain string (not a dict/list).
+        triggers = doc.get(True) or doc.get("on")
+        assert triggers is not None, "census_compat.yml carries no trigger block"
+        if isinstance(triggers, str):
+            names = {triggers}
+        else:
+            names = set(triggers)
+        assert names == {"workflow_dispatch"}, (
+            "census_compat.yml must stay dispatch-ONLY (D-08): triggers are "
+            f"{sorted(names)} -- adding push/pull_request/schedule would let "
+            "PR-authored code run on the self-hosted GPU box"
+        )
+        assert doc.get("permissions") == {"contents": "read"}, (
+            "census_compat.yml must keep permissions at contents: read "
+            "(least privilege on the self-hosted runner)"
+        )
+        job = doc["jobs"]["census-compat"]
+        assert job.get("if") == "github.event_name == 'workflow_dispatch'", (
+            "the census job must keep its event-name guard (D-08 security "
+            "boundary on the self-hosted runner)"
+        )
+        assert job.get("runs-on") == ["self-hosted", "dnallm-nightly"], (
+            "the census job must stay on [self-hosted, dnallm-nightly] -- "
+            "the box the committed census evidence was produced on"
+        )
+        assert job.get("timeout-minutes") == 240, (
+            "the census job must keep its 240-minute timeout (49 fetches "
+            "plus family-representative loads; UAT G-27-1's kernel install "
+            "adds build time but stays inside this budget)"
         )
