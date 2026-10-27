@@ -14,6 +14,7 @@ DNALLM never breaks an otherwise working environment.
 from __future__ import annotations
 
 import warnings
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 import torch
@@ -1381,6 +1382,298 @@ def _patch_device_type_query():
         transformers.utils.get_device_type = get_device_type  # ty: ignore[unresolved-attribute]  # re-export mirror, intentional monkeypatch
 
 
+# The chunked-forward helper below is vendored with semantics and docstring
+# kept verbatim from the upstream transformers reference implementation: tag
+# v4.49.0, file src/transformers/pytorch_utils.py. transformers 5.x removed
+# the name from modeling_utils -- the re-export site 4.x-era
+# trust_remote_code checkpoints import it from (the remote modeling_bert.py
+# of AIRI-Institute/gena-lm-bert-base lines 51-55 and its bigbird sibling,
+# both census import-fail records of 2026-10-27) -- while pytorch_utils keeps
+# its own implementation as of 5.17. The patch therefore re-attaches the LIVE
+# pytorch_utils object under its upstream name on modeling_utils (zero drift
+# by construction, the alias shape the owner endorsed for cases where the
+# transformers-5 package surface still carries the implementation) and falls
+# back to this vendored copy only if a future transformers drops the name
+# from pytorch_utils as well. Two documented deviations from upstream: (1)
+# the bare `assert len(input_tensors) > 0` is re-raised as an explicit
+# AssertionError with the identical message because repo lint (S101) forbids
+# bare asserts in dnallm/ -- the exception type and text are unchanged; (2)
+# `inspect` resolves through a function-local import (upstream imports it at
+# module scope). Behavior is unchanged.
+
+
+def _apply_chunking_to_forward(
+    forward_fn: Callable[..., torch.Tensor],
+    chunk_size: int,
+    chunk_dim: int,
+    *input_tensors,
+) -> torch.Tensor:
+    """
+    This function chunks the `input_tensors` into smaller input tensor parts of size `chunk_size` over the dimension
+    `chunk_dim`. It then applies a layer `forward_fn` to each chunk independently to save memory.
+
+    If the `forward_fn` is independent across the `chunk_dim` this function will yield the same result as directly
+    applying `forward_fn` to `input_tensors`.
+
+    Args:
+        forward_fn (`Callable[..., torch.Tensor]`):
+            The forward function of the model.
+        chunk_size (`int`):
+            The chunk size of a chunked tensor: `num_chunks = len(input_tensors[0]) / chunk_size`.
+        chunk_dim (`int`):
+            The dimension over which the `input_tensors` should be chunked.
+        input_tensors (`Tuple[torch.Tensor]`):
+            The input tensors of `forward_fn` which will be chunked
+
+    Returns:
+        `torch.Tensor`: A tensor with the same shape as the `forward_fn` would have given if applied`.
+
+
+    Examples:
+
+    ```python
+    # rename the usual forward() fn to forward_chunk()
+    def forward_chunk(self, hidden_states):
+        hidden_states = self.decoder(hidden_states)
+        return hidden_states
+
+
+    # implement a chunked forward function
+    def forward(self, hidden_states):
+        return apply_chunking_to_forward(self.forward_chunk, self.chunk_size_lm_head, self.seq_len_dim, hidden_states)
+    ```"""
+
+    if not len(input_tensors) > 0:
+        # Deviation (1) from upstream v4.49.0: bare assert re-raised because
+        # repo lint (S101) forbids bare asserts; type and text unchanged.
+        raise AssertionError(f"{input_tensors} has to be a tuple/list of tensors")
+
+    import inspect
+
+    # inspect.signature exist since python 3.5 and is a python method -> no problem with backward compatibility
+    num_args_in_forward_chunk_fn = len(inspect.signature(forward_fn).parameters)
+    if num_args_in_forward_chunk_fn != len(input_tensors):
+        raise ValueError(
+            f"forward_chunk_fn expects {num_args_in_forward_chunk_fn} arguments, but only {len(input_tensors)} input "
+            "tensors are given"
+        )
+
+    if chunk_size > 0:
+        tensor_shape = input_tensors[0].shape[chunk_dim]
+        for input_tensor in input_tensors:
+            if input_tensor.shape[chunk_dim] != tensor_shape:
+                raise ValueError(
+                    f"All input tenors have to be of the same shape: {tensor_shape}, "
+                    f"found shape {input_tensor.shape[chunk_dim]}"
+                )
+
+        if input_tensors[0].shape[chunk_dim] % chunk_size != 0:
+            raise ValueError(
+                f"The dimension to be chunked {input_tensors[0].shape[chunk_dim]} has to be a multiple of the chunk "
+                f"size {chunk_size}"
+            )
+
+        num_chunks = input_tensors[0].shape[chunk_dim] // chunk_size
+
+        # chunk input tensor into tuples
+        input_tensors_chunks = tuple(
+            input_tensor.chunk(num_chunks, dim=chunk_dim) for input_tensor in input_tensors
+        )
+        # apply forward fn to every tuple (deviation from upstream v4.49.0:
+        # explicit strict=False -- the bare zip() default -- because repo
+        # lint (B905, preview) requires an explicit argument; the shape
+        # validation above guarantees equal chunk counts, so behavior is
+        # unchanged)
+        output_chunks = tuple(
+            forward_fn(*input_tensors_chunk)
+            for input_tensors_chunk in zip(*input_tensors_chunks, strict=False)
+        )
+        # concatenate output at same dimension
+        return torch.cat(output_chunks, dim=chunk_dim)
+
+    return forward_fn(*input_tensors)
+
+
+def _attach_apply_chunking_to_forward(target_module: object, source_module: object) -> bool:
+    """Attach the chunking helper to *target_module* wherever missing.
+
+    Absence-gated per name: a name the module already exposes natively is
+    never overwritten (transformers 4.x re-exports the helper from
+    modeling_utils; transformers 5.x keeps it only in pytorch_utils). The
+    attached object is the live *source_module* implementation when present
+    (the alias shape, zero drift from the installed transformers) and the
+    vendored v4.49.0 copy otherwise. A module sentinel keeps repeat
+    attachment idempotent.
+
+    Returns:
+        True when an attachment happened, False when the name was already
+        present or the sentinel short-circuited.
+    """
+    if getattr(target_module, "_dnallm_apply_chunking_patch", False):
+        return False
+
+    if hasattr(target_module, "apply_chunking_to_forward"):
+        return False
+
+    implementation = getattr(source_module, "apply_chunking_to_forward", None)
+    if implementation is None:
+        implementation = _apply_chunking_to_forward
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch (checker-agnostic)
+        target_module,
+        "apply_chunking_to_forward",
+        implementation,
+    )
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch (checker-agnostic)
+        target_module,
+        "_dnallm_apply_chunking_patch",
+        True,
+    )
+    return True
+
+
+def _patch_apply_chunking_to_forward():
+    """Re-attach the 4.x ``apply_chunking_to_forward`` removed from modeling_utils by 5.x.
+
+    transformers 5.x removed ``apply_chunking_to_forward`` from
+    ``transformers.modeling_utils`` (verified live on 5.17), but 4.x-era
+    trust_remote_code checkpoints import it from there (the remote
+    modeling_bert.py of AIRI-Institute/gena-lm-bert-base line 53 and its
+    bigbird-base-sparse sibling -- two census import-fail records measured
+    2026-10-27 under transformers 5.17.0 with the eleven prior rungs armed).
+    transformers 5.17 still ships the implementation in
+    ``transformers.pytorch_utils``, so the patch attaches THAT live object
+    under its upstream name on modeling_utils, per name only where the
+    module does not already expose it (no-op on transformers 4.x, where the
+    re-export survives); a module sentinel keeps repeat calls idempotent.
+    If a future transformers drops the name from pytorch_utils too, the
+    attach falls back to the vendored v4.49.0 implementation above.
+    """
+    try:
+        import transformers.modeling_utils
+        import transformers.pytorch_utils
+    except Exception:  # pragma: no cover - transformers not installed / module renamed
+        return
+    _attach_apply_chunking_to_forward(transformers.modeling_utils, transformers.pytorch_utils)
+
+
+# transformers 5.x moved the ``all_tied_weights_keys`` bookkeeping into
+# ``PreTrainedModel.post_init`` (which computes it and then calls
+# init_weights), and its loaders read it during ``from_pretrained``:
+# ``_move_missing_keys_from_meta_to_device`` does
+# ``missing_keys - self.all_tied_weights_keys.keys()``. The existing
+# bookkeeping rung bridges remote 4.x classes that end ``__init__`` with the
+# bare ``self.init_weights()`` entry. The rung below bridges the remaining
+# no-entry shape -- remote classes whose ``__init__`` ends with NEITHER
+# ``post_init()`` NOR ``init_weights()`` (the bare ``Caduceus`` backbone of
+# kuleshov-group/PlantCaduceus_l32, modeling_caduceus.py line 344-367, whose
+# census load evidence of 2026-10-27 is
+# ``AttributeError: 'Caduceus' object has no attribute
+# 'all_tied_weights_keys'`` at _finalize_model_loading). It wraps
+# ``_finalize_model_loading`` -- the boundary transformers itself calls
+# between weight loading and the first bookkeeping consumer -- so a
+# receiver missing the attribute receives exactly the post_init
+# computation (its own expanded map merged with each child's map, NO
+# weight re-initialization) before the original finalize runs. Compliant
+# receivers are untouched (absence-gated per instance); the probe gate and
+# the ``_finalize_model_loading`` existence gate keep it a no-op on
+# transformers 4.x, where nothing reads the attribute.
+
+_tied_bookkeeping_original_finalize = None
+
+
+def _materialize_tied_weights_bookkeeping(model: object) -> None:
+    """Set the 5.x tied-weights bookkeeping on *model* when missing.
+
+    Computes exactly what ``PreTrainedModel.post_init`` computes -- the
+    model's own expanded tied-weights map (``all_submodels=False``) merged
+    with each child's already-computed map -- WITHOUT re-running weight
+    initialization, then assigns it. A receiver that already carries
+    ``all_tied_weights_keys`` is left untouched (absence-gated, never
+    overwrite).
+    """
+    if hasattr(model, "all_tied_weights_keys"):
+        return
+    mapping = dict(model.get_expanded_tied_weights_keys(all_submodels=False))  # ty: ignore[unresolved-attribute]  # dynamic receiver
+    for name, module in model.named_children():
+        tied_keys = getattr(module, "all_tied_weights_keys", None)
+        if tied_keys:
+            mapping.update({f"{name}.{k}": f"{name}.{v}" for k, v in tied_keys.copy().items()})
+    model.all_tied_weights_keys = mapping  # ty: ignore[unresolved-attribute]  # deliberate dynamic instance patch
+
+
+def _patch_tied_weights_bookkeeping_on_load():
+    """Wrap ``_finalize_model_loading`` to materialize the 5.x bookkeeping.
+
+    Install is gated on the :func:`_post_init_computes_tied_weights_keys`
+    probe (no-op on transformers 4.x), on ``_finalize_model_loading``
+    existing on the class, and on a class sentinel for idempotency; the
+    captured original is kept in the module-level
+    ``_tied_bookkeeping_original_finalize`` so repeat installs and tests can
+    compare identity, and the wrapper reads it at call time.
+    """
+    global _tied_bookkeeping_original_finalize
+
+    try:
+        import transformers.modeling_utils
+    except Exception:  # pragma: no cover - transformers not installed
+        return
+
+    model_cls = transformers.modeling_utils.PreTrainedModel
+
+    if getattr(model_cls, "_dnallm_tied_bookkeeping_patch", False):
+        return
+
+    if not hasattr(model_cls, "_finalize_model_loading"):
+        return
+
+    if not _post_init_computes_tied_weights_keys():
+        return
+
+    original = model_cls.__dict__.get("_finalize_model_loading")
+    if original is None:
+        return
+    _tied_bookkeeping_original_finalize = (
+        original.__func__ if isinstance(original, (classmethod, staticmethod)) else original
+    )
+
+    # transformers 5.17 ships ``_finalize_model_loading`` as a STATIC method
+    # ``(model, load_config, loading_info)``; a different binding (class- or
+    # instance-shaped first parameter) is adapted to, so the wrapper works
+    # across the supported 5.x series without assuming one descriptor form.
+    import inspect
+
+    first_param = next(
+        iter(inspect.signature(_tied_bookkeeping_original_finalize).parameters), None
+    )
+    binds_class = first_param in ("cls", "self")
+
+    def _finalize_model_loading(*args, **kwargs):
+        if args:
+            receiver = args[1] if binds_class and len(args) > 1 else args[0]
+            _materialize_tied_weights_bookkeeping(receiver)
+            # The same skipped-entry receivers never ran the init_weights
+            # wrapper that installs the legacy tie_weights arity bridge, and
+            # 5.x from_pretrained calls model.tie_weights(missing_keys=...,
+            # recompute_mapping=False) after loading -- bridge it here too
+            # (measured live on the bare remote Caduceus backbone of
+            # PlantCaduceus_l32; the bridge self-guards per signature).
+            _bridge_legacy_tie_weights(receiver)
+        return _tied_bookkeeping_original_finalize(*args, **kwargs)
+
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        model_cls,
+        "_finalize_model_loading",
+        classmethod(_finalize_model_loading)
+        if binds_class
+        else staticmethod(_finalize_model_loading),
+    )
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        model_cls,
+        "_dnallm_tied_bookkeeping_patch",
+        True,
+    )
+
+
 def apply_patches():
     """Apply all compatibility patches. Safe to call multiple times.
 
@@ -1401,6 +1694,8 @@ def apply_patches():
     _patch_legacy_init_weights_bookkeeping()
     _patch_legacy_tie_weights_arity()
     _patch_numpy_fromstring()
+    _patch_apply_chunking_to_forward()
+    _patch_tied_weights_bookkeeping_on_load()
 
 
 # Apply patches on module import so they are active before any

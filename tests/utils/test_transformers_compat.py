@@ -1353,6 +1353,9 @@ EXPECTED_PATCH_INSTALLERS = frozenset({
     "_patch_get_head_mask",
     "_patch_legacy_init_weights_bookkeeping",
     "_patch_legacy_tie_weights_arity",
+    # 27-02 census-driven rungs (tests/models/compat_census.json evidence)
+    "_patch_apply_chunking_to_forward",
+    "_patch_tied_weights_bookkeeping_on_load",
 })
 
 

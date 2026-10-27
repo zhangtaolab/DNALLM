@@ -73,9 +73,9 @@ class TestApplyChunkingToForward:
 
         patch()
 
-        assert (
-            getattr(transformers.modeling_utils, "apply_chunking_to_forward", None) is before
-        ), "repeat call must not rebind the attached name"
+        assert getattr(transformers.modeling_utils, "apply_chunking_to_forward", None) is before, (
+            "repeat call must not rebind the attached name"
+        )
 
     def test_absence_gate_never_overwrites_an_existing_name(self):
         """A modeling_utils already exposing the name keeps its original object."""
@@ -85,7 +85,7 @@ class TestApplyChunkingToForward:
         fake_modeling = types.SimpleNamespace(apply_chunking_to_forward=original)
         fake_pytorch = types.SimpleNamespace(apply_chunking_to_forward=object())
 
-        attached = transformers_compat._attach_apply_chunking_to_forward(  # noqa: SLF001 - rung helper
+        attached = transformers_compat._attach_apply_chunking_to_forward(
             fake_modeling, fake_pytorch
         )
         assert attached is False
@@ -100,9 +100,7 @@ class TestApplyChunkingToForward:
         fake_modeling = types.ModuleType("fake_modeling_utils")
         fake_pytorch = types.SimpleNamespace(apply_chunking_to_forward=live)
 
-        transformers_compat._attach_apply_chunking_to_forward(  # noqa: SLF001 - rung helper
-            fake_modeling, fake_pytorch
-        )
+        transformers_compat._attach_apply_chunking_to_forward(fake_modeling, fake_pytorch)
 
         assert fake_modeling.apply_chunking_to_forward is live
         assert getattr(fake_modeling, "_dnallm_apply_chunking_patch", False) is True
@@ -116,41 +114,36 @@ class TestApplyChunkingToForward:
         fake_modeling = types.ModuleType("fake_modeling_utils")
         fake_pytorch = types.ModuleType("fake_pytorch_utils")
 
-        transformers_compat._attach_apply_chunking_to_forward(  # noqa: SLF001 - rung helper
-            fake_modeling, fake_pytorch
-        )
+        transformers_compat._attach_apply_chunking_to_forward(fake_modeling, fake_pytorch)
 
-        assert fake_modeling.apply_chunking_to_forward is transformers_compat._apply_chunking_to_forward  # noqa: SLF001 - rung helper
+        assert (
+            fake_modeling.apply_chunking_to_forward
+            is transformers_compat._apply_chunking_to_forward
+        )
 
     def test_vendored_chunking_semantics_match_direct_application(self):
         """The vendored v4.49.0 chunker: chunked forward == direct forward,
         zero/negative chunk size passes through, arity mismatch raises."""
         _rung("_apply_chunking_to_forward")
 
-        tensor = torch.arange(12, dtype=torch.float32).reshape(3, 4)
+        tensor = torch.arange(16, dtype=torch.float32).reshape(4, 4)
 
         def double(x):
             return x * 2
 
-        chunked = transformers_compat._apply_chunking_to_forward(  # noqa: SLF001 - rung helper
-            double, 2, 0, tensor
-        )
+        chunked = transformers_compat._apply_chunking_to_forward(double, 2, 0, tensor)
         assert torch.equal(chunked, double(tensor))
 
-        passthrough = transformers_compat._apply_chunking_to_forward(  # noqa: SLF001 - rung helper
-            double, 0, 0, tensor
-        )
+        passthrough = transformers_compat._apply_chunking_to_forward(double, 0, 0, tensor)
         assert torch.equal(passthrough, double(tensor))
 
+        ragged = torch.arange(12, dtype=torch.float32).reshape(3, 4)
+
         with pytest.raises(ValueError, match="arguments"):
-            transformers_compat._apply_chunking_to_forward(  # noqa: SLF001 - rung helper
-                double, 2, 0, tensor, tensor.clone()
-            )
+            transformers_compat._apply_chunking_to_forward(double, 2, 0, tensor, tensor.clone())
 
         with pytest.raises(ValueError, match="multiple of the chunk"):
-            transformers_compat._apply_chunking_to_forward(  # noqa: SLF001 - rung helper
-                double, 5, 0, tensor
-            )
+            transformers_compat._apply_chunking_to_forward(double, 2, 0, ragged)
 
     def test_noop_when_neither_module_imports(self, monkeypatch):
         """The rung returns quietly when the target modules are absent
@@ -200,6 +193,9 @@ class _FakeBookkeepingModel:
         child = types.SimpleNamespace(all_tied_weights_keys=dict(self._child))
         return iter([("backbone", child)])
 
+    def tie_weights(self, missing_keys=None, recompute_mapping=True):
+        """Native-shaped 5.x tie_weights (the bridge must leave it alone)."""
+
 
 class TestTiedWeightsBookkeepingOnLoad:
     """Contract: remote __init__ paths that skip post_init still get the 5.x
@@ -221,7 +217,7 @@ class TestTiedWeightsBookkeepingOnLoad:
             child_mapping={"embed.weight": "tok.weight"},
         )
 
-        transformers_compat._materialize_tied_weights_bookkeeping(model)  # noqa: SLF001 - rung helper
+        transformers_compat._materialize_tied_weights_bookkeeping(model)
 
         assert model.all_tied_weights_keys == {
             "head.weight": "backbone.weight",
@@ -238,21 +234,21 @@ class TestTiedWeightsBookkeepingOnLoad:
         original = {"already": "set"}
         model.all_tied_weights_keys = original
 
-        transformers_compat._materialize_tied_weights_bookkeeping(model)  # noqa: SLF001 - rung helper
+        transformers_compat._materialize_tied_weights_bookkeeping(model)
 
         assert model.all_tied_weights_keys is original
 
     def test_wrapped_finalize_materializes_then_delegates(self, monkeypatch):
         """The installed wrapper materializes the bookkeeping for a missing
         receiver, then delegates to the captured original with identical
-        arguments."""
+        arguments (transformers 5.17 ships a static method: the model is the
+        first argument)."""
         _rung("_patch_tied_weights_bookkeeping_on_load")
         _rung("_materialize_tied_weights_bookkeeping")
 
         recorded = {}
 
-        def fake_original(cls, model, load_config, loading_info):
-            recorded["cls"] = cls
+        def fake_original(model, load_config, loading_info):
             recorded["model"] = model
             recorded["args"] = (load_config, loading_info)
             return "delegated"
@@ -265,7 +261,6 @@ class TestTiedWeightsBookkeepingOnLoad:
         result = PreTrainedModel._finalize_model_loading(model, "load-config", "loading-info")
 
         assert result == "delegated"
-        assert recorded["cls"] is PreTrainedModel
         assert recorded["model"] is model
         assert recorded["args"] == ("load-config", "loading-info")
         assert hasattr(model, "all_tied_weights_keys")
@@ -275,7 +270,7 @@ class TestTiedWeightsBookkeepingOnLoad:
         recomputation (the materializer's absence gate, via the wrapper)."""
         _rung("_patch_tied_weights_bookkeeping_on_load")
 
-        def fake_original(cls, model, load_config, loading_info):
+        def fake_original(model, load_config, loading_info):
             return "delegated"
 
         monkeypatch.setattr(
@@ -290,6 +285,38 @@ class TestTiedWeightsBookkeepingOnLoad:
 
         assert model.all_tied_weights_keys is mapping
         assert model.calls == [], "no recomputation for a compliant receiver"
+
+    def test_wrapped_finalize_bridges_legacy_tie_weights_arity(self, monkeypatch):
+        """A receiver with a zero-arg 4.x tie_weights override gains the
+        per-instance arity bridge at the load boundary (the same skipped
+        post_init entry leaves both 5.x protocol pieces missing -- measured
+        live on the bare remote Caduceus backbone of PlantCaduceus_l32:
+        all_tied_weights_keys materialization gets past meta-device move,
+        then from_pretrained's model.tie_weights(missing_keys=...) call
+        dies with TypeError on the un-bridged override)."""
+        _rung("_patch_tied_weights_bookkeeping_on_load")
+
+        def fake_original(model, load_config, loading_info):
+            return "delegated"
+
+        monkeypatch.setattr(
+            transformers_compat, "_tied_bookkeeping_original_finalize", fake_original
+        )
+
+        class _LegacyTieWeightsModel(_FakeBookkeepingModel):
+            def tie_weights(self):
+                """4.x zero-arg override (the Caduceus shape)."""
+
+        model = _LegacyTieWeightsModel()
+        PreTrainedModel._finalize_model_loading(model, None, None)
+
+        # The 5.x post-load call contract now works through the bridge:
+        model.tie_weights(missing_keys=set(), recompute_mapping=False)
+        # And the native-shaped receiver from the fixture stays untouched
+        # (the bridge self-guards on the signature -- no instance override):
+        compliant = _FakeBookkeepingModel()
+        PreTrainedModel._finalize_model_loading(compliant, None, None)
+        assert compliant.__dict__.get("tie_weights") is None
 
     def test_patch_is_idempotent(self):
         """A second rung call does not re-wrap the classmethod."""
