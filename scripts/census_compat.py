@@ -1240,12 +1240,306 @@ def run_census(artifact_path: Path, selected: list[str] | None, with_loads: bool
     return 0
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 27-03 registry write-back: artifact -> tf_compat_* fields (anchored insertion)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# The five-value registry verdict vocabulary (mirrors RegistryEntry's Literal).
+TF_COMPAT_STATUSES = frozenset({
+    "verified-tf5",
+    "import-verified-tf5",
+    "shim-required-tf5",
+    "remote-code-broken",
+    "census-blocked",
+})
+
+# Entries whose census-green load+forward passes ONLY through a compat rung
+# (27-02 evidence). The artifact records the green load but does not stamp
+# which rung that load needed, so the dependency lives here: the bare Caduceus
+# backbone's remote __init__ skips post_init entirely, and rung 13
+# (_patch_tied_weights_bookkeeping_on_load) materializes the tied-weights
+# bookkeeping at the from_pretrained boundary (verified live in 27-02 and
+# pinned by tests/utils/test_transformers_compat_census.py). Entries whose
+# import a rung restored but whose load/forward still fails carry skip
+# dispositions in the artifact and map to remote-code-broken — the D-03
+# verdict (load + one real forward) is what the registry consumes.
+SHIM_RESTORED_LOADS: dict[str, str] = {
+    "kuleshov-group/PlantCaduceus_l32": "_patch_tied_weights_bookkeeping_on_load",
+}
+
+# First line of the write-back provenance block; the block is appended at end
+# of the registry yaml exactly once (idempotency guard for repeat runs).
+COMPAT_PROVENANCE_SENTINEL = (
+    "# Registry compatibility census: tf_compat_status / tf_compat_evidence /"
+    " tf_compat_tested (Phase 27-03, 2026-10-27)."
+)
+
+
+def compat_verdict(record: dict, family_reps: dict[str, str]) -> tuple[str, str]:
+    """Map one census evidence record to its registry (status, evidence) pair.
+
+    Objective mapping table (D-07): ``census-blocked`` stays ``census-blocked``;
+    a ``skip`` disposition (import-fail or structurally failed load/forward)
+    maps to ``remote-code-broken`` carrying the exact failing import/reason; a
+    ``fix`` disposition or a shim-restored load with a green D-03 verdict maps
+    to ``shim-required-tf5`` naming the rung; any other green load+forward maps
+    to ``verified-tf5``; a non-representative import/arch-ok entry maps to
+    ``import-verified-tf5`` naming its family representative.
+
+    Args:
+        record: One census evidence record.
+        family_reps: ``{family: representative repo}`` map over the artifact.
+
+    Returns:
+        The ``(tf_compat_status, tf_compat_evidence)`` pair.
+
+    Raises:
+        ValueError: When the record carries neither a green load nor a skip
+            disposition (an unclassifiable shape must never silently pass).
+    """
+    repo = record["repo"]
+    stamp = f"{record['hub']} {repo}@{record['revision']}"
+    status = record.get("status")
+    disposition = record.get("disposition")
+    disposition = disposition if isinstance(disposition, dict) else {}
+    load = record.get("load")
+    load = load if isinstance(load, dict) else {}
+    load_passed = load.get("ok") is True and load.get("forward_ok") is True
+    if status == "census-blocked":
+        reason = record.get("failing_import") or "census blocked (see artifact)"
+        return "census-blocked", f"{stamp}; {reason}"
+    skip_reason = disposition.get("skip")
+    if isinstance(skip_reason, str) and skip_reason:
+        failing_import = record.get("failing_import")
+        detail = (
+            f"failing import: {failing_import}; {skip_reason}" if failing_import else skip_reason
+        )
+        return "remote-code-broken", f"{stamp}; {detail}"
+    fix_rung = disposition.get("fix")
+    if isinstance(fix_rung, str) and fix_rung and load_passed:
+        return "shim-required-tf5", f"{stamp}; load+forward verified via rung {fix_rung}"
+    if load_passed:
+        rung = SHIM_RESTORED_LOADS.get(repo)
+        if rung:
+            return "shim-required-tf5", f"{stamp}; load+forward verified via rung {rung}"
+        return "verified-tf5", stamp
+    if not record.get("is_family_rep"):
+        representative = family_reps.get(record.get("family"))
+        if representative:
+            return (
+                "import-verified-tf5",
+                f"{stamp}; load inferred from family representative {representative}",
+            )
+    raise ValueError(
+        f"census record for {repo} (status {status!r}) carries no green load and "
+        "no skip disposition - cannot map it to a registry status"
+    )
+
+
+def _compat_field_lines(status: str, evidence: str, tested: str) -> list[str]:
+    """Return the three indented tf_compat_* lines to insert after max_length.
+
+    json.dumps yields a YAML-double-quoted scalar (escaping is shared), so
+    evidence text with quotes, brackets, or colons round-trips safely.
+    """
+    return [
+        f"    tf_compat_status: {status}\n",
+        f"    tf_compat_evidence: {json.dumps(evidence)}\n",
+        f"    tf_compat_tested: {json.dumps(tested)}\n",
+    ]
+
+
+def _ends_entry_block(line: str) -> bool:
+    """Return True when a stripped line ends the current registry entry block."""
+    return (
+        line.startswith("  - ")
+        or line.startswith("#")
+        or not line.strip()
+        or (line and not line.startswith(" ") and line.endswith(":"))
+    )
+
+
+def plan_compat_insertions(records: list[dict], yaml_text: str, roster: list[str]) -> dict:
+    """Plan the anchored tf_compat_* insertions for the pretrained roster.
+
+    Each roster entry is located by its exact ``    model: "<repo>"`` line
+    (repo ids are unique across sections, so base_model lines never match);
+    the three field lines are planned immediately after that block's
+    ``max_length`` line. An entry already carrying a ``tf_compat_status`` line
+    is reported as already written, never duplicated.
+
+    Args:
+        records: Census evidence records (the committed artifact).
+        yaml_text: The registry yaml file's exact text.
+        roster: Pretrained repo ids in registry file order.
+
+    Returns:
+        ``{"plans": [...], "already": [...]}`` where every plan carries
+        ``repo``, ``name``, ``status``, ``evidence``, ``tested``, ``anchor``
+        (0-based index of the block's max_length line) and ``lines``.
+
+    Raises:
+        ValueError: Fail-closed on roster/artifact disagreement, an unlocatable
+            entry block, a missing max_length anchor, or an unmappable verdict.
+    """
+    by_repo = {r.get("repo"): r for r in records if isinstance(r, dict)}
+    missing = [repo for repo in roster if repo not in by_repo]
+    if missing:
+        raise ValueError(f"artifact is missing census records for: {missing}")
+    extra = sorted(repo for repo in by_repo if repo not in set(roster))
+    if extra:
+        raise ValueError(f"artifact carries records outside the pretrained roster: {extra}")
+    family_reps = {
+        record["family"]: record["repo"]
+        for record in records
+        if record.get("is_family_rep") and record.get("family")
+    }
+    stripped = [line.rstrip("\n") for line in yaml_text.splitlines(keepends=True)]
+    plans: list[dict] = []
+    already: list[dict] = []
+    for repo in roster:
+        record = by_repo[repo]
+        model_line = f'    model: "{repo}"'
+        hits = [i for i, text in enumerate(stripped) if text == model_line]
+        if len(hits) != 1:
+            raise ValueError(
+                f"expected exactly one registry line {model_line!r}, found {len(hits)}"
+            )
+        start = hits[0]
+        end = start + 1
+        while end < len(stripped) and not _ends_entry_block(stripped[end]):
+            end += 1
+        block = stripped[start:end]
+        if any("tf_compat_status:" in line for line in block):
+            already.append({"repo": repo, "name": record.get("name")})
+            continue
+        anchor_offsets = [i for i, line in enumerate(block) if line.startswith("    max_length:")]
+        if not anchor_offsets:
+            raise ValueError(f"entry block for {repo} carries no max_length anchor line")
+        status, evidence = compat_verdict(record, family_reps)
+        plans.append({
+            "repo": repo,
+            "name": record.get("name"),
+            "status": status,
+            "evidence": evidence,
+            "tested": record.get("transformers"),
+            "anchor": start + anchor_offsets[0],
+            "lines": _compat_field_lines(status, evidence, record.get("transformers")),
+        })
+    return {"plans": plans, "already": already}
+
+
+def compat_provenance_block() -> str:
+    """Return the dated write-back provenance comment block (mirrors 22-02)."""
+    return (
+        f"{COMPAT_PROVENANCE_SENTINEL}\n"
+        "# Method: import census plus sampled load/forward evidence under transformers\n"
+        "#   5.17.0 over all 49 pretrained entries; frozen evidence artifact:\n"
+        "#   tests/models/compat_census.json (27-02, dispositions complete).\n"
+        "# Coverage rule: all 49 pretrained entries carry the fields; finetuned entries\n"
+        "#   inherit from their bases and carry no tf_compat_* keys.\n"
+        "# tf_compat_tested records what was ACTUALLY tested: transformers 5.17.0 only.\n"
+        "#   The transformers 4 side is inferred (model code written in the transformers 4\n"
+        "#   era), never separately tested (D-05); inference wording is a docs-layer\n"
+        "#   concern (27-04).\n"
+        "# Tooling: scripts/census_compat.py --write-registry --apply (committed,\n"
+        "#   re-runnable; anchored text insertion only - never a YAML round-trip).\n"
+    )
+
+
+def write_registry(
+    artifact_path: str | Path,
+    yaml_path: str | Path,
+    *,
+    apply: bool = False,
+    roster: list[str] | None = None,
+) -> int:
+    """Write the census verdicts into the registry yaml (anchored insertion only).
+
+    Dry-run by default: without ``apply`` the planned lines are printed and
+    nothing is written. Fail-closed: an absent/unparseable artifact, a
+    roster/artifact disagreement, or an unmappable verdict exits 1 without
+    touching the file — never a partial silent write.
+
+    Args:
+        artifact_path: The frozen census evidence artifact.
+        yaml_path: The registry yaml to write (the packaged file by default).
+        apply: Write the planned insertions plus the provenance block.
+        roster: Pretrained repo ids in registry order (defaults to the typed
+            registry loader — the sole parser of the packaged file).
+
+    Returns:
+        0 on success, 1 on a fail-closed condition.
+    """
+    try:
+        records = read_artifact(artifact_path)
+    except ValueError as error:
+        print(f"ERROR: {error}")
+        return 1
+    if roster is None:
+        roster = [entry.model for entry in pretrained_roster()]
+    yaml_path = Path(yaml_path)
+    try:
+        yaml_text = yaml_path.read_text(encoding="utf-8")
+    except OSError as error:
+        print(f"ERROR: cannot read registry yaml {yaml_path}: {error}")
+        return 1
+    try:
+        planned = plan_compat_insertions(records, yaml_text, roster)
+    except ValueError as error:
+        print(f"ERROR: {error}")
+        return 1
+    plans = planned["plans"]
+    for plan in planned["already"]:
+        print(f"already written: {plan['repo']} (skipped, idempotent)")
+    if not apply:
+        for plan in plans:
+            print(f"planned {plan['repo']} ({plan['name']}) -> {plan['status']}")
+            for line in plan["lines"]:
+                print(f"  + {line.rstrip()}")
+        print(
+            f"{len(plans)} planned insertion(s), {len(planned['already'])} already "
+            "written (dry-run; pass --apply to write)"
+        )
+        return 0
+    if not plans:
+        print("nothing to write: every roster entry already carries its tf_compat_* fields")
+        return 0
+    lines = yaml_text.splitlines(keepends=True)
+    for plan in sorted(plans, key=lambda item: item["anchor"], reverse=True):
+        lines[plan["anchor"] + 1 : plan["anchor"] + 1] = plan["lines"]
+    new_text = "".join(lines)
+    appended_provenance = COMPAT_PROVENANCE_SENTINEL not in new_text
+    if appended_provenance:
+        new_text += compat_provenance_block()
+    yaml_path.write_text(new_text, encoding="utf-8")
+    print(f"wrote {len(plans)} tf_compat_* insertion(s) into {yaml_path}")
+    if appended_provenance:
+        print("provenance block appended at end of file")
+    return 0
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     """Parse the census CLI arguments."""
     parser = argparse.ArgumentParser(
         description="Fail-closed transformers compatibility census over the pretrained registry."
     )
     parser.add_argument("--run", action="store_true", help="execute the census")
+    parser.add_argument(
+        "--write-registry",
+        action="store_true",
+        help="write the census verdicts into the registry yaml as tf_compat_* fields (dry-run default)",
+    )
+    parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="with --write-registry: write the planned insertions (default: dry-run)",
+    )
+    parser.add_argument(
+        "--registry-yaml",
+        default=None,
+        help="registry yaml to write (default: the packaged dnallm/models/model_info.yaml)",
+    )
     parser.add_argument(
         "--entries",
         default=None,
@@ -1274,9 +1568,18 @@ def main(argv: list[str] | None = None) -> int:
         Process exit code: 0 clean, 1 census-blocked evidence, 2 usage error.
     """
     args = parse_args(sys.argv[1:] if argv is None else argv)
+    if args.write_registry:
+        if args.registry_yaml is not None:
+            yaml_path = Path(args.registry_yaml)
+        else:
+            import dnallm
+
+            yaml_path = Path(dnallm.__file__).parent / "models" / "model_info.yaml"
+        return write_registry(Path(args.artifact), yaml_path, apply=args.apply)
     if not args.run:
         print(
-            "usage: census_compat.py --run [--entries repo,...] [--with-loads] [--artifact PATH]",
+            "usage: census_compat.py --run [--entries repo,...] [--with-loads] [--artifact PATH] "
+            "OR --write-registry [--apply] [--registry-yaml PATH]",
             file=sys.stderr,
         )
         return 2
