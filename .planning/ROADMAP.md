@@ -26,7 +26,7 @@
 **Goal:** Produce a per-model transformers 4/5 compatibility matrix for the registry's `pretrained:` section (`dnallm/models/model_info.yaml` — 49 pretrained entries of 236 total; count corrected 2026-10-27 from a stale "238" via the roadmap update path during Phase 27 planning), with import-level evidence. The dependency span already declares `transformers>=4.49,<6` (installed 5.17.0); the breakage surface is dominated by `trust_remote_code=True` models whose remote `modeling_*.py` import transformers internals directly. Census taxonomy per model: `both` / `4-only` / `5-only` / `remote-code-broken`, each entry carrying the exact failing import (owner lead, to be verified empirically not assumed: failures likely concentrate in `PreTrained*`/`Pretrained*` casing mismatches and dataloader-adjacent imports between transformers 4 and 5). Disposition: fixable via `dnallm/utils/transformers_compat.py` shim → shim + test; structurally unfixable → existing typed-skip + traceback annotation path. Deliverable: model-level compatibility registry table folded into docs.
 **Requirements**: TBD (owner-directed addition 2026-10-27, reopened v1.4 line post-archive)
 **Depends on:** Phase 26
-**Plans:** 4/4 plans executed
+**Plans:** 4/4 plans executed + 1 gap-closure plan (27-05, UAT G-27-1/G-27-2)
 
 Plans:
 **Wave 1**
@@ -40,3 +40,6 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [x] 27-04-PLAN.md — Docs table + CI drift gate + dispatch-only re-verification lane
+
+**Wave 5** *(gap closure — blocked on Wave 4 completion)*
+- [ ] 27-05-PLAN.md — UAT gap closure: census-lane mamba-kernel install + replica green run (G-27-1) and plain-language failure cells (G-27-2)
