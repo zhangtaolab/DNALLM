@@ -14,8 +14,11 @@ importable package module) with ``importlib.util.spec_from_file_location``.
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = REPO_ROOT / "scripts" / "census_compat.py"
@@ -631,3 +634,248 @@ class TestDispositionCompleteness:
                 assert "disposition" not in record, (
                     f"{record['repo']}: passing records must not carry a disposition"
                 )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 27-03 registry write-back: artifact -> tf_compat_* verdict mapping + writer
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _verdict_record(overrides: dict | None = None) -> dict:
+    """Return a synthetic green family-representative record for verdict tests."""
+    record = _record(
+        {
+            "status": "import-ok",
+            "load": {
+                "ok": True,
+                "error": None,
+                "forward_ok": True,
+                "output_shape": "(1, 32, 16)",
+                "device": "cuda",
+                "duration_s": 1.0,
+            },
+        }
+    )
+    if overrides:
+        record.update(overrides)
+    return record
+
+
+class TestCompatVerdictMapping:
+    """The artifact -> registry status mapping (27-03 objective mapping table)."""
+
+    REPS = {"EsmForMaskedLM": "zhangtaolab/plant-nucleotide-transformer-BPE"}
+
+    def test_green_family_rep_maps_to_verified(self) -> None:
+        status, evidence = census.compat_verdict(_verdict_record(), self.REPS)
+        assert status == "verified-tf5"
+        assert evidence == (
+            "ms zhangtaolab/plant-nucleotide-transformer-BPE@"
+            "e66bf2535aa2fc3297f677195d6b7e122c3a0510"
+        )
+
+    def test_green_non_rep_maps_to_import_verified_naming_its_rep(self) -> None:
+        record = _verdict_record({"is_family_rep": False})
+        status, evidence = census.compat_verdict(record, self.REPS)
+        assert status == "import-verified-tf5"
+        assert "inferred from family representative" in evidence
+        assert self.REPS["EsmForMaskedLM"] in evidence
+        assert evidence.startswith("ms zhangtaolab/plant-nucleotide-transformer-BPE@")
+
+    def test_import_fail_with_skip_maps_to_remote_code_broken_naming_import(self) -> None:
+        record = _verdict_record(
+            {
+                "status": "import-fail",
+                "load": None,
+                "failing_import": "ConvNetForMaskedLM not found in transformers 5.17.0",
+                "disposition": {"skip": "native architecture ConvNetForMaskedLM was removed"},
+            }
+        )
+        status, evidence = census.compat_verdict(record, self.REPS)
+        assert status == "remote-code-broken"
+        assert "ConvNetForMaskedLM not found in transformers 5.17.0" in evidence
+        assert "native architecture ConvNetForMaskedLM was removed" in evidence
+
+    def test_failed_load_with_skip_maps_to_remote_code_broken_with_reason(self) -> None:
+        record = _verdict_record(
+            {
+                "load": {
+                    "ok": False,
+                    "error": "boom",
+                    "forward_ok": False,
+                    "output_shape": None,
+                    "device": "cuda",
+                    "duration_s": 1.0,
+                },
+                "disposition": {"skip": "remote modeling_bert.py imports external deepspeed"},
+            }
+        )
+        status, evidence = census.compat_verdict(record, self.REPS)
+        assert status == "remote-code-broken"
+        assert "remote modeling_bert.py imports external deepspeed" in evidence
+
+    def test_fix_disposition_with_green_load_maps_to_shim_required_naming_rung(self) -> None:
+        record = _verdict_record({"disposition": {"fix": "_patch_tied_weights_bookkeeping_on_load"}})
+        status, evidence = census.compat_verdict(record, self.REPS)
+        assert status == "shim-required-tf5"
+        assert "_patch_tied_weights_bookkeeping_on_load" in evidence
+
+    def test_shim_restored_green_load_maps_to_shim_required_naming_rung(self) -> None:
+        record = _verdict_record({"repo": "kuleshov-group/PlantCaduceus_l32"})
+        status, evidence = census.compat_verdict(record, self.REPS)
+        assert status == "shim-required-tf5"
+        assert "_patch_tied_weights_bookkeeping_on_load" in evidence
+
+    def test_census_blocked_maps_to_census_blocked_with_reason(self) -> None:
+        record = _verdict_record(
+            {
+                "status": "census-blocked",
+                "class": None,
+                "load": None,
+                "failing_import": "unreachable on both hubs (ModelScope then https://hf-mirror.com)",
+                "disposition": {"skip": "repo id exists on neither hub"},
+            }
+        )
+        status, evidence = census.compat_verdict(record, self.REPS)
+        assert status == "census-blocked"
+        assert "unreachable on both hubs" in evidence
+
+    def test_unclassifiable_record_raises_fail_closed(self) -> None:
+        record = _verdict_record({"load": None})
+        with pytest.raises(ValueError, match=r"cannot map"):
+            census.compat_verdict(record, self.REPS)
+
+
+# A miniature registry-shaped fixture: one pretrained entry with a max_length
+# anchor plus one finetuned entry, a provenance comment block, and the exact
+# field ordering of the packaged file (name, model, tokenizer_type,
+# max_length, task). Never the packaged file itself.
+FIXTURE_YAML = """\
+pretrained:
+  - name: "Synth Base"
+    model: "synth/base"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 512
+    task:
+      describe: "d"
+      task_type: "mask"
+finetuned:
+  - name: "Synth Ft"
+    model: "synth/ft"
+    base_model: "synth/base"
+    task:
+      describe: "d"
+      task_type: "binary"
+# Fixture provenance block (must survive the write byte-identically).
+"""
+
+FIXTURE_ROSTER = ["synth/base"]
+
+
+def _fixture_artifact(tmp_path, records: list[dict]) -> Path:
+    artifact = tmp_path / "fixture_census.json"
+    artifact.write_text(json.dumps({"entries": records}, indent=2), encoding="utf-8")
+    return artifact
+
+
+def _green_record(repo: str = "synth/base") -> dict:
+    return _record({"repo": repo, "name": "Synth Base", "family": "SynthFamily"})
+
+
+class TestWriteRegistry:
+    """--write-registry: anchored insertion, idempotency, comment preservation."""
+
+    @staticmethod
+    def _fixture_yaml(tmp_path) -> Path:
+        target = tmp_path / "fixture_model_info.yaml"
+        target.write_text(FIXTURE_YAML, encoding="utf-8")
+        return target
+
+    def test_dry_run_plans_and_writes_nothing(self, tmp_path, capsys) -> None:
+        yaml_path = self._fixture_yaml(tmp_path)
+        artifact = _fixture_artifact(tmp_path, [_green_record()])
+        exit_code = census.write_registry(
+            artifact, yaml_path, apply=False, roster=FIXTURE_ROSTER
+        )
+        assert exit_code == 0
+        out = capsys.readouterr().out
+        assert "synth/base" in out
+        assert "verified-tf5" in out
+        assert yaml_path.read_text(encoding="utf-8") == FIXTURE_YAML
+
+    def test_apply_inserts_three_lines_after_max_length(self, tmp_path) -> None:
+        yaml_path = self._fixture_yaml(tmp_path)
+        artifact = _fixture_artifact(tmp_path, [_green_record()])
+        exit_code = census.write_registry(artifact, yaml_path, apply=True, roster=FIXTURE_ROSTER)
+        assert exit_code == 0
+        text = yaml_path.read_text(encoding="utf-8")
+        assert (
+            '    max_length: 512\n'
+            '    tf_compat_status: verified-tf5\n'
+            '    tf_compat_evidence: "ms synth/base@e66bf2535aa2fc3297f677195d6b7e122c3a0510"\n'
+            '    tf_compat_tested: "5.17.0"\n'
+            "    task:\n" in text
+        )
+        # Everything outside the inserted lines is byte-identical, comments included.
+        rebuilt = text.replace(
+            '    tf_compat_status: verified-tf5\n'
+            '    tf_compat_evidence: "ms synth/base@e66bf2535aa2fc3297f677195d6b7e122c3a0510"\n'
+            '    tf_compat_tested: "5.17.0"\n',
+            "",
+        )
+        assert rebuilt.startswith(FIXTURE_YAML)
+        assert "# Fixture provenance block (must survive the write byte-identically)." in text
+
+    def test_second_apply_is_idempotent(self, tmp_path, capsys) -> None:
+        yaml_path = self._fixture_yaml(tmp_path)
+        artifact = _fixture_artifact(tmp_path, [_green_record()])
+        assert census.write_registry(artifact, yaml_path, apply=True, roster=FIXTURE_ROSTER) == 0
+        once = yaml_path.read_text(encoding="utf-8")
+        assert census.write_registry(artifact, yaml_path, apply=True, roster=FIXTURE_ROSTER) == 0
+        assert yaml_path.read_text(encoding="utf-8") == once
+        assert "already" in capsys.readouterr().out
+
+    def test_missing_roster_entry_fails_closed_without_writing(self, tmp_path, capsys) -> None:
+        yaml_path = self._fixture_yaml(tmp_path)
+        artifact = _fixture_artifact(tmp_path, [])
+        exit_code = census.write_registry(artifact, yaml_path, apply=True, roster=FIXTURE_ROSTER)
+        assert exit_code == 1
+        assert "synth/base" in capsys.readouterr().out
+        assert yaml_path.read_text(encoding="utf-8") == FIXTURE_YAML
+
+    def test_absent_artifact_fails_closed(self, tmp_path) -> None:
+        yaml_path = self._fixture_yaml(tmp_path)
+        exit_code = census.write_registry(
+            tmp_path / "nope.json", yaml_path, apply=True, roster=FIXTURE_ROSTER
+        )
+        assert exit_code == 1
+        assert yaml_path.read_text(encoding="utf-8") == FIXTURE_YAML
+
+    def test_finetuned_entries_never_touched(self, tmp_path) -> None:
+        yaml_path = self._fixture_yaml(tmp_path)
+        artifact = _fixture_artifact(tmp_path, [_green_record()])
+        assert census.write_registry(artifact, yaml_path, apply=True, roster=FIXTURE_ROSTER) == 0
+        text = yaml_path.read_text(encoding="utf-8")
+        finetuned_block = text.split("finetuned:", 1)[1]
+        assert "tf_compat_" not in finetuned_block.split("# Fixture", 1)[0]
+
+    def test_provenance_block_appended_once(self, tmp_path) -> None:
+        yaml_path = self._fixture_yaml(tmp_path)
+        artifact = _fixture_artifact(tmp_path, [_green_record()])
+        assert census.write_registry(artifact, yaml_path, apply=True, roster=FIXTURE_ROSTER) == 0
+        text = yaml_path.read_text(encoding="utf-8")
+        sentinel = census.COMPAT_PROVENANCE_SENTINEL
+        assert text.count(sentinel) == 1
+        # The block lands at end of file, after the fixture's original content
+        # once the inserted field lines are removed.
+        rebuilt = text.replace(
+            '    tf_compat_status: verified-tf5\n'
+            '    tf_compat_evidence: "ms synth/base@e66bf2535aa2fc3297f677195d6b7e122c3a0510"\n'
+            '    tf_compat_tested: "5.17.0"\n',
+            "",
+        )
+        assert rebuilt.startswith(FIXTURE_YAML)
+        assert sentinel in rebuilt[len(FIXTURE_YAML):]
+        # A second apply must not append the block again.
+        assert census.write_registry(artifact, yaml_path, apply=True, roster=FIXTURE_ROSTER) == 0
+        assert yaml_path.read_text(encoding="utf-8").count(sentinel) == 1

@@ -744,3 +744,89 @@ def test_registry_task_types_are_loadable_and_structurally_consistent() -> None:
             assert canonical_type in ("mask", "generation", "embedding"), (
                 f"{entry.name}: pretrained section carries supervised task {canonical_type!r}"
             )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 27-03 census compatibility fields (tf_compat_*) on RegistryEntry
+# ─────────────────────────────────────────────────────────────────────────────
+
+# The five-value census verdict vocabulary (Phase 27 D-07; the committed data
+# arrives in Task 2's write-back — these loader-side tests pin the schema shape
+# against synthetic constructions and the as-yet-uncensused packaged data).
+TF_COMPAT_VOCABULARY = {
+    "verified-tf5",
+    "import-verified-tf5",
+    "shim-required-tf5",
+    "remote-code-broken",
+    "census-blocked",
+}
+
+
+def _compat_entry_payload(**overrides):
+    """Return a minimal well-formed RegistryEntry payload for compat-field tests."""
+    payload = {
+        "name": "Synth Compat",
+        "model": "synth/compat",
+        "task": {"describe": "d", "task_type": "mask"},
+        "kind": "pretrained",
+    }
+    payload.update(overrides)
+    return payload
+
+
+def test_registry_entry_accepts_all_tf_compat_statuses() -> None:
+    """model_validate accepts the three tf_compat_* fields for every status (round-trip)."""
+    for status in sorted(TF_COMPAT_VOCABULARY):
+        entry = registry.RegistryEntry.model_validate(
+            _compat_entry_payload(
+                tf_compat_status=status,
+                tf_compat_evidence=f"ms synth/compat@{'0' * 40}; unit probe {status}",
+                tf_compat_tested="5.17.0",
+            )
+        )
+        assert entry.tf_compat_status == status
+        assert entry.tf_compat_evidence.startswith("ms synth/compat@")
+        assert entry.tf_compat_tested == "5.17.0"
+
+
+def test_registry_entry_rejects_status_outside_vocabulary() -> None:
+    """A tf_compat_status outside the five-value Literal raises ValidationError."""
+    with pytest.raises(ValidationError):
+        registry.RegistryEntry.model_validate(
+            _compat_entry_payload(
+                tf_compat_status="both",
+                tf_compat_evidence="ms synth/compat@x",
+                tf_compat_tested="5.17.0",
+            )
+        )
+
+
+def test_registry_entry_rejects_degenerate_compat_values() -> None:
+    """Present evidence/tested values must be non-empty strings (min_length=1)."""
+    for field in ("tf_compat_evidence", "tf_compat_tested"):
+        with pytest.raises(ValidationError):
+            registry.RegistryEntry.model_validate(
+                _compat_entry_payload(tf_compat_status="verified-tf5", **{field: ""})
+            )
+
+
+def test_registry_entry_without_compat_fields_defaults_to_none() -> None:
+    """Entries without tf_compat_* keys validate with all three fields None."""
+    entry = registry.RegistryEntry.model_validate(_compat_entry_payload())
+    assert entry.tf_compat_status is None
+    assert entry.tf_compat_evidence is None
+    assert entry.tf_compat_tested is None
+
+
+def test_packaged_finetuned_entries_parse_with_none_compat_fields() -> None:
+    """Over the packaged data: finetuned entries carry no compat fields (D-01 inherit).
+
+    Before the 27-03 write-back lands, the packaged file has no tf_compat_* keys
+    anywhere; after it lands, the fields exist only on the 49 pretrained rows.
+    Either way every finetuned entry must parse with all three fields None.
+    """
+    finetuned = [e for e in registry.all_entries() if e.kind == "finetuned"]
+    assert len(finetuned) == 187
+    assert all(e.tf_compat_status is None for e in finetuned)
+    assert all(e.tf_compat_evidence is None for e in finetuned)
+    assert all(e.tf_compat_tested is None for e in finetuned)
