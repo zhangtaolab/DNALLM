@@ -13,6 +13,7 @@ import re
 from pathlib import Path
 
 import dnallm
+import json
 import pytest
 import yaml
 from dnallm.models.modeling_auto import MODEL_INFO, PRETRAIN_MODEL_MAPS
@@ -436,3 +437,52 @@ def test_compat_field_values_present_never_degenerate() -> None:
                 value = entry[field]
                 assert isinstance(value, str), f"{entry['model']}: {field} is {type(value)}"
                 assert value, f"{entry['model']}: {field} is empty"
+
+
+COMPAT_CENSUS_ARTIFACT = Path(__file__).parent / "compat_census.json"
+
+
+def test_compat_census_artifact_matches_registry() -> None:
+    """The committed census artifact and the committed registry agree per entry.
+
+    Independent re-implementation of the artifact->status mapping (Phase 26
+    consistency-checker independence: the gate must not share the writer's
+    mapping code in scripts/census_compat.py, so a writer bug cannot
+    self-approve). Reads the frozen artifact and the TYPED registry — never a
+    second yaml parse. The one fact both sides must encode is the rung
+    dependency of PlantCaduceus_l32's green load (the artifact records the
+    load but not which rung it needed; 27-02 evidence). An absent or
+    unparseable artifact is a test failure, never a skip (audit_skips
+    posture).
+    """
+    from dnallm.models import registry
+
+    try:
+        payload = json.loads(COMPAT_CENSUS_ARTIFACT.read_text(encoding="utf-8"))
+        records = payload["entries"]
+        assert isinstance(records, list)
+    except (OSError, ValueError, KeyError, TypeError, AssertionError) as error:
+        pytest.fail(f"census artifact unreadable (fail-closed, never a skip): {error}")
+    assert len(records) == 49, f"expected 49 census records, got {len(records)}"
+    by_repo = {record["repo"]: record for record in records}
+    pretrained = [e for e in registry.all_entries() if e.kind == "pretrained"]
+    assert {e.model for e in pretrained} == set(by_repo), "registry/artifact roster drift"
+    mismatches = []
+    for entry in pretrained:
+        record = by_repo[entry.model]
+        load = record.get("load") if isinstance(record.get("load"), dict) else {}
+        green = load.get("ok") is True and load.get("forward_ok") is True
+        skip = isinstance(record.get("disposition"), dict) and record["disposition"].get("skip")
+        if record["status"] == "census-blocked":
+            expected = "census-blocked"
+        elif skip:
+            expected = "remote-code-broken"
+        elif green and record["repo"] == "kuleshov-group/PlantCaduceus_l32":
+            expected = "shim-required-tf5"
+        elif green:
+            expected = "verified-tf5"
+        else:
+            expected = "import-verified-tf5"
+        if entry.tf_compat_status != expected:
+            mismatches.append((entry.model, entry.tf_compat_status, expected))
+    assert mismatches == [], f"artifact/registry status drift: {mismatches}"
