@@ -4,15 +4,15 @@ milestone: v1.4
 current_phase: 27
 current_phase_name: Transformers 4/5 Model Compatibility Census
 status: verifying
-stopped_at: Completed 27-04-PLAN.md (phase 27 complete)
-last_updated: "2026-10-27T09:54:36.049Z"
+stopped_at: Completed 27-05-PLAN.md (phase 27 gap closure complete)
+last_updated: "2026-10-27T12:32:59.543Z"
 last_activity: 2026-10-27
 last_activity_desc: Phase 27 execution started
-state_head: 7ee66ec23c349b7816cd16d248cbdbdc293629dd
+state_head: e2bb5d65caa32f969059210d605b66fdc578fbeb
 progress:
   total_phases: 1
   completed_phases: 5
-  total_plans: 4
+  total_plans: 5
   completed_plans: 23
 milestone_name: Pre-flight UX & Registry-as-Truth-Source
 ---
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-22)
 ## Current Position
 
 Phase: 27 (Transformers 4/5 Model Compatibility Census) — EXECUTING
-Plan: 4 of 4
+Plan: 5 of 5
 Status: Phase complete — ready for verification
 Last activity: 2026-10-27 — Phase 27 execution started
 
@@ -61,6 +61,7 @@ Last activity: 2026-10-27 — Phase 27 execution started
 | Phase 27 P02 | 38min | 3 tasks | 6 files |
 | Phase 27 P03 | 27min | 3 tasks | 6 files |
 | Phase 27 P04 | 19min | 3 tasks | 6 files |
+| Phase 27 P05 | 21 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -123,6 +124,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 27]: 27-04: docs-page regeneration date is a pinned data-date constant (DOCS_DATA_DATE), never a wall-clock stamp - a wall clock would break the byte-identical regeneration gate on any later day; the constant is bumped alongside census re-runs
 - [Phase 27]: 27-04: bare-symbol failing imports take the explanatory evidence clause (no 'fails at olmo' cells) and census-blocked reasons are mapped to plain-language repository reasons - raw local cache paths in the evidence never reach the public page
 - [Phase 27]: 27-04: --verify composes with --run (world-drift oracle on the dispatch lane) and runs dry on the committed artifact (offline unit-testable path); VERSION DRIFT - installed transformers vs committed tf_compat_tested - fails the run by itself, never a silent green
+- [Phase 27]: 27-05: census-lane mamba kernels install via the sanctioned sha256-pinned scripts/install_mamba.sh (pip bootstrap + TUNA index) between the .[full] install and the census run - never the plain .[mamba] extra (uv source build fails on this box); pinned offline by TestCensusLaneInstallSequence (ordering, exact invocation, no masking, D-08 posture; deliberate-red proven against the pre-change workflow text)
+- [Phase 27]: 27-05: broken-row docs cells lead with one of four honest per-class plain sentences (damaged-files / own-defect / external-package / library-change) keyed on evidence substrings most-specific-first, fail-closed ValueError on unmapped shapes; technical cause demoted to a 100-char word-boundary parenthetical suffix; gate re-derives independently (checker independence); DOCS_DATA_DATE untouched (presentation-only, no census re-run)
+- [Phase 27]: 27-05: G-27-1 validated by executing the lane's exact command on the runner-box replica venv (49 matched / 0 UNEXPECTED / exit 0 / 302 s wall-clock) - the previously-disagreeing mamba family all matched (PlantCaduceus_l32 rides the seeded disposition to shim-required-tf5); live dispatch stays deferred to the post-v1.4->main-merge operational act (GitHub registers dispatchable workflows from the default branch only)
 
 ### Pending Todos
 
@@ -167,8 +171,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-27T09:54:23.339Z
-Stopped at: Completed 27-04-PLAN.md (phase 27 complete)
+Last session: 2026-10-27T12:30:41.372Z
+Stopped at: Completed 27-05-PLAN.md (phase 27 gap closure complete)
 Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)
