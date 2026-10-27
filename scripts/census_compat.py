@@ -1786,12 +1786,136 @@ def emit_docs(path: str | Path) -> int:
     return 0
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 27-04 re-verification: fresh census vs committed registry fields (fail-closed)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Loud marker for the version-stamp check (research A8: a transformers bump
+# invalidates version-stamped verdicts — exactly what this lane exists to catch).
+VERSION_DRIFT_MARKER = "VERSION DRIFT"
+
+
+def verify_registry(artifact_path: str | Path, roster: list | None = None) -> int:
+    """Diff census verdicts against the committed registry fields, fail-closed.
+
+    The fresh evidence (a just-written ``--run`` artifact, or the committed
+    artifact for a dry offline verification) is mapped through
+    :func:`compat_verdict` and compared, per pretrained entry, against the
+    committed ``tf_compat_status`` read through the typed registry loader.
+    Every disagreement, every roster/artifact gap, an absent or unparseable
+    artifact, or a transformers version drift fails the run — never a silent
+    green (audit_skips posture).
+
+    Args:
+        artifact_path: The census evidence artifact to verify from.
+        roster: Pretrained registry entries (defaults to the typed loader —
+            the sole parser of the packaged file).
+
+    Returns:
+        0 only when every entry matches AND the installed transformers
+        version equals the committed tested stamp; 1 otherwise.
+    """
+    try:
+        records = read_artifact(artifact_path)
+    except ValueError as error:
+        print(f"ERROR: {error}")
+        return 1
+    if roster is None:
+        roster = pretrained_roster()
+    installed = transformers_version()
+    committed_tested = sorted({
+        entry.tf_compat_tested for entry in roster if entry.tf_compat_tested
+    })
+    version_drift = installed not in committed_tested
+    if version_drift:
+        print(
+            f"{VERSION_DRIFT_MARKER}: installed transformers {installed} vs committed "
+            f"tf_compat_tested {committed_tested}"
+        )
+        print(
+            f"{VERSION_DRIFT_MARKER}: version-stamped verdicts are invalidated by a "
+            "transformers change - re-run the census and refresh the registry fields"
+        )
+
+    by_repo = {
+        record.get("repo"): record
+        for record in records
+        if isinstance(record, dict) and isinstance(record.get("repo"), str)
+    }
+    family_reps = {
+        record["family"]: record["repo"]
+        for record in records
+        if record.get("is_family_rep") and record.get("family")
+    }
+    missing_from_artifact = [entry.model for entry in roster if entry.model not in by_repo]
+    missing_from_registry = sorted(
+        repo for repo in by_repo if repo not in {entry.model for entry in roster}
+    )
+    trail: list[str] = []
+    unexpected = 0
+    for entry in roster:
+        record = by_repo.get(entry.model)
+        if record is None:
+            continue  # already recorded in missing_from_artifact below
+        try:
+            computed = compat_verdict(record, family_reps)[0]
+        except ValueError as error:
+            print(f"UNEXPECTED {entry.model} unmappable: {error}")
+            unexpected += 1
+            continue
+        committed = entry.tf_compat_status
+        if computed == committed:
+            trail.append(f"matched {entry.model} {committed}")
+        else:
+            trail.append(f"UNEXPECTED {entry.model} committed={committed} fresh={computed}")
+            unexpected += 1
+
+    print(f"Registry verification: {len(trail)} entry/entries compared against {artifact_path}")
+    for line in trail:
+        print(f"  {line}")
+    failures = False
+    if missing_from_artifact:
+        print(
+            f"MISSING FROM ARTIFACT ({len(missing_from_artifact)} registry entries "
+            f"absent from the census evidence): {missing_from_artifact}"
+        )
+        failures = True
+    if missing_from_registry:
+        print(
+            f"MISSING FROM REGISTRY ({len(missing_from_registry)} artifact records "
+            f"outside the pretrained roster): {missing_from_registry}"
+        )
+        failures = True
+    if unexpected:
+        print(f"UNEXPECTED ({unexpected} entr(ies) disagree with the committed registry fields)")
+        failures = True
+    if version_drift:
+        print(
+            f"{VERSION_DRIFT_MARKER}: failing the run - the committed verdicts were "
+            f"stamped under {committed_tested}, not the installed {installed}"
+        )
+        failures = True
+    if failures:
+        return 1
+    print("OK: census matches committed registry fields")
+    return 0
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     """Parse the census CLI arguments."""
     parser = argparse.ArgumentParser(
         description="Fail-closed transformers compatibility census over the pretrained registry."
     )
     parser.add_argument("--run", action="store_true", help="execute the census")
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help=(
+            "diff the census verdicts against the committed registry fields "
+            "(fail-closed: any disagreement, roster gap, or transformers version "
+            "drift exits 1; composes with --run or runs dry on the existing artifact)"
+        ),
+    )
     parser.add_argument(
         "--write-registry",
         action="store_true",
@@ -1856,18 +1980,25 @@ def main(argv: list[str] | None = None) -> int:
 
             yaml_path = Path(dnallm.__file__).parent / "models" / "model_info.yaml"
         return write_registry(Path(args.artifact), yaml_path, apply=args.apply)
-    if not args.run:
+    if not args.run and not args.verify:
         print(
             "usage: census_compat.py --run [--entries repo,...] [--with-loads] [--artifact PATH] "
             "OR --write-registry [--apply] [--registry-yaml PATH] "
-            "OR --emit-docs [PATH]",
+            "OR --emit-docs [PATH] "
+            "OR --verify [--artifact PATH]",
             file=sys.stderr,
         )
         return 2
     selected = (
         [item.strip() for item in args.entries.split(",") if item.strip()] if args.entries else None
     )
-    return run_census(Path(args.artifact), selected, args.with_loads)
+    run_rc = 0
+    if args.run:
+        run_rc = run_census(Path(args.artifact), selected, args.with_loads)
+    if args.verify:
+        verify_rc = verify_registry(Path(args.artifact))
+        return run_rc if run_rc != 0 else verify_rc
+    return run_rc
 
 
 if __name__ == "__main__":

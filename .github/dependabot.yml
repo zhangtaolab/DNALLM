@@ -25,6 +25,9 @@ updates:
       # no longer exports as of 5.17 — mamba-family model loading breaks on
       # upgrades until upstream remote code adapts (see .planning/WINDOWS.md).
       # A transformers bump must re-verify the mamba load path before merge.
+      # Re-verify duty: a transformers bump must also re-run the census lane
+      # (gh workflow run census_compat.yml --ref <branch>, dispatch-only) and
+      # land the refreshed tf_compat_* registry fields before merging the bump.
       # datasets is pinned <=3.2.0 in pyproject (tokenization pipeline API);
       # the pin itself is the constraint Dependabot already respects.
       # torch: the ceiling (<2.15, mirrored across the cpu/cuda124/cuda126/

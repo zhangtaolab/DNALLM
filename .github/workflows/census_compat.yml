@@ -1,0 +1,102 @@
+name: census_compat
+
+# Census re-verification lane (Phase 27, D-08): re-runs the transformers
+# compatibility census on the self-hosted GPU box and fails red the moment
+# the world (a transformers bump, a model-repo change) disagrees with the
+# committed tf_compat_* registry fields.
+#
+# Dispatch-ONLY by design, copying the feasibility.yml posture wholesale:
+# this job runs repo code on the self-hosted [self-hosted, dnallm-nightly]
+# GPU box, so it must never trigger on push/pull_request/schedule —
+# PR-authored code (including forks) never executes on that runner. The
+# owner triggers it manually on transformers bumps (operationalizing the
+# dependabot KNOWN RISK note) or whenever re-verification is needed:
+#   gh workflow run census_compat.yml --ref <branch>
+# No nightly residency (D-08): a committed, re-runnable commitment, not a
+# cron.
+on: workflow_dispatch
+
+# Least privilege (feasibility.yml convention): this workflow executes repo
+# code on the self-hosted GPU box, so its job must never inherit read/write
+# repo-default token scopes.
+permissions:
+  contents: read
+
+jobs:
+  census-compat:
+    # Same self-hosted posture as coverage-nightly / test-mamba: the nightly
+    # GPU box. The event gate below is the security boundary —
+    # workflow_dispatch is reachable only by users with write access.
+    runs-on: [self-hosted, dnallm-nightly]
+    if: github.event_name == 'workflow_dispatch'
+    # 49 model fetches plus family-representative loads/forwards (some
+    # multi-GB); 240min bounds a worst-case run without monopolizing the box
+    # that also serves coverage-nightly.
+    timeout-minutes: 240
+    steps:
+      - name: Check for GPU
+        id: gpu-check
+        # Fail-closed posture (feasibility WR-05 pattern): a silent skip
+        # would green the lane with zero evidence. On GPU absence, write a
+        # gpu_absent marker into the artifact directory and FAIL — the
+        # upload step below still runs (if: always()) so the marker reaches
+        # the owner.
+        run: |
+          mkdir -p census-artifacts
+          if command -v nvidia-smi &> /dev/null && nvidia-smi > /dev/null 2>&1; then
+            echo "has_gpu=true" >> $GITHUB_OUTPUT
+            echo "GPU detected, will run the compatibility census"
+          else
+            echo "has_gpu=false" >> $GITHUB_OUTPUT
+            echo "gpu_absent=$(date -u +%FT%TZ) nvidia-smi unavailable" > census-artifacts/gpu_absent.marker
+            echo "No GPU detected — failing: this lane's deliverable is fresh census evidence"
+            exit 1
+          fi
+
+      - name: Checkout code
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Create virtual environment and install dependencies
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        # .[full] resolves green on this exact box (feasibility /
+        # coverage-nightly precedent); no spike-only packages involved.
+        run: |
+          uv venv
+          uv pip install -e ".[full]"
+
+      - name: Record runner identity
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        run: |
+          nvidia-smi --query-gpu=name,compute_cap,driver_version --format=csv,noheader
+
+      - name: Re-run the census and verify against the committed registry
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        # Fresh census (imports + family-representative load/forward) then
+        # the fail-closed diff against the committed tf_compat_* fields: any
+        # verdict disagreement, any roster gap, an unreachable repo, or a
+        # transformers version drift exits non-zero. NO `|| true` masking —
+        # a red step means real drift or infrastructure failure, and both
+        # must surface (the upload below still runs via its if: always()).
+        # The runner cannot reach the default Hugging Face endpoint: the
+        # census tool hard-codes ModelScope-first + the hf-mirror endpoint;
+        # no hub URL is added here.
+        run: |
+          source .venv/bin/activate
+          python scripts/census_compat.py --run --with-loads --verify --artifact census-artifacts/census-fresh.json
+
+      - name: Upload fresh census evidence
+        # Unconditional: the artifact is the deliverable, especially on
+        # failure — a red run with evidence beats a green run without it.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: census-fresh-evidence
+          path: |
+            census-artifacts/census-fresh.json
+            census-artifacts/gpu_absent.marker
+          if-no-files-found: warn
