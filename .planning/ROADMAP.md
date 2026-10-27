@@ -26,7 +26,7 @@
 **Goal:** Produce a per-model transformers 4/5 compatibility matrix for the registry's `pretrained:` section (`dnallm/models/model_info.yaml` — 49 pretrained entries of 236 total; count corrected 2026-10-27 from a stale "238" via the roadmap update path during Phase 27 planning), with import-level evidence. The dependency span already declares `transformers>=4.49,<6` (installed 5.17.0); the breakage surface is dominated by `trust_remote_code=True` models whose remote `modeling_*.py` import transformers internals directly. Census taxonomy per model: `both` / `4-only` / `5-only` / `remote-code-broken`, each entry carrying the exact failing import (owner lead, to be verified empirically not assumed: failures likely concentrate in `PreTrained*`/`Pretrained*` casing mismatches and dataloader-adjacent imports between transformers 4 and 5). Disposition: fixable via `dnallm/utils/transformers_compat.py` shim → shim + test; structurally unfixable → existing typed-skip + traceback annotation path. Deliverable: model-level compatibility registry table folded into docs.
 **Requirements**: TBD (owner-directed addition 2026-10-27, reopened v1.4 line post-archive)
 **Depends on:** Phase 26
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 **Wave 1**
@@ -36,7 +36,7 @@ Plans:
 - [x] 27-02-PLAN.md — Shim rungs from census evidence (TDD per fixable failure, D-02a shim-verification loads, dispositions)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 27-03-PLAN.md — Registry write-back (tf_compat_* fields on the 49 pretrained rows + REG-03 test extension)
+- [x] 27-03-PLAN.md — Registry write-back (tf_compat_* fields on the 49 pretrained rows + REG-03 test extension)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 27-04-PLAN.md — Docs table + CI drift gate + dispatch-only re-verification lane

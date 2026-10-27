@@ -4,11 +4,11 @@ milestone: v1.4
 current_phase: 27
 current_phase_name: Transformers 4/5 Model Compatibility Census
 status: executing
-stopped_at: Completed 27-02-PLAN.md
-last_updated: "2026-10-27T08:53:48.525Z"
+stopped_at: Completed 27-03-PLAN.md
+last_updated: "2026-10-27T09:27:25.787Z"
 last_activity: 2026-10-27
 last_activity_desc: Phase 27 execution started
-state_head: b2480a53aa49ab5fb775e287becf7bcd0c6f6bff
+state_head: 0231b4169f2ab82e6ec5e29a70aaddc18cd71edf
 progress:
   total_phases: 1
   completed_phases: 5
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-22)
 ## Current Position
 
 Phase: 27 (Transformers 4/5 Model Compatibility Census) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-10-27 — Phase 27 execution started
 
@@ -59,6 +59,7 @@ Last activity: 2026-10-27 — Phase 27 execution started
 | Phase 26 P02 | 6 min | 2 tasks | 2 files |
 | Phase 27 P01 | 74 min | 3 tasks | 3 files |
 | Phase 27 P02 | 38min | 3 tasks | 6 files |
+| Phase 27 P03 | 27min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -116,6 +117,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 27]: 27-02: 6mer/PlantCAD2 load failures were census-tool misroutes (AutoModel loading native classes for task-keyed auto_map checkpoints), fixed by task-appropriate Auto* routing in the tool - recovered-green records carry no disposition by design
 - [Phase 27]: 27-02: gena imports restored by _patch_apply_chunking_to_forward but dispositions stay skip - base's checkpoint token_type_ids buffer carries garbage (3.9e12 vs type_vocab_size 2, version-independent defect) and bigbird needs external deepspeed; the rung name rides inside each skip reason
 - [Phase 27]: 27-02: _finalize_model_loading is STATIC at transformers 5.17 - the bookkeeping rung's wrapper is shape-adaptive and also installs the legacy tie_weights arity bridge at the same boundary (the skipped-post_init entry leaves both 5.x protocol pieces missing)
+- [Phase 27]: 27-03: shim-required-tf5 derives from the D-03 verdict plus rung dependency, not disposition type alone - the final artifact carries only skip dispositions, so the writer records the one shim-dependent green load (PlantCaduceus_l32 via rung 13) in SHIM_RESTORED_LOADS citing 27-02 live evidence; the independent consistency gate encodes the same fact. — Plan mapping table assumed fix dispositions would exist; 27-02 settled gena dispositions as skip (D-03 verdict governs), and the artifact cannot stamp which rung a green load needed. Literal application would empty the shim-required bucket and mislabel PlantCaduceus_l32 as verified-tf5 - a false native-load claim.
+- [Phase 27]: 27-03: remote-code-broken covers both failure depths - import-fail skips (evidence = exact failing import) and structurally failed load/forward skips (evidence = structural reason); import-restored-but-still-failing gena entries are remote-code-broken because the registry consumes the D-03 verdict. — Plan mapping table assumed fix dispositions would exist; 27-02 settled gena dispositions as skip (D-03 verdict governs), and the artifact cannot stamp which rung a green load needed. Literal application would empty the shim-required bucket and mislabel PlantCaduceus_l32 as verified-tf5 - a false native-load claim.
 
 ### Pending Todos
 
@@ -160,8 +163,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-27T08:53:48.503Z
-Stopped at: Completed 27-02-PLAN.md
+Last session: 2026-10-27T09:27:25.769Z
+Stopped at: Completed 27-03-PLAN.md
 Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)
