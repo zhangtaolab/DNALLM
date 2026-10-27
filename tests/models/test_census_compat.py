@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -27,13 +28,30 @@ SCRIPT_PATH = REPO_ROOT / "scripts" / "census_compat.py"
 
 
 def _load_census_module():
-    """Load ``scripts/census_compat.py`` as a module without importing heavy deps."""
+    """Load ``scripts/census_compat.py`` as a module without importing heavy deps.
+
+    The census tool hard-sets ``HF_ENDPOINT`` at import (the dispatch runner
+    cannot reach huggingface.co, and the census must never call the default
+    endpoint). Snapshot and restore the environment around ``exec_module``
+    so loading the module at collection time never reroutes the whole pytest
+    process — including the slow real-model lanes — through the third-party
+    mirror or clobbers a user-/CI-provided endpoint (WR-02). The child
+    probe/load programs set the endpoint inside their own generated source,
+    so the parent-process mutation is not needed by any offline test.
+    """
     spec = importlib.util.spec_from_file_location("census_compat", SCRIPT_PATH)
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules["census_compat"] = module
-    spec.loader.exec_module(module)
+    prior_endpoint = os.environ.pop("HF_ENDPOINT", None)
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        if prior_endpoint is None:
+            os.environ.pop("HF_ENDPOINT", None)
+        else:
+            os.environ["HF_ENDPOINT"] = prior_endpoint
     return module
 
 
@@ -60,6 +78,22 @@ def _record(overrides: dict | None = None) -> dict:
     if overrides:
         record.update(overrides)
     return record
+
+
+class TestCensusModuleEnvIsolation:
+    """Loading the census tool must not mutate the test process env (WR-02)."""
+
+    def test_suite_endpoint_preserved_across_module_load(self, monkeypatch) -> None:
+        monkeypatch.setenv("HF_ENDPOINT", "https://suite-default.example")
+        _load_census_module()
+        assert os.environ["HF_ENDPOINT"] == "https://suite-default.example"
+
+    def test_mirror_endpoint_does_not_leak_when_endpoint_unset(self, monkeypatch) -> None:
+        monkeypatch.delenv("HF_ENDPOINT", raising=False)
+        module = _load_census_module()
+        assert "HF_ENDPOINT" not in os.environ
+        # The mirror constant stays intact for the generated child programs.
+        assert module.HF_MIRROR == census.HF_MIRROR == "https://hf-mirror.com"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
