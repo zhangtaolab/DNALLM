@@ -49,9 +49,10 @@ blocked: 0
       issue: "the repo's sanctioned pinned installer the lane should call — already proven on this box (dev venv has mamba_ssm 2.3.2.post1); note it needs pip bootstrapped into the uv venv first (uv pip install --python <venv> pip)"
     - path: ".scratch/p27-uat/lane-sim/census-run.log"
       issue: "full evidence log of the red run (49 censused, 45 compared, 4 unmappable, exit 1)"
+    - path: ".scratch/p27-uat/lane-sim/census-run-fixed.log"
+      issue: "controlled green run after scripts/install_mamba.sh into the same replica venv: 49 matched, 'OK: census matches committed registry fields', LANE-EXIT-CODE: 0 — single-variable proof of the root cause and the fix direction (evidence ready for 27-05 Task 3)"
   missing:
     - "Add the mamba-kernel install step to census_compat.yml (bootstrap pip, then bash scripts/install_mamba.sh --python .venv/bin/python --index-url <mirror>) between the .[full] install and the census run"
-    - "Validation experiment in progress: after install_mamba.sh into the replica venv, re-run the exact lane command and require 49 matched / exit 0"
   debug_session: ""
 
 - gap_id: G-27-2
