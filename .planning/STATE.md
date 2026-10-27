@@ -3,12 +3,12 @@ gsd_state_version: "1.0"
 milestone: v1.4
 current_phase: 27
 current_phase_name: Transformers 4/5 Model Compatibility Census
-status: executing
-stopped_at: Completed 27-03-PLAN.md
-last_updated: "2026-10-27T09:27:25.787Z"
+status: verifying
+stopped_at: Completed 27-04-PLAN.md (phase 27 complete)
+last_updated: "2026-10-27T09:54:36.049Z"
 last_activity: 2026-10-27
 last_activity_desc: Phase 27 execution started
-state_head: 0231b4169f2ab82e6ec5e29a70aaddc18cd71edf
+state_head: 7ee66ec23c349b7816cd16d248cbdbdc293629dd
 progress:
   total_phases: 1
   completed_phases: 5
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-22)
 
 Phase: 27 (Transformers 4/5 Model Compatibility Census) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-27 — Phase 27 execution started
 
 ## Performance Metrics
@@ -60,6 +60,7 @@ Last activity: 2026-10-27 — Phase 27 execution started
 | Phase 27 P01 | 74 min | 3 tasks | 3 files |
 | Phase 27 P02 | 38min | 3 tasks | 6 files |
 | Phase 27 P03 | 27min | 3 tasks | 6 files |
+| Phase 27 P04 | 19min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 27]: 27-02: _finalize_model_loading is STATIC at transformers 5.17 - the bookkeeping rung's wrapper is shape-adaptive and also installs the legacy tie_weights arity bridge at the same boundary (the skipped-post_init entry leaves both 5.x protocol pieces missing)
 - [Phase 27]: 27-03: shim-required-tf5 derives from the D-03 verdict plus rung dependency, not disposition type alone - the final artifact carries only skip dispositions, so the writer records the one shim-dependent green load (PlantCaduceus_l32 via rung 13) in SHIM_RESTORED_LOADS citing 27-02 live evidence; the independent consistency gate encodes the same fact. — Plan mapping table assumed fix dispositions would exist; 27-02 settled gena dispositions as skip (D-03 verdict governs), and the artifact cannot stamp which rung a green load needed. Literal application would empty the shim-required bucket and mislabel PlantCaduceus_l32 as verified-tf5 - a false native-load claim.
 - [Phase 27]: 27-03: remote-code-broken covers both failure depths - import-fail skips (evidence = exact failing import) and structurally failed load/forward skips (evidence = structural reason); import-restored-but-still-failing gena entries are remote-code-broken because the registry consumes the D-03 verdict. — Plan mapping table assumed fix dispositions would exist; 27-02 settled gena dispositions as skip (D-03 verdict governs), and the artifact cannot stamp which rung a green load needed. Literal application would empty the shim-required bucket and mislabel PlantCaduceus_l32 as verified-tf5 - a false native-load claim.
+- [Phase 27]: 27-04: docs-page regeneration date is a pinned data-date constant (DOCS_DATA_DATE), never a wall-clock stamp - a wall clock would break the byte-identical regeneration gate on any later day; the constant is bumped alongside census re-runs
+- [Phase 27]: 27-04: bare-symbol failing imports take the explanatory evidence clause (no 'fails at olmo' cells) and census-blocked reasons are mapped to plain-language repository reasons - raw local cache paths in the evidence never reach the public page
+- [Phase 27]: 27-04: --verify composes with --run (world-drift oracle on the dispatch lane) and runs dry on the committed artifact (offline unit-testable path); VERSION DRIFT - installed transformers vs committed tf_compat_tested - fails the run by itself, never a silent green
 
 ### Pending Todos
 
@@ -163,8 +167,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-27T09:27:25.769Z
-Stopped at: Completed 27-03-PLAN.md
+Last session: 2026-10-27T09:54:23.339Z
+Stopped at: Completed 27-04-PLAN.md (phase 27 complete)
 Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)
