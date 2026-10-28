@@ -5,10 +5,10 @@ current_phase: "27.1"
 current_phase_name: "Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)"
 status: executing
 stopped_at: Halted 27.1-03 (DISP-01 deferred by owner to post-v1.4->main-merge operator step)
-last_updated: "2026-10-28T13:06:25.396Z"
+last_updated: "2026-10-28T13:34:31.370Z"
 last_activity: 2026-10-28
 last_activity_desc: 27.1-03 closed out as halted (DISP-01 deferred by owner)
-state_head: 2f8e6a92f121205812fccc72606a21cf220d11a1
+state_head: 7a2ba23e42b7f820ad045b563cdb6c777ebe3d87
 progress:
   total_phases: 2
   completed_phases: 5
@@ -138,6 +138,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 27.1]: 27.1-02: census lane keeps the runner-provisioned uv (skip-if-present, command -v uv before curl) -- the wiped-box curl|sh fallback stays unpinned as accepted residual exposure T-27.1-06, and no UV_VERSION knob exists (IN-05)
 - [Phase 27.1]: 27.1-03: owner selected option-a (minimal byte-identical workflow registration commit) -- the direct push to main was rejected by branch protection (GH006: PR required, 1 approving review, 2 required checks, enforce_admins=true); the single-file commit d661998 is preserved on wip/27.1-03-census-registration, nothing pushed
 - [Phase 27.1]: 27.1-03: owner then chose defer-dispatch -- DISP-01 moves to the v1.4->main milestone merge (workflow lands naturally with the merge PR) plus exactly one post-merge 'gh workflow run census_compat.yml --ref v1.4' operator step; no main mutation and no dispatch now; plan summarized as halted
+- [Phase 27.1]: Preserved registration commit d661998 predates the CR-01 fix (76ea80f) and lacks the skip-branch GITHUB_PATH write — never use it as the registration source; the v1.4-to-main merge lands the correct workflow bytes. — Verifier evidence-accuracy check (27.1-VERIFICATION.md): byte-identity with origin/v1.4 no longer holds after the CR-01 fix.
 
 ### Pending Todos
 
