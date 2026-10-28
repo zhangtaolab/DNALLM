@@ -46,12 +46,17 @@ Plans:
 
 ### Phase 27.1: Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Goal:** Close all six open Phase 27 info-level findings: balance generated technical fragments, pin summary counts and helper edge cases, make blocked-reason rendering fail closed, handle kwargs-only compat-wrapper receivers, and preserve provisioned uv on the census runner; then prove the dispatch-only census lane green end-to-end through exactly one live `workflow_dispatch` of the final `v1.4` tree with 49 matched entries and uploaded fresh evidence.
+**Requirements**: IN-01, IN-02, IN-03, IN-04, IN-05, IN-06, DISP-01
 **Depends on:** Phase 27
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 27.1 to break down)
+**Wave 1**
+- [ ] 27.1-01-PLAN.md — Generated-docs correctness: balanced fragments, fail-closed blocked reasons, direct helper tests, and summary-count gate (IN-01/IN-02/IN-03/IN-06)
+- [ ] 27.1-02-PLAN.md — Compat-wrapper receiver hardening and provisioned-uv census lane guard (IN-04/IN-05)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 27.1-03-PLAN.md — Owner-gated main-landing choice, workflow registration, and one live green `v1.4` dispatch (DISP-01)
 
 </details>
