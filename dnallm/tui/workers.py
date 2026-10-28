@@ -27,6 +27,7 @@ import threading
 from typing import TYPE_CHECKING, Any
 
 from textual import work
+from textual.message_pump import MessagePump
 from textual.worker import get_current_worker
 
 from ..utils import get_logger
@@ -305,12 +306,16 @@ def _bind_progress(
     return functools.partial(downloader, tqdm_class=reporter)
 
 
-class PreflightWorkers:
+class PreflightWorkers(MessagePump):
     """Thread workers for the pre-flight wizard, mixed into the Textual app.
 
     Each worker owns one blocking core call, reports progress/results with
     typed messages, and never touches a widget. Later plans extend this mixin
     with the remaining core calls.
+
+    ``MessagePump`` is the explicit host interface the eventual Textual App
+    supplies anyway; naming it here makes every worker's ``post_message``
+    resolve to the real method instead of an implicitly-provided one.
 
     ``download_worker`` is the one method that is not a Textual ``@work``
     worker: it returns a :class:`DownloadOperation` on a daemon thread so a

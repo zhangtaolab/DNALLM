@@ -20,6 +20,7 @@ from types import SimpleNamespace
 
 import pytest
 from textual.app import App
+from textual.message_pump import MessagePump
 
 import dnallm.tui.workers as workers_module
 from dnallm.preflight import AvailabilityReport, AvailabilityState, Hub, ListingEntry
@@ -67,6 +68,17 @@ class _Harness(PreflightWorkers, App[None]):
 
     def on_download_progress(self, message: DownloadProgress) -> None:
         self.progress_events.append(message)
+
+
+def test_preflight_workers_declares_the_textual_message_host_contract() -> None:
+    """The mixin names ``MessagePump`` itself, so ``post_message`` is a real method.
+
+    The App base supplies this interface anyway, but the mixin used to rely on
+    that implicitly — leaving every worker's ``self.post_message`` call
+    unresolved to a type checker (ty@0.0.84). Declaring the host contract here
+    pins the attribute without adding any replacement implementation.
+    """
+    assert issubclass(PreflightWorkers, MessagePump)
 
 
 async def test_seam_round_trip_delivers_a_real_data_report() -> None:
