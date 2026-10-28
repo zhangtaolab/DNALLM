@@ -1,15 +1,15 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.4
-current_phase: 27
-status: completed
-stopped_at: Phase 27 complete — all phases complete
-last_updated: "2026-10-28T10:07:52.738Z"
+current_phase: "27.1"
+status: Not started
+stopped_at: "Phase 27.1 inserted (URGENT tech debt: IN-01..IN-06 + census lane live dispatch) — not planned yet"
+last_updated: "2026-10-28T10:58:40.218Z"
 last_activity: 2026-10-28
-last_activity_desc: Phase 27 complete
-state_head: fa99a8820fa194ca428ac10b43e3b479121e49a0
+last_activity_desc: Phase 27.1 inserted (urgent tech debt), awaiting planning
+state_head: 81f10ece9cb2cf24162fb121dc79a2fb2f106ea0
 progress:
-  total_phases: 1
+  total_phases: 2
   completed_phases: 5
   total_plans: 5
   completed_plans: 23
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-10-28)
 
 ## Current Position
 
-Phase: 27
+Phase: 27.1
 Plan: Not started
-Status: All phases complete
-Last activity: 2026-10-28 — Phase 27 complete
+Status: Not started
+Last activity: 2026-10-28 — Phase 27.1 inserted (urgent tech debt), awaiting planning
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Last activity: 2026-10-28 — Phase 27 complete
 
 - v1.4 roadmap created (2026-10-20): 5 phases (22–26) honoring the REQUIREMENTS traceability mapping and the research-converged dependency order — registry loader → pre-flight core → `load_preset_model` rewire → TUI → MCP consistency
 - Phase 27 added: Transformers 4/5 Model Compatibility Census (owner-directed 2026-10-27; v1.4 line reopened post-archive for this phase — 238-model registry × transformers 4/5 import-level matrix, shim-or-typed-skip disposition)
+- Phase 27.1 inserted after Phase 27: Address tech debt: IN-01..IN-06 + census lane live dispatch (URGENT)
 
 ### Decisions
 
@@ -172,8 +173,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-28
-Stopped at: Phase 27 complete (gap-closure + re-verification passed) — v1.4 milestone ready to re-close
+Last session: 2026-10-28T10:58:40.180Z
+Stopped at: Phase 27.1 inserted (URGENT tech debt: IN-01..IN-06 + census lane live dispatch) — not planned yet
 Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)
@@ -184,4 +185,5 @@ Resume file: None
 ## Operator Next Steps
 
 - Pre-merge (v1.4→main): resolve the 27 first-party ty diagnostics (workers.py/config_gen.py/download.py/availability.py — see Session Continuity) or the coverage-gate ty hard gate goes red on first exposure; consider adding `v1.4` to ci.yml push triggers per the documented 2026-10-07 first-exposure lesson
-- Start the next milestone with /gsd-new-milestone
+- Plan the inserted urgent phase 27.1 (tech debt: IN-01..IN-06 + census lane live dispatch) with /gsd-plan-phase 27.1, then /gsd-execute-phase 27.1
+- After Phase 27.1 closes, re-close the v1.4 line and start the next milestone with /gsd-new-milestone
