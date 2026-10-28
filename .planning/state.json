@@ -4,9 +4,9 @@
   "milestone": "v1.4",
   "phases": [],
   "next": {
-    "command": "/gsd-progress --next",
-    "label": "Advance to the next step (verify)",
-    "reason": "Phase 27 of 1 · ready to verify"
+    "command": "/gsd-new-milestone",
+    "label": "Start a new milestone",
+    "reason": "All phases complete — start a new milestone"
   },
-  "updated_at": "2026-10-27T12:32:59.555Z"
+  "updated_at": "2026-10-28T10:07:52.745Z"
 }
