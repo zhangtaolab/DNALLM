@@ -2,16 +2,17 @@
 gsd_state_version: "1.0"
 milestone: v1.4
 current_phase: "27.1"
+current_phase_name: "Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)"
 status: Not started
 stopped_at: "Phase 27.1 inserted (URGENT tech debt: IN-01..IN-06 + census lane live dispatch) — not planned yet"
-last_updated: "2026-10-28T10:58:40.218Z"
+last_updated: "2026-10-28T11:53:28.486Z"
 last_activity: 2026-10-28
 last_activity_desc: Phase 27.1 inserted (urgent tech debt), awaiting planning
-state_head: 81f10ece9cb2cf24162fb121dc79a2fb2f106ea0
+state_head: 77f5a003b27b566ef7a8444a7efdd0f53a2d4645
 progress:
   total_phases: 2
   completed_phases: 5
-  total_plans: 5
+  total_plans: 8
   completed_plans: 23
 milestone_name: Pre-flight UX & Registry-as-Truth-Source
 ---
@@ -27,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-28)
 
 ## Current Position
 
-Phase: 27.1
+Phase: 27.1 (Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)) — READY TO EXECUTE
 Plan: Not started
 Status: Not started
 Last activity: 2026-10-28 — Phase 27.1 inserted (urgent tech debt), awaiting planning
