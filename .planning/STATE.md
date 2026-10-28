@@ -3,12 +3,12 @@ gsd_state_version: "1.0"
 milestone: v1.4
 current_phase: "27.1"
 current_phase_name: "Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)"
-status: Not started
-stopped_at: "Phase 27.1 inserted (URGENT tech debt: IN-01..IN-06 + census lane live dispatch) — not planned yet"
-last_updated: "2026-10-28T11:53:28.486Z"
+status: executing
+stopped_at: Completed 27.1-01-PLAN.md
+last_updated: "2026-10-28T12:10:14.123Z"
 last_activity: 2026-10-28
-last_activity_desc: Phase 27.1 inserted (urgent tech debt), awaiting planning
-state_head: 77f5a003b27b566ef7a8444a7efdd0f53a2d4645
+last_activity_desc: Phase 27.1 execution started
+state_head: ed017cd5af14cb659c35e36524caf38c002a60cc
 progress:
   total_phases: 2
   completed_phases: 5
@@ -24,14 +24,14 @@ milestone_name: Pre-flight UX & Registry-as-Truth-Source
 See: .planning/PROJECT.md (updated 2026-10-28)
 
 **Core value:** One terminal flow takes a user from their own data to a validated, model-compatible config, with the model registry as the runtime single source of truth (Track A first) — suite, coverage gate, and CI honest-green throughout.
-**Current focus:** Phase 27 complete — v1.4 line fully closed, milestone ready to re-close
+**Current focus:** Phase 27.1 — Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)
 
 ## Current Position
 
-Phase: 27.1 (Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)) — READY TO EXECUTE
-Plan: Not started
-Status: Not started
-Last activity: 2026-10-28 — Phase 27.1 inserted (urgent tech debt), awaiting planning
+Phase: 27.1 (Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-10-28 — Phase 27.1 execution started
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Last activity: 2026-10-28 — Phase 27.1 inserted (urgent tech debt), awaiting p
 | Phase 27 P03 | 27min | 3 tasks | 6 files |
 | Phase 27 P04 | 19min | 3 tasks | 6 files |
 | Phase 27 P05 | 21 min | 3 tasks | 5 files |
+| Phase 27.1 P01 | 8 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -128,6 +129,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 27]: 27-05: census-lane mamba kernels install via the sanctioned sha256-pinned scripts/install_mamba.sh (pip bootstrap + TUNA index) between the .[full] install and the census run - never the plain .[mamba] extra (uv source build fails on this box); pinned offline by TestCensusLaneInstallSequence (ordering, exact invocation, no masking, D-08 posture; deliberate-red proven against the pre-change workflow text)
 - [Phase 27]: 27-05: broken-row docs cells lead with one of four honest per-class plain sentences (damaged-files / own-defect / external-package / library-change) keyed on evidence substrings most-specific-first, fail-closed ValueError on unmapped shapes; technical cause demoted to a 100-char word-boundary parenthetical suffix; gate re-derives independently (checker independence); DOCS_DATA_DATE untouched (presentation-only, no census re-run)
 - [Phase 27]: 27-05: G-27-1 validated by executing the lane's exact command on the runner-box replica venv (49 matched / 0 UNEXPECTED / exit 0 / 302 s wall-clock) - the previously-disagreeing mamba family all matched (PlantCaduceus_l32 rides the seeded disposition to shim-required-tf5); live dispatch stays deferred to the post-v1.4->main-merge operational act (GitHub registers dispatchable workflows from the default branch only)
+- [Phase 27.1]: 27.1-01: docs_bound_technical_fragment and the gate's _bound_fragment cut back to a bracket-balanced prefix at max(rfind("("), rfind("[")) then rstrip("(:[,; ") -- the reviewer's rstrip-only fix was proven insufficient against the real DNABERT-2 evidence; the planned passes also normalize the MutBERT (unclosed paren) and GENA-LM-BigBird (trailing comma) suffixes, and the page stays byte-identical on re-emission
+- [Phase 27.1]: 27.1-01: docs_blocked_reason fails closed with distinct ValueErrors (empty evidence; unmapped shape), mirrored by pytest.fail in the gate plus a registry-side pin over every committed census-blocked row -- raw census text and local cache paths can never reach the public page
+- [Phase 27.1]: 27.1-01: the summary-sentence pin rebuilds the complete sentence from Counter over tf_compat_status in the independent gate -- no hardcoded counts, no generator import, and a mutated-count negative probe proves the pin discriminates
+- [Phase 27.1]: 27.1-01: the pre-existing repo-wide ruff format failure on docs/user_guide/preset_loading.md (untouched; last changed b35f64d) is out of scope and recorded in the phase deferred-items.md + WINDOWS ledger; the plan's four touched files are format-clean under pinned ruff 0.17.1
 
 ### Pending Todos
 
@@ -174,8 +179,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-28T10:58:40.180Z
-Stopped at: Phase 27.1 inserted (URGENT tech debt: IN-01..IN-06 + census lane live dispatch) — not planned yet
+Last session: 2026-10-28T12:10:14.063Z
+Stopped at: Completed 27.1-01-PLAN.md
 Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)
