@@ -1,141 +1,102 @@
 ---
 phase: 27-transformers-4-5-model-compatibility-census
-reviewed: 2026-10-27T10:14:04Z
+reviewed: 2026-10-28T02:19:44Z
 depth: standard
-files_reviewed: 15
+files_reviewed: 5
 files_reviewed_list:
-  - dnallm/models/model_info.yaml
-  - dnallm/models/registry.py
-  - dnallm/utils/transformers_compat.py
   - docs/user_guide/model_compatibility.md
-  - .github/dependabot.yml
   - .github/workflows/census_compat.yml
-  - mkdocs.yml
   - scripts/census_compat.py
-  - tests/models/compat_census.json
-  - tests/models/test_census_compat.py
   - tests/models/test_compat_docs_consistency.py
-  - tests/models/test_model_info_registry.py
-  - tests/models/test_registry.py
-  - tests/utils/test_transformers_compat_census.py
-  - tests/utils/test_transformers_compat.py
+  - tests/test_runner_infra_contracts.py
 findings:
   critical: 1
-  warning: 3
-  info: 6
-  total: 10
+  warning: 1
+  info: 3
+  total: 5
 status: issues_found
 ---
 
-# Phase 27: Code Review Report
+# Phase 27: Code Review Report (incremental #3661 — plan 27-05 gap closure)
 
-**Reviewed:** 2026-10-27T10:14:04Z
-**Depth:** standard
-**Files Reviewed:** 15
+**Reviewed:** 2026-10-28T02:19:44Z
+**Depth:** standard (diff-aware against base ef0cc2f2)
+**Files Reviewed:** 5
 **Status:** issues_found
 
 ## Summary
 
-Phase 27 delivers a transformers 4/5 compatibility census: `scripts/census_compat.py` (census / write-back / docs generation / verification), two new compat rungs in `dnallm/utils/transformers_compat.py`, three `tf_compat_*` schema fields in `dnallm/models/registry.py` plus a 49-row write-back into `model_info.yaml`, a generated docs page with an offline drift gate, and a dispatch-only CI lane.
+Incremental review of phase 27's changes since the prior 27-REVIEW.md commit: the census lane's mamba-kernel install step, the generator's plain-language failure-cell leads with bounded technical suffixes, the regenerated docs page, the drift-gate lockstep extension, and the runner-infra contract pins.
 
-Verification performed during this review: `ruff check` and `ruff format --check` pass on all changed Python files; all 304 tests across the five reviewed test files pass (`191 + 113`); `python scripts/census_compat.py --verify --artifact tests/models/compat_census.json` (dry mode) exits 0 against the committed registry. The invariants that hold: subprocess isolation for remote-code probes and loads (both child programs import `dnallm` first, absolute paths, no shell), anchored text insertion in `--write-registry` (no YAML round-trip; idempotent; provenance blocks pinned), REG-01 sole-parser rule (the docs gate reads typed registry accessors only; no second YAML reader inside `dnallm/`), runner-lane surface posture (workflow_dispatch only, `contents: read`, no masked steps), and committed data consistency (registry / artifact / docs page agree; 49/187 split; no `tf_compat_*` keys on finetuned rows).
+The prior cycle's findings (CR-01 composed-exit, WR-01 disposition carry, WR-03 probe env sanitization) were re-checked in the current state and remain correctly fixed — not re-raised. Verified this cycle: ruff lint/format clean on all five files; 80/80 tests pass in the two test files; `--emit-docs` regeneration is byte-identical to the committed page; the new class map assigns the correct lead class to all six committed broken evidence strings with no ordering hazard; the page's summary counts (19/21/1/6/2 = 49) match the registry; `install_mamba.sh` uses `-m pip` so the lane's pip bootstrap is correct.
 
-However, the fail-closed **composition** of the dispatch lane is structurally broken: a fresh census run can never satisfy `compat_verdict`, so `--run --verify` can never exit 0 (CR-01, proven by simulation below). Two robustness issues around the frozen evidence artifact (disposition loss on re-run, HF endpoint leakage into the test process) and a set of minor quality items follow.
+One blocker: the census lane's seeded-artifact `cp` writes into a directory that `actions/checkout@v4`'s default clean deletes on the persistent self-hosted workspace, so the lane — the deliverable of UAT G-27-1's fix — is deterministically red on every live dispatch. The green evidence recorded in 27-05-SUMMARY was a manual replica run that bypassed the workflow's step ordering, and the live dispatch is deferred until the v1.4→main merge, so this path has never executed on the real runner.
 
 ## Critical Issues
 
-### CR-01: `--run --verify` can never exit 0 — the dispatch lane is permanently red and cannot act as a drift gate
+### CR-01: Census lane's seeded `cp` targets a directory deleted by checkout's default clean — the lane is permanently red on every live dispatch
 
-**File:** `scripts/census_compat.py:1278-1336` (`compat_verdict`), `scripts/census_compat.py:1840-1901` (`verify_registry`), `scripts/census_compat.py:1963-2001` (`main`), `.github/workflows/census_compat.yml:88-90`
-**Issue:** The workflow runs `python scripts/census_compat.py --run --with-loads --verify --artifact census-artifacts/census-fresh.json`. `compat_verdict` requires a `disposition` (`skip`/`fix`) to map any record that has neither a green load+forward nor non-representative status — but `disposition` keys exist **only** in the frozen committed artifact (hand-authored 27-02 judgments); nothing in the tool ever writes them (grep: only `compat_verdict` reads `record.get("disposition")`; `merge_records` does not carry them either). A fresh census therefore produces unmappable records for every parked failure. Verified live in this review by simulating fresh records through `compat_verdict`:
+**File:** `.github/workflows/census_compat.yml:45` (mkdir), `:58` (checkout), `:122` (cp)
+**Issue:** The only `mkdir -p census-artifacts` runs in the GPU-check step, which executes BEFORE `actions/checkout@v4` (line 58, invoked with defaults, i.e. `clean: true`). On the `[self-hosted, dnallm-nightly]` box the workspace (`_work/DNALLM/DNALLM`) is persistent and shared across all workflows of this repo — the nightly ci.yml lanes check out into the same directory, so a git repo is present at every census dispatch. With a repo present, checkout's `prepareExistingDirectory` runs `git clean -ffdx` before checking out (verified against actions/checkout v4.2.2 source, `src/git-directory-helper.ts:91-100`; if the clean fails it deletes the directory contents outright, which is no better), removing the untracked `census-artifacts/` directory created in step 1. The census step then fails at:
 
 ```
-RAISED: census record for songlab/gpn-brassicales (status 'import-fail') carries no green load and no skip disposition - cannot map it to a registry status
-RAISED: census record for JadenLong/MutBERT-Human-Ref (status 'import-ok') carries no green load and no skip disposition - cannot map it to a registry status
+cp: cannot create regular file 'census-artifacts/census-fresh.json': No such file or directory
 ```
 
-At minimum GPN, Omni-DNA, DNABERT-2, GENA-LM, GENA-LM-BigBird and MutBERT (all family representatives that are import-fail or failed-load today) hit the `raise ValueError` inside `verify_registry`, so `verify` returns 1 unconditionally. Compounding this, `run_census` returns 1 whenever any repo is unreachable on both hubs — `GenerTeam/GENERanno-eukaryote-1.2b-base` is committed as exactly that (census-blocked, "repo id exists on neither hub"), so `run_rc` is also 1 on every run — and `main()` then returns `run_rc if run_rc != 0 else verify_rc`, discarding the verification result entirely. Net effect: the lane can never be green; "red" cannot distinguish real drift from baseline, defeating its documented purpose ("fails red the moment the world ... disagrees" implies green when the world agrees; the workflow comment "a red step means real drift or infrastructure failure" is false for at least three structural reasons). Note the dry form (`--verify` alone against the committed artifact) does pass today — the defect is specifically the composed fresh-evidence form the workflow ships.
-**Fix:** Make the fresh-evidence verification self-contained, e.g. (a) have `run_census` carry `disposition`/`previous_status` forward from any existing artifact (see WR-01) and seed the lane's artifact from the committed file (`--artifact tests/models/compat_census.json` or copy it to `census-artifacts/` first), or (b) add a fresh-run mapping fallback in `compat_verdict` (import-fail rep with no disposition → compare against committed `remote-code-broken` via a dedicated lane-side mapping), and stop treating a committed-known unreachable repo as a lane failure (record it, compare verdicts, and let matching verdicts pass). At minimum, surface `verify_rc` independently in `main()` (e.g. `return run_rc or verify_rc`) so the two failure classes are distinguishable, and document the expected-red entries in the workflow.
+so the step exits 1 and the lane can never go green — the exact permanently-red-lane symptom UAT G-27-1 was fixed to eliminate, with a different root cause. The sibling `feasibility.yml` pattern this lane copies does its happy-path `mkdir -p` AFTER checkout (feasibility.yml:96); only its GPU-absent marker path relies on pre-checkout creation, and the workflows README (§Feasibility, line 161) documents exactly that rationale: "the check must precede checkout so the marker survives the **skipped** checkout." The GPU-absent path of this lane is correct for that reason; the happy path is not. The lane's green evidence (`.scratch/p27-uat/lane-sim/census-green.log`, 49 matched / exit 0) was produced by manually pre-seeding `census-artifacts/` on the box and running the census command directly — the mkdir/checkout/cp ordering was never exercised, and live dispatch is deferred (27-05-SUMMARY: GitHub registers dispatchable workflows from the default branch only), so nothing has caught this.
+**Fix:** Re-create the directory after checkout, at the top of the census step's run block (mirroring feasibility.yml:96), keeping the pre-checkout mkdir for the GPU-absent marker path:
+
+```yaml
+        run: |
+          source .venv/bin/activate
+          mkdir -p census-artifacts
+          cp tests/models/compat_census.json census-artifacts/census-fresh.json
+          python scripts/census_compat.py --run --with-loads --verify --artifact census-artifacts/census-fresh.json
+```
+
+(Alternative: write the fresh artifact under `$RUNNER_TEMP`, which checkout never touches, and point the upload at the absolute path.)
 
 ## Warnings
 
-### WR-01: `merge_records` silently drops `disposition` and `previous_status` — a default-artifact re-run destroys the frozen 27-02 judgments
+### WR-01: The no-masking contract pin misses `continue-on-error` — a step-level flag that produces exactly the "silent red-to-green lie" the pin forbids
 
-**File:** `scripts/census_compat.py:1124-1173`
-**Issue:** `merge_records` replaces each existing record with the fresh one and carries over only `load`/`load_note` (lines 1156-1164). The hand-authored `disposition` objects and the `previous_status` stamps (the pre-shim evidence trail) are dropped even when the verdict is unchanged. Verified by simulation in this review: an unchanged `import-ok` record with `disposition: {skip: "checkpoint data defect: ..."}` and `previous_status: "import-fail"` merges to a record with neither key (load carried, disposition lost). The committed provenance block invites exactly this re-run ("Tooling: scripts/census_compat.py --write-registry --apply (committed, re-runnable ...)"), and `--artifact` defaults to `tests/models/compat_census.json` — running plain `--run` against the default path rewrites the frozen artifact without dispositions, immediately turning `TestDispositionCompleteness` (`tests/models/test_census_compat.py:572-637`) red and losing the skip/fix judgment evidence (git-recoverable only).
-**Fix:** In `merge_records`, when `previous.get("status") == record.get("status")`, carry `disposition` (and `previous_status`) forward the same way `load` is carried:
-
-```python
-if (
-    record.get("load") is None
-    and previous is not None
-    and previous.get("load") is not None
-    and previous.get("status") == record.get("status")
-):
-    record["load"] = previous["load"]
-    if "load_note" in previous:
-        record["load_note"] = previous["load_note"]
-    if "disposition" in previous:
-        record["disposition"] = previous["disposition"]
-    if "previous_status" in previous:
-        record["previous_status"] = previous["previous_status"]
-```
-
-### WR-02: Loading the census script in tests sets `HF_ENDPOINT=https://hf-mirror.com` process-wide at collection time
-
-**File:** `scripts/census_compat.py:17`, `tests/models/test_census_compat.py:28-39`
-**Issue:** `scripts/census_compat.py` sets `os.environ["HF_ENDPOINT"] = HF_MIRROR` at module import (line 17), and `tests/models/test_census_compat.py` executes the module at collection time (`census = _load_census_module()`, line 39). Every test that runs afterwards in the same pytest process — including the `slow` real-model lanes in the nightly run — has its Hugging Face downloads silently rerouted through the third-party `hf-mirror.com` endpoint, and any user-/CI-provided `HF_ENDPOINT` is overridden. On hosts where the mirror is unreachable or slow, real-model tests fail for an environment reason no test-local change can explain; downloads also traverse an unintended third party.
-**Fix:** In the test loader, snapshot and restore the environment around `exec_module` (e.g. `monkeypatch` at session scope, or in `_load_census_module`: save `os.environ.pop("HF_ENDPOINT", None)`, exec, restore) — the child probe/load programs set `HF_ENDPOINT` inside their generated source anyway (`build_probe_program`/`build_load_program`), so the parent-process mutation is not needed by any offline test.
-
-### WR-03: Remote-code probe subprocesses inherit the full runner environment, including `GITHUB_TOKEN`, while executing untrusted repo code
-
-**File:** `scripts/census_compat.py:629-635` (`run_import_probe`), `scripts/census_compat.py:1002-1008` (`run_load_probe`), `.github/workflows/census_compat.yml:30,88-90`
-**Issue:** Both probe subprocesses call `subprocess.run([sys.executable, "-c", program], ...)` without an `env` argument, so the child inherits the parent's environment. On the dispatch lane that parent is a GitHub runner process whose environment carries `GITHUB_TOKEN` (scoped `contents: read`), `RUNNER_*` credentials/paths, and any configured secrets. The child executes arbitrary `trust_remote_code` Python fetched from 49 third-party repos (the census's whole purpose). The subprocess isolation protects the census process's Python state (shims), not the host or the token: a malicious repo's code runs with read access to the repo token and the self-hosted box's runner context. The lane's dispatch-only trigger bounds who can *schedule* this, but not what the fetched code can *reach* once scheduled.
-**Fix:** Pass a sanitized environment to both probes, keeping only what the children need (`PATH`, `PYTHONPATH`/venv, `HF_HOME`/`HF_ENDPOINT`/`HF_HUB_*`, CUDA-related vars, `HOME`):
+**File:** `tests/test_runner_infra_contracts.py:318-331`
+**Issue:** `test_no_masked_failure_in_the_lane` only greps executed shell lines for `|| true`. Adding `continue-on-error: true` to the mamba-install step or the census-run step (or the job) would green the lane while the kernel build or census fails, re-creating the UAT G-27-1 failure mode, and none of the four pins in `TestCensusLaneInstallSequence` would trip — the class docstring claims it holds against "masking the kernel build," which is broader than what the test checks. The house posture is explicit elsewhere: the example-nightly README section documents "NO step carries `continue-on-error` — a forever-green job is prohibited."
+**Fix:** The sibling test already parses the workflow with `yaml.safe_load`; add an assertion that neither the job nor any step carries a `continue-on-error` key:
 
 ```python
-_BLOCKED_ENV_PREFIXES = ("GITHUB_", "RUNNER_", "ACTIONS_")
-clean_env = {
-    k: v for k, v in os.environ.items()
-    if not k.startswith(_BLOCKED_ENV_PREFIXES)
-}
-completed = subprocess.run([sys.executable, "-c", program], ..., env=clean_env)
+    def test_no_continue_on_error_anywhere(self) -> None:
+        """No job- or step-level continue-on-error: a failed build must redden the lane."""
+        doc = yaml.safe_load(_load_census_workflow_text())
+        job = doc["jobs"]["census-compat"]
+        steps = job.get("steps", [])
+        assert "continue-on-error" not in job, "job-level continue-on-error would green a failing lane"
+        flagged = [s.get("name", s.get("uses")) for s in steps if "continue-on-error" in s]
+        assert not flagged, f"steps carrying continue-on-error: {flagged}"
 ```
 
 ## Info
 
-### IN-01: New rung code adds mypy errors under a `ty:`-only ignore convention
+### IN-01: Bounded technical fragments can end mid-clause with unbalanced parentheses
 
-**File:** `dnallm/utils/transformers_compat.py:1594-1601`
-**Issue:** `_materialize_tied_weights_bookkeeping` uses `# ty: ignore[unresolved-attribute]` comments, which mypy does not honor; the added lines produce new mypy `attr-defined` errors (1596, 1597, 1601: `get_expanded_tied_weights_keys` / `named_children` / `all_tied_weights_keys` on `object`). This matches the module's pre-existing posture (lines 718/725) and mypy is advisory in CI (`mypy dnallm/ || true`), but the phase claimed mypy-clean code. If that claim matters, use a checker-agnostic shape (e.g. `typing.cast` or a `Protocol` receiver) or add a mypy-compatible ignore.
+**File:** `scripts/census_compat.py:1732-1750` (`docs_bound_technical_fragment`); visible at `docs/user_guide/model_compatibility.md:40`
+**Issue:** The word-boundary truncation can cut inside a nested parenthetical, leaving the committed DNABERT-2 cell ending "(rebuild_alibi_tensor line 399:…)" — the inner "(" opened by "(rebuild_alibi_tensor" is never closed. Markdown renders it fine, but it reads as a broken sentence on the page whose stated audience is biologists (the plain-language directive this change implements).
+**Fix:** Before appending the ellipsis, strip trailing unclosed punctuation (`(`, `[`, `:`, `,`) or cut at the last closing-paren/comma boundary, e.g. `cut = cut.rstrip("(:[,; ")` before `return cut + "…"`. Apply in lockstep (generator + gate's `_bound_fragment`).
 
-### IN-02: Independent artifact-vs-registry checker omits the `fix`-disposition mapping branch
+### IN-02: The page's summary-sentence counts are not pinned by the drift gate
 
-**File:** `tests/models/test_model_info_registry.py:445-488`
-**Issue:** `test_compat_census_artifact_matches_registry` re-implements the artifact→status mapping but has no `disposition: {fix: ...}` branch (its green-load path special-cases only PlantCaduceus). The writer (`compat_verdict`) maps a fix-disposition green load to `shim-required-tf5`; the checker would derive `verified-tf5` and go red on any future fix-disposition entry. It fails loudly (by design of independent checkers), but the checker's docstring claims equivalence with the writer mapping — a comment noting the deliberate omission (or implementing the branch) would prevent confusion during the next census refresh.
+**File:** `tests/models/test_compat_docs_consistency.py:260-291` (where the pin belongs); generator computes them at `scripts/census_compat.py:1853-1877`
+**Issue:** The gate re-derives every table row, the footnotes, and the ordering, but no test re-derives the prose summary "Of the 49 preset models, the team found 19 working as-is, 21 ..., 1 ..., 6 ..., and 2 ..." from the registry. A hand-edited or drifted summary sentence would pass the gate even though it is the first thing a reader sees. Counts verified correct today (19/21/1/6/2 = 49 against `Counter` over the registry).
+**Fix:** Add a `TestPageContract` test asserting the summary sentence re-derived from `Counter(entry.tf_compat_status ...)` over `_pretrained()` appears verbatim in the page.
 
-### IN-03: Machine-specific evidence text committed into the packaged registry
+### IN-03: New pure helpers lack direct unit tests for their fail-closed and boundary edge cases
 
-**File:** `dnallm/models/model_info.yaml:315,485`
-**Issue:** `GENERanno`'s evidence carries a double-`@` stamp (`...@unpinned@2026-10-27T08:39:46Z`), and `CrossDNA`'s evidence embeds a dev-box absolute cache path (`/home/forrest/.cache/huggingface/hub/models--chengCCC--.../config.json: [Errno 2] ...`). Both ship in the packaged `model_info.yaml` (distributed to PyPI). Honest evidence, and the docs gate correctly keeps the raw path off the generated page, but any re-census on another machine produces different evidence text, guaranteeing write-back drift for those two rows; consider normalizing the stamp form and trimming the path in `describe_config_problem`/`_hub_revision` output at the next refresh.
-
-### IN-04: `_finalize_model_loading` wrapper skips materialization on a kwargs-only call
-
-**File:** `dnallm/utils/transformers_compat.py:1650-1653`
-**Issue:** The wrapper materializes bookkeeping only under `if args:`; a caller invoking `_finalize_model_loading(model=..., load_config=..., loading_info=...)` with no positional args delegates without materializing, and the load then fails later with the original `AttributeError`. transformers 5.17 calls positionally, so this is latent. Consider resolving the receiver from `kwargs` as a fallback (first of `model`/`self`/`cls` in `kwargs`).
-
-### IN-05: Unpinned `curl | sh` for uv on the self-hosted box
-
-**File:** `.github/workflows/census_compat.yml:60-62`
-**Issue:** `curl -LsSf https://astral.sh/uv/install.sh | sh` fetches and executes an unpinned install script on the self-hosted GPU runner (the box already has uv configured with a mirror per runner ops; this step can also silently replace it). Pin the version (`UV_VERSION=...` with the script's env var) or skip installation when `command -v uv` succeeds.
-
-### IN-06: `docs_blocked_reason` fails open to the raw first clause for unforeseen blocked shapes
-
-**File:** `scripts/census_compat.py:1634`
-**Issue:** The two committed blocking shapes map to biologist-friendly reasons; any future blocked entry with a different evidence shape falls through to `detail.split(";")[0]`, which can put raw error text (including local paths, as in the CrossDNA evidence) onto the generated page. A fail-closed default (raise on unknown shape, like `docs_status_cell` does for unknown statuses) would keep the page's plain-language contract.
+**File:** `scripts/census_compat.py:1706-1729` (`docs_broken_lead_class`), `:1732-1750` (`docs_bound_technical_fragment`)
+**Issue:** `tests/models/test_census_compat.py` unit-tests the script's other pure helpers (`TestClassifyConfig`, `TestFailingImportExtraction`, ...) but carries zero tests for the two new ones (grep: no references). Their behavior is pinned only indirectly via the drift gate over the committed-registry snapshot, so the fail-closed `ValueError` on an unmapped evidence shape and the 100/101-character boundary of the bound are never exercised by a test that constructs such input.
+**Fix:** Add to `tests/models/test_census_compat.py`: unmapped evidence string raises `ValueError`; empty evidence raises; fragment of exactly 100 chars returned unchanged; 101 chars / no-space fragment bounded with the ellipsis.
 
 ---
 
-_Reviewed: 2026-10-27T10:14:04Z_
+_Reviewed: 2026-10-28T02:19:44Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
