@@ -650,6 +650,65 @@ class TestRunCensusUnreachableRecording:
         assert "unreachable on both hubs" in written[1]["failing_import"]
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 27.1 docs helpers: bounded technical fragments (IN-01) and fail-closed
+# plain-language mappings (IN-03, IN-06). These call the generator's pure
+# helpers directly (no subprocess, no network) through the module harness
+# above.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestDocsBoundTechnicalFragment:
+    """``docs_bound_technical_fragment`` ends at a balanced clause boundary.
+
+    The rule: at most 100 characters; a longer fragment is cut at its last
+    in-bound word boundary and closed with a single ellipsis. The cut must
+    also be bracket-balanced, so a technical parenthetical never ends after
+    an unclosed opener (the real DNABERT-2 evidence clause once ended
+    ``(rebuild_alibi_tensor line 399:…`` with that ``(`` never closed).
+    """
+
+    @pytest.mark.parametrize(
+        ("fragment", "expected"),
+        [
+            pytest.param(
+                "word " * 20,
+                "word " * 20,
+                id="exactly-100",
+            ),
+            pytest.param(
+                "a" * 50 + " " + "b" * 50,
+                "a" * 50 + "…",
+                id="101-chars-word-boundary",
+            ),
+            pytest.param(
+                "x" * 120,
+                "x" * 100 + "…",
+                id="no-space-over-limit-hard-cut",
+            ),
+            pytest.param(
+                "(" + "y" * 120,
+                "…",
+                id="lone-unclosed-opener-at-start",
+            ),
+            pytest.param(
+                "one (two [three " + "four " * 20,
+                "one…",
+                id="nested-delimiters",
+            ),
+            pytest.param(
+                "remote bert_layers.py builds its ALiBi tensor eagerly in __init__ "
+                "(rebuild_alibi_tensor line 399: torch.Tensor(list) stays on cpu while "
+                "torch.arange lands on meta)",
+                "remote bert_layers.py builds its ALiBi tensor eagerly in __init__…",
+                id="real-dnabert2-evidence",
+            ),
+        ],
+    )
+    def test_boundary_and_balancing_cases(self, fragment, expected) -> None:
+        assert census.docs_bound_technical_fragment(fragment) == expected
+
+
 class TestMainExitComposition:
     """--run --verify surfaces both failure classes independently (CR-01)."""
 
