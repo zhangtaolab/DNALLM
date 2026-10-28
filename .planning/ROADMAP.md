@@ -49,7 +49,7 @@ Plans:
 **Goal:** Close all six open Phase 27 info-level findings: balance generated technical fragments, pin summary counts and helper edge cases, make blocked-reason rendering fail closed, handle kwargs-only compat-wrapper receivers, and preserve provisioned uv on the census runner; then prove the dispatch-only census lane green end-to-end through exactly one live `workflow_dispatch` of the final `v1.4` tree with 49 matched entries and uploaded fresh evidence.
 **Requirements**: IN-01, IN-02, IN-03, IN-04, IN-05, IN-06, DISP-01
 **Depends on:** Phase 27
-**Plans:** 3 plans
+**Plans:** 4 plans
 
 Plans:
 **Wave 1**
@@ -57,6 +57,9 @@ Plans:
 - [x] 27.1-02-PLAN.md — Compat-wrapper receiver hardening and provisioned-uv census lane guard (IN-04/IN-05)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 27.1-03-PLAN.md — Owner-gated main-landing choice, workflow registration, and one live green `v1.4` dispatch (DISP-01)
+- [ ] 27.1-03-PLAN.md — Owner-gated main-landing choice, workflow registration, and one live green `v1.4` dispatch (DISP-01; halted at owner defer-dispatch)
+
+**Wave 3** *(gap closure — blocked on the post-v1.4-to-main milestone merge)*
+- [ ] 27.1-04-PLAN.md — Verify merge-landed workflow registration, then run and audit exactly one live green `v1.4` dispatch (DISP-01)
 
 </details>
