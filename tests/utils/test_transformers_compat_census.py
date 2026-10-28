@@ -402,7 +402,9 @@ class TestTiedWeightsBookkeepingOnLoad:
         def fail_helper(*_args, **_kwargs):
             raise AssertionError("no receiver helper may run without a receiver")
 
-        monkeypatch.setattr(transformers_compat, "_materialize_tied_weights_bookkeeping", fail_helper)
+        monkeypatch.setattr(
+            transformers_compat, "_materialize_tied_weights_bookkeeping", fail_helper
+        )
         monkeypatch.setattr(transformers_compat, "_bridge_legacy_tie_weights", fail_helper)
 
         def fake_original(*args, **kwargs):

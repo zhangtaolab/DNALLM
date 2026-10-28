@@ -1648,8 +1648,22 @@ def _patch_tied_weights_bookkeeping_on_load():
     binds_class = first_param in ("cls", "self")
 
     def _finalize_model_loading(*args, **kwargs):
-        if args:
+        # Receiver resolution (27.1 IN-04): callers may pass the model by
+        # keyword (``model=``/``self=``) instead of positionally. A kwargs
+        # receiver always wins -- when the original binds as a classmethod
+        # the wrapper injects ``cls`` into ``args``, so positional-only
+        # resolution can select the CLASS and materialize bookkeeping onto
+        # it. Positional resolution is the fallback, and no receiver at all
+        # means delegate unchanged (never guess).
+        receiver = None
+        for name in ("model", "self"):
+            candidate = kwargs.get(name)
+            if candidate is not None:
+                receiver = candidate
+                break
+        if receiver is None and args:
             receiver = args[1] if binds_class and len(args) > 1 else args[0]
+        if receiver is not None:
             _materialize_tied_weights_bookkeeping(receiver)
             # The same skipped-entry receivers never ran the init_weights
             # wrapper that installs the legacy tie_weights arity bridge, and
