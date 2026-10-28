@@ -11,6 +11,7 @@ unparseable table is a test failure, never a skip.
 from __future__ import annotations
 
 import re
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -307,6 +308,33 @@ class TestPageContract:
         assert starts, "table header missing"
         table_region = "\n".join(lines[starts[0] :])
         assert FORBIDDEN_CLAIM not in table_region
+
+    def test_summary_sentence_counts_match_registry(self):
+        """The one-line summary is rebuilt from registry counts, verbatim.
+
+        A stale or hand-edited count survives every per-row check, so the
+        whole sentence is re-derived here: ``Counter`` over
+        ``entry.tf_compat_status`` supplies all six numbers, and the exact
+        prose (including the family-inference parenthetical and the final
+        period) must occur in the committed page. The generator's template is
+        never imported or called (checker independence), and no current count
+        is hardcoded.
+        """
+        pretrained = _pretrained()
+        counts = Counter(entry.tf_compat_status for entry in pretrained)
+        sentence = (
+            f"Of the {len(pretrained)} preset models, the team found "
+            f"{counts['verified-tf5']} working as-is, "
+            f"{counts['import-verified-tf5']} with their program code loading verified "
+            "(the full run is expected to match a tested close relative in the same model family), "
+            f"{counts['shim-required-tf5']} working through DNALLM's built-in compatibility fixes, "
+            f"{counts['remote-code-broken']} not working with the new version, and "
+            f"{counts['census-blocked']} that could not be checked."
+        )
+        assert sentence in _read_page(), (
+            "the page's summary sentence does not match the counts derived from the "
+            f"registry: expected {sentence!r}"
+        )
 
 
 class TestRowsMatchRegistry:
