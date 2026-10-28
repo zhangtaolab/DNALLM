@@ -5,32 +5,32 @@ titles: json
 findings:
   - id: CR-01
     severity: critical
-    disposition: fixed
-    title: "`--run --verify` can never exit 0 — the dispatch lane is permanently red and cannot act as a drift gate"
+    disposition: open
+    title: "Census lane's seeded `cp` targets a directory deleted by checkout's default clean — the lane is permanently red on every live dispatch"
   - id: WR-01
     severity: warning
-    disposition: fixed
-    title: "`merge_records` silently drops `disposition` and `previous_status` — a default-artifact re-run destroys the frozen 27-02 judgments"
-  - id: WR-02
-    severity: warning
-    disposition: fixed
-    title: "Loading the census script in tests sets `HF_ENDPOINT=https://hf-mirror.com` process-wide at collection time"
-  - id: WR-03
-    severity: warning
-    disposition: fixed
-    title: "Remote-code probe subprocesses inherit the full runner environment, including `GITHUB_TOKEN`, while executing untrusted repo code"
+    disposition: open
+    title: "The no-masking contract pin misses `continue-on-error` — a step-level flag that produces exactly the \"silent red-to-green lie\" the pin forbids"
   - id: IN-01
     severity: info
     disposition: open
-    title: "New rung code adds mypy errors under a `ty:`-only ignore convention"
+    title: "Bounded technical fragments can end mid-clause with unbalanced parentheses"
   - id: IN-02
     severity: info
     disposition: open
-    title: "Independent artifact-vs-registry checker omits the `fix`-disposition mapping branch"
+    title: "The page's summary-sentence counts are not pinned by the drift gate"
   - id: IN-03
     severity: info
     disposition: open
-    title: "Machine-specific evidence text committed into the packaged registry"
+    title: "New pure helpers lack direct unit tests for their fail-closed and boundary edge cases"
+  - id: WR-02
+    severity: warning
+    disposition: fixed
+    title: "Loading the census script in tests sets `HF_ENDPOINT` process-wide at collection"
+  - id: WR-03
+    severity: warning
+    disposition: fixed
+    title: "Probe subprocesses inherit the full runner environment, including `GITHUB_TOKEN`"
   - id: IN-04
     severity: info
     disposition: open
@@ -43,25 +43,25 @@ findings:
     severity: info
     disposition: open
     title: "`docs_blocked_reason` fails open to the raw first clause for unforeseen blocked shapes"
-open: 6
+open: 8
 total: 10
-recorded: 2026-10-27T10:39:40.435Z
+recorded: 2026-10-28T02:23:54.856Z
 ---
 
 # Phase 27: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| CR-01 | critical | fixed | fix commit 16363d4 (hand-reconciled: REVIEW-FIX.md re-titled the finding; offline seeded-run regression pins exit 0; live dispatch verification still owed) |
-| WR-01 | warning | fixed | fix commit 61d128c (hand-reconciled: REVIEW-FIX.md re-titled the finding; carry runs independent of load carry) |
-| WR-02 | warning | fixed | fix commit 10f7ad9 (hand-reconciled: REVIEW-FIX.md re-titled the finding; env snapshot/restore around exec_module) |
-| WR-03 | warning | fixed | fix commit 6187404 (hand-reconciled: REVIEW-FIX.md re-titled the finding; sanitized_probe_env blocklist GITHUB_/RUNNER_/ACTIONS_) |
+| CR-01 | critical | open | - |
+| WR-01 | warning | open | - |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
-| IN-04 | info | open | - |
-| IN-05 | info | open | - |
-| IN-06 | info | open | - |
+| WR-02 | warning | fixed | 27-REVIEW-FIX.md (not in the current review) |
+| WR-03 | warning | fixed | 27-REVIEW-FIX.md (not in the current review) |
+| IN-04 | info | open | - (not in the current review) |
+| IN-05 | info | open | - (not in the current review) |
+| IN-06 | info | open | - (not in the current review) |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
