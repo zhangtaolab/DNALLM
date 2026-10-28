@@ -1,0 +1,11 @@
+{
+  "command": "cd /tmp/gsd-red-27.1-02/task2 && /home/forrest/Github/DNALLM/.venv/bin/python -m pytest tests/test_runner_infra_contracts.py::TestCensusLaneInstallSequence::test_uv_install_skips_provisioned_binary -q --junitxml=/tmp/gsd-red-27.1-02/task2.xml",
+  "exitCode": 1,
+  "reportPath": "/tmp/gsd-red-27.1-02/task2.xml",
+  "targetTest": "tests.test_runner_infra_contracts.TestCensusLaneInstallSequence#test_uv_install_skips_provisioned_binary",
+  "targetFile": "tests/test_runner_infra_contracts.py",
+  "expected": "the Install uv step exports $HOME/.local/bin, probes `command -v uv` before any curl, echoes the provisioned version, and keeps the installer only in the else branch",
+  "actual": "the step body is exactly `curl -LsSf https://astral.sh/uv/install.sh | sh`",
+  "semanticAssessment": "The target pin executed against the pre-change workflow (git archive of RED commit 853e685) and failed on the first planned assertion (no PATH export in the unconditional install body); all 13 sibling lane pins passed, so the failure is the planned IN-05 gap, not a lane-wide breakage.",
+  "output": "<?xml version=\"1.0\" encoding=\"utf-8\"?><testsuites name=\"pytest tests\"><testsuite name=\"pytest\" errors=\"0\" failures=\"1\" skipped=\"0\" tests=\"1\" time=\"0.026\" timestamp=\"2026-10-28T20:16:48.651674+08:00\" hostname=\"edgexpert-296a\"><testcase classname=\"tests.test_runner_infra_contracts.TestCensusLaneInstallSequence\" name=\"test_uv_install_skips_provisioned_binary\" time=\"0.003\"><failure message=\"AssertionError: the Install uv guard must export $HOME/.local/bin first (runner-ops uv lives there; A1 in 27.1-RESEARCH.md)&#10;assert 'export PATH=&quot;$HOME/.local/bin:$PATH&quot;' in 'curl -LsSf https://astral.sh/uv/install.sh | sh'\">tests/test_runner_infra_contracts.py:368: in test_uv_install_skips_provisioned_binary\n    assert 'export PATH=\"$HOME/.local/bin:$PATH\"' in run, (\nE   AssertionError: the Install uv guard must export $HOME/.local/bin first (runner-ops uv lives there; A1 in 27.1-RESEARCH.md)\nE   assert 'export PATH=\"$HOME/.local/bin:$PATH\"' in 'curl -LsSf https://astral.sh/uv/install.sh | sh'</failure></testcase></testsuite></testsuites>"
+}
