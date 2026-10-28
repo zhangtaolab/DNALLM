@@ -117,8 +117,18 @@ jobs:
         # The runner cannot reach the default Hugging Face endpoint: the
         # census tool hard-codes ModelScope-first + the hf-mirror endpoint;
         # no hub URL is added here.
+        #
+        # Re-create census-artifacts AFTER checkout (phase-27 review CR-01,
+        # 2026-10-28): the persistent shared workspace always carries a repo
+        # at dispatch (the nightly lanes check out into it), so
+        # actions/checkout's default clean (`git clean -ffdx`) removes the
+        # untracked directory the pre-checkout mkdir created — without this
+        # line the cp below fails on every live dispatch. The pre-checkout
+        # mkdir stays: it serves the GPU-absent marker path, where checkout
+        # is skipped so nothing removes it (feasibility.yml §Feasibility).
         run: |
           source .venv/bin/activate
+          mkdir -p census-artifacts
           cp tests/models/compat_census.json census-artifacts/census-fresh.json
           python scripts/census_compat.py --run --with-loads --verify --artifact census-artifacts/census-fresh.json
 
