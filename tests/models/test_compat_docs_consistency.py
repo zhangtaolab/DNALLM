@@ -162,12 +162,25 @@ def _lead_class(evidence: str | None) -> str:
 
 
 def _bound_fragment(fragment: str) -> str:
-    """Bound the technical fragment at a word boundary (gate's own copy)."""
+    """Bound the technical fragment at a balanced clause boundary (gate's own copy).
+
+    Word-boundary cut at the 100-character cap, then trimmed back to a
+    bracket-balanced prefix before the single trailing ellipsis: a technical
+    parenthetical must never end after an unclosed opener. Re-implemented
+    here rather than imported (checker independence).
+    """
     if len(fragment) <= TECHNICAL_FRAGMENT_MAX_CHARS:
         return fragment
     cut = fragment[:TECHNICAL_FRAGMENT_MAX_CHARS]
     if " " in cut:
         cut = cut[: cut.rfind(" ")].rstrip()
+    while cut.count("(") > cut.count(")") or cut.count("[") > cut.count("]"):
+        opener = max(cut.rfind("("), cut.rfind("["))
+        if opener <= 0:
+            cut = ""
+            break
+        cut = cut[:opener].rstrip()
+    cut = cut.rstrip("(:[,; ")
     return cut + "…"
 
 

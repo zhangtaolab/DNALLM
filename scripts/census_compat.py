@@ -1730,23 +1730,32 @@ def docs_broken_lead_class(evidence: str | None) -> str:
 
 
 def docs_bound_technical_fragment(fragment: str) -> str:
-    """Bound a technical cause fragment at a word boundary.
+    """Bound a technical cause fragment at a balanced clause boundary.
 
     Rule: at most :data:`DOCS_TECHNICAL_FRAGMENT_MAX_CHARS` characters; a
-    longer fragment is cut at its last in-bound word boundary (whitespace
-    stripped) and closed with a single trailing ellipsis character.
+    longer fragment is cut at its last in-bound word boundary, then trimmed
+    back to a bracket-balanced prefix (every opener has its closer) before a
+    single trailing ellipsis character is appended. The balance pass keeps a
+    technical parenthetical from ending after an unclosed opener.
 
     Args:
         fragment: The technical cause clause.
 
     Returns:
-        The bounded fragment.
+        The bounded, bracket-balanced fragment.
     """
     if len(fragment) <= DOCS_TECHNICAL_FRAGMENT_MAX_CHARS:
         return fragment
     cut = fragment[:DOCS_TECHNICAL_FRAGMENT_MAX_CHARS]
     if " " in cut:
         cut = cut[: cut.rfind(" ")].rstrip()
+    while cut.count("(") > cut.count(")") or cut.count("[") > cut.count("]"):
+        opener = max(cut.rfind("("), cut.rfind("["))
+        if opener <= 0:
+            cut = ""
+            break
+        cut = cut[:opener].rstrip()
+    cut = cut.rstrip("(:[,; ")
     return cut + "…"
 
 
