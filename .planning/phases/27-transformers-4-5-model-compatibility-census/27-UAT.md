@@ -3,7 +3,7 @@ status: complete
 phase: 27-Transformers 4/5 Model Compatibility Census
 source: [27-VERIFICATION.md]
 started: 2026-10-27T18:57:00+08:00
-updated: 2026-10-27T11:32:11.282Z
+updated: 2026-10-28T21:35:00+08:00
 ---
 
 ## Current Test
@@ -38,6 +38,7 @@ blocked: 0
 - gap_id: G-27-1
   truth: "The census lane finishes green (49 matched, --verify exit 0) on unchanged inputs"
   status: failed
+  status_note: "Code fix landed in Phase 27-05 (the lane now runs the sanctioned sha256-pinned scripts/install_mamba.sh between the .[full] install and the census run; the contract test pins it). The gap stays FAILED because its truth is a GREEN LIVE RUN, and that has never been observed — Phase 27.1's DISP-01 was owner-deferred (see 27.1-03-SUMMARY.md: GitHub protected-branch GH006 blocked registration; the defer-dispatch decision moved the single allowed dispatch to the post-merge operator step). Close this gap when that dispatch returns 49 matched / 'OK: census matches committed registry fields' / no UNEXPECTED / no VERSION DRIFT."
   reason: "User reported: 你来验证 — delegated live verification ran the exact lane command on the runner box: exit 1 with 4 UNEXPECTED (unmappable) entries; root cause is environmental, not world drift"
   severity: blocker
   test: 1
@@ -57,7 +58,8 @@ blocked: 0
 
 - gap_id: G-27-2
   truth: "Failure Details cells lead with a plain-language sentence a biologist can act on (technical cause demoted), per the 2026-10-21 plain-language directive"
-  status: failed
+  status: resolved
+  resolved: "2026-10-28 by Phase 27.1 close-out — the plain-language lead layer landed in Phase 27-04 (generator + regenerated page + drift gate, verified byte-identical on re-emit) and the v1.4 milestone audit confirmed all 6 failure rows carry a plain-language lead with the technical cause demoted; Phase 27.1's IN-01 balance-aware truncation further tightened those cells without changing the lead wording."
   reason: "User reported: delegated verification confirmed UI-REVIEW warning (a) in the rendered page — 6 'not usable' rows carry raw engineering jargon (torch.Tensor/meta device, type_vocab_size, deepspeed import, input_shape slicing, olmo.config) with no plain-language lead; warning (c) same cells exceeding 300 chars"
   severity: minor
   test: 2
