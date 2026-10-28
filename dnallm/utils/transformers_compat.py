@@ -1581,7 +1581,7 @@ def _patch_apply_chunking_to_forward():
 _tied_bookkeeping_original_finalize = None
 
 
-def _materialize_tied_weights_bookkeeping(model: object) -> None:
+def _materialize_tied_weights_bookkeeping(model: PreTrainedModel) -> None:
     """Set the 5.x tied-weights bookkeeping on *model* when missing.
 
     Computes exactly what ``PreTrainedModel.post_init`` computes -- the
@@ -1593,12 +1593,12 @@ def _materialize_tied_weights_bookkeeping(model: object) -> None:
     """
     if hasattr(model, "all_tied_weights_keys"):
         return
-    mapping = dict(model.get_expanded_tied_weights_keys(all_submodels=False))  # ty: ignore[unresolved-attribute]  # dynamic receiver
+    mapping = dict(model.get_expanded_tied_weights_keys(all_submodels=False))
     for name, module in model.named_children():
         tied_keys = getattr(module, "all_tied_weights_keys", None)
         if tied_keys:
             mapping.update({f"{name}.{k}": f"{name}.{v}" for k, v in tied_keys.copy().items()})
-    model.all_tied_weights_keys = mapping  # ty: ignore[unresolved-attribute]  # deliberate dynamic instance patch
+    model.all_tied_weights_keys = mapping  # deliberate instance patch
 
 
 def _patch_tied_weights_bookkeeping_on_load():
