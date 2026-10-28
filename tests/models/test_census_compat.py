@@ -709,6 +709,57 @@ class TestDocsBoundTechnicalFragment:
         assert census.docs_bound_technical_fragment(fragment) == expected
 
 
+class TestDocsBrokenLeadClass:
+    """Every mapped failure shape resolves to its plain-language lead class."""
+
+    @pytest.mark.parametrize(("needle", "lead_class"), census.DOCS_BROKEN_LEAD_CLASSES)
+    def test_every_mapped_class(self, needle, lead_class) -> None:
+        evidence = f"hf org/repo@sha; remote modeling_x.py {needle} in the published code"
+        assert census.docs_broken_lead_class(evidence) == lead_class
+
+    def test_empty_and_unknown_evidence_raise(self) -> None:
+        for evidence in (None, ""):
+            with pytest.raises(ValueError, match=r"broken entry carries no evidence to classify"):
+                census.docs_broken_lead_class(evidence)
+        with pytest.raises(
+            ValueError, match=r"broken evidence matches no plain-language lead class"
+        ):
+            census.docs_broken_lead_class("hf org/repo@sha; a shape nobody classified")
+
+
+class TestDocsBlockedReason:
+    """Blocked reasons fail closed: only the two mapped shapes ever render.
+
+    An unmapped blocked evidence clause must never reach the public page --
+    that clause is raw census text and can carry local cache paths.
+    """
+
+    MAPPINGS: ClassVar[tuple[tuple[str, str], ...]] = (
+        (
+            "unreachable on both hubs (ModelScope then https://hf-mirror.com)",
+            "its repository could not be reached on either download site",
+        ),
+        (
+            "cannot read fetched config.json at /cache/snapshot/config.json",
+            "its repository does not provide a usable configuration file at the top level",
+        ),
+    )
+
+    @pytest.mark.parametrize(("detail", "expected"), MAPPINGS)
+    def test_every_mapped_reason(self, detail, expected) -> None:
+        evidence = f"hf org/repo@sha; {detail}"
+        assert census.docs_blocked_reason(evidence) == expected
+
+    def test_empty_and_unknown_evidence_raise(self) -> None:
+        for evidence in (None, ""):
+            with pytest.raises(ValueError, match=r"blocked entry carries no evidence to classify"):
+                census.docs_blocked_reason(evidence)
+        with pytest.raises(
+            ValueError, match=r"blocked evidence matches no plain-language blocked reason"
+        ):
+            census.docs_blocked_reason("hf org/repo@sha; an unforeseen blocking shape")
+
+
 class TestMainExitComposition:
     """--run --verify surfaces both failure classes independently (CR-01)."""
 
