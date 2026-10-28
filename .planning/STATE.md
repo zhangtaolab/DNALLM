@@ -20,10 +20,10 @@ milestone_name: Pre-flight UX & Registry-as-Truth-Source
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-22)
+See: .planning/PROJECT.md (updated 2026-10-28)
 
 **Core value:** One terminal flow takes a user from their own data to a validated, model-compatible config, with the model registry as the runtime single source of truth (Track A first) — suite, coverage gate, and CI honest-green throughout.
-**Current focus:** Phase 27 — Transformers 4/5 Model Compatibility Census
+**Current focus:** Phase 27 complete — v1.4 line fully closed, milestone ready to re-close
 
 ## Current Position
 
@@ -132,6 +132,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 Carried open ledger items from the v1.1/v1.2 handoffs (owner-scoped, outside active requirements): delete unreferenced doc_mocks.py entries; README:345 + server.py:97 `config/` path pattern; quick_start "NER" task-type line; MCP client `_call_tool` naming mismatch.
 
 ### Blockers/Concerns
+- [Phase 27, owner-scoped] 3 Info code-review findings open by scope decision + cosmetic UI suggestions (27-REVIEW-DISPOSITION 6/10 open incl. carried rows; 27-UI-REVIEW) — no must-have violated
+- [Phase 27, deferred operational act] one live `gh workflow run census_compat.yml` dispatch owed after the v1.4→main merge (workflow registers dispatchables from the default branch only); replica green run is the interim evidence
 
 - [Phase 24 review WR-01, deferred] 24 third-party family names resolve repo ids via hardcoded `source="modelscope"` (hosting unprobed — research A2); Phase 26's MCP listing surfaces the names neutrally (repo_id/task_type/overlay only, no hosting claim) — the unprobed-source concern itself remains open for any future UX that names a download hub
 
@@ -170,8 +172,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-27T12:30:41.372Z
-Stopped at: Phase 27 complete — all phases complete
+Last session: 2026-10-28
+Stopped at: Phase 27 complete (gap-closure + re-verification passed) — v1.4 milestone ready to re-close
 Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)
