@@ -35,7 +35,7 @@ Example:
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING, Any, ClassVar, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -48,10 +48,10 @@ from .summary import SummaryScreen
 
 if TYPE_CHECKING:
     from textual.timer import Timer
-    from textual.worker import Worker
 
     from ...preflight import AvailabilityReport, ListingEntry
     from ..app import DNALLMPreflightApp
+    from ..workers import DownloadOperation
 
 __all__ = ["DownloadScreen"]
 
@@ -119,7 +119,7 @@ class DownloadScreen(Screen):
         self._model: str | None = None
         self._entry: ListingEntry | None = None
         self._availability: AvailabilityReport | None = None
-        self._worker: Worker[Any] | None = None
+        self._worker: DownloadOperation | None = None
         self._timer: Timer | None = None
         self._started: float | None = None
         self._done = 0
