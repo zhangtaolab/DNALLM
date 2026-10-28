@@ -330,6 +330,17 @@ class TestCensusLaneInstallSequence:
             "unmappable -- a silent red-to-green lie"
         )
 
+    def test_no_continue_on_error_anywhere(self) -> None:
+        """No job- or step-level continue-on-error: a failed build must redden the lane."""
+        doc = yaml.safe_load(_load_census_workflow_text())
+        job = doc["jobs"]["census-compat"]
+        steps = job.get("steps", [])
+        assert "continue-on-error" not in job, (
+            "job-level continue-on-error would green a failing lane"
+        )
+        flagged = [s.get("name", s.get("uses")) for s in steps if "continue-on-error" in s]
+        assert not flagged, f"steps carrying continue-on-error: {flagged}"
+
     def test_dispatch_only_posture_unchanged(self) -> None:
         """Triggers, permissions, runner, guard, and timeout are exactly the D-08 posture."""
         doc = yaml.safe_load(_load_census_workflow_text())
