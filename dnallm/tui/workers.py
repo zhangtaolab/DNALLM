@@ -243,6 +243,9 @@ def _resolve_hub_downloader(hub: Any) -> Callable[..., str]:
 def _make_progress_reporter(emit: Callable[[int, int, str], None]) -> Any | None:
     """Build a ``tqdm``-compatible class that forwards byte counts to *emit*.
 
+    The TUI forwards counts rather than selecting a notebook/async frontend,
+    so the concrete std implementation is the intentional base.
+
     Args:
         emit: Callback receiving ``(done, total, label)`` for one update.
 
@@ -251,7 +254,7 @@ def _make_progress_reporter(emit: Callable[[int, int, str], None]) -> Any | None
         not importable (attempt-level progress is the honest fallback).
     """
     try:
-        from tqdm.auto import tqdm
+        from tqdm.std import tqdm
     except Exception:  # pragma: no cover - tqdm is a declared dependency
         logger.debug("tqdm is unavailable; byte progress stays attempt-level")
         return None

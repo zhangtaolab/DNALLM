@@ -21,6 +21,7 @@ from types import SimpleNamespace
 import pytest
 from textual.app import App
 from textual.message_pump import MessagePump
+from tqdm.std import tqdm as tqdm_std
 
 import dnallm.tui.workers as workers_module
 from dnallm.preflight import AvailabilityReport, AvailabilityState, Hub, ListingEntry
@@ -31,6 +32,7 @@ from dnallm.tui.workers import (
     PreflightWorkers,
     _bind_progress,
     _choose_hub,
+    _make_progress_reporter,
     make_cancellable_downloader,
 )
 
@@ -338,6 +340,20 @@ def test_bind_progress_binds_tqdm_class_only_when_declared() -> None:
     assert bound.keywords["tqdm_class"] is not None
     # A downloader that only swallows **kwargs is left exactly as it was.
     assert _bind_progress(attempt_only, lambda done, total, label: None) is attempt_only
+
+
+def test_progress_reporter_subclasses_the_concrete_std_tqdm() -> None:
+    """The reporter's direct base is the concrete ``tqdm.std.tqdm`` class.
+
+    ``tqdm.auto`` picks a notebook/asyncio frontend depending on the runtime,
+    which ty@0.0.84 cannot resolve as a static base (unsupported-base). The TUI
+    forwards byte counts itself rather than needing either frontend, so the
+    concrete std implementation is the intentional base.
+    """
+    reporter = _make_progress_reporter(lambda done, total, label: None)
+
+    assert reporter is not None
+    assert reporter.__bases__ == (tqdm_std,)
 
 
 async def test_a_byte_reporting_downloader_posts_increasing_progress() -> None:
