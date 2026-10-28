@@ -1,125 +1,92 @@
 ---
 phase: 27-transformers-4-5-model-compatibility-census
-fixed_at: 2026-10-27T12:05:00Z
+fixed_at: 2026-10-28T09:55:08Z
 review_path: .planning/phases/27-transformers-4-5-model-compatibility-census/27-REVIEW.md
 iteration: 1
-findings_in_scope: 4
-fixed: 4
+findings_in_scope: 2
+fixed: 2
 skipped: 0
 status: all_fixed
 ---
 
 # Phase 27: Code Review Fix Report
 
-**Fixed at:** 2026-10-27T12:05:00Z
-**Source review:** `.planning/phases/27-transformers-4-5-model-compatibility-census/27-REVIEW.md`
-**Iteration:** 1
-**Fix scope:** critical_warning (CR-01, WR-01, WR-02, WR-03; the six Info findings are out of scope)
+**Fixed at:** 2026-10-28T09:55:08Z
+**Source review:** `.planning/phases/27-transformers-4-5-model-compatibility-census/27-REVIEW.md` (incremental #3661, reviewed 2026-10-28T02:19:44Z)
+**Iteration:** 1 (this cycle; overwrites the prior cycle's report for the earlier REVIEW iteration)
+**Fix scope:** critical_warning (CR-01, WR-01; IN-01, IN-02, IN-03 are out of scope this pass)
 
 **Summary:**
-- Findings in scope: 4
-- Fixed: 4
+- Findings in scope: 2
+- Fixed: 2
 - Skipped: 0
 
-**Application order note:** WR-01 was applied before CR-01 (not severity order). CR-01's
-chosen fix is the reviewer's option (a) — carry dispositions through `merge_records` and
-seed the lane artifact from the committed file — which the REVIEW itself notes depends on
-the WR-01 carry ("see WR-01"). Applying CR-01 first would have forced option (b), a
-lane-side duplicate of the frozen 27-02 judgments in code.
+Both fix commits are on `v1.4` and pushed to `origin/v1.4`.
 
 ## Fixed Issues
 
-### CR-01: `--run --verify` can never exit 0 — the dispatch lane is permanently red
+### CR-01: Census lane's seeded `cp` targets a directory deleted by checkout's default clean — the lane is permanently red on every live dispatch
 
-**Files modified:** `scripts/census_compat.py`, `.github/workflows/census_compat.yml`, `tests/models/test_census_compat.py`
-**Commit:** `16363d4`
-**Status:** fixed: requires human verification (exit-code composition logic; verified offline end-to-end below, but the live lane has not been dispatched)
-**Applied fix:** Reviewer option (a) + honest exit composition:
-- `run_census` no longer returns 1 for unreachable-on-both-hubs entries. They stay loud
-  `census-blocked` records (per-record evidence + `CENSUS BLOCKED` report); the verdict
-  gate decides their significance — committed-known unreachable matches its committed
-  `census-blocked` field, a newly unreachable repo disagrees with its committed verdict
-  and fails the diff. Fail-closed posture preserved: never a silent pass, never conflated
-  with infrastructure failure. Hard errors (artifact IO) still return 1; usage errors 2.
-- `main()` composes `--run --verify` as `return run_rc or verify_rc` (was `run_rc if
-  run_rc != 0 else verify_rc`, which discarded `verify_rc` behind the always-1
-  unreachable signal). A hard census error and a verdict disagreement now each surface
-  independently.
-- The workflow seeds `census-artifacts/census-fresh.json` from the committed
-  `tests/models/compat_census.json` before the run, so the frozen 27-02 dispositions ride
-  `merge_records` onto unchanged verdicts and `compat_verdict` can map every record; the
-  stale "an unreachable repo ... exits non-zero" workflow comment is replaced with the
-  actual seeded/drift semantics.
-- `compat_verdict` itself is unchanged (no lane-side duplicate mapping) and
-  `--emit-docs` regeneration is untouched — verified byte-identical after the fixes.
+**Files modified:** `.github/workflows/census_compat.yml`
+**Commit:** `53d0017`
+**Applied fix:** Added `mkdir -p census-artifacts` to the top of the census step's run block,
+after `source .venv/bin/activate` and before the seeded `cp` — exactly the reviewer's
+suggested block, mirroring the proven feasibility.yml:96 post-checkout-mkdir pattern. The
+pre-checkout `mkdir` in the GPU-check step is kept: it serves the GPU-absent marker path,
+where checkout is skipped so nothing removes it. A comment block above the run line records
+the rationale (persistent shared workspace → repo always present at dispatch →
+actions/checkout's default `git clean -ffdx` removes the untracked directory), so a future
+editor does not "de-duplicate" the two mkdirs and re-create the permanently-red lane.
+No other line of the workflow changed — the dispatch-only posture (triggers, permissions,
+runner, guard, timeout) is untouched byte-for-byte.
 
-### WR-01: `merge_records` silently drops `disposition` and `previous_status`
+### WR-01: The no-masking contract pin misses `continue-on-error` — a step-level flag that produces exactly the "silent red-to-green lie" the pin forbids
 
-**Files modified:** `scripts/census_compat.py`, `tests/models/test_census_compat.py`
-**Commit:** `61d128c`
-**Applied fix:** On an unchanged verdict, `merge_records` now carries `disposition` and
-`previous_status` forward — restructured to run independently of the load carry, because
-the review's literal snippet nested the carry inside the `record["load"] is None` guard:
-a `--with-loads` re-run re-probes failed loads (fresh non-None load dict), which would
-have dropped the skip dispositions again. A verdict change still drops the stale
-disposition and stamps the immediate prior status. `TestDispositionCompleteness` stays
-green across a default-artifact re-run.
-
-### WR-02: Loading the census script in tests sets `HF_ENDPOINT` process-wide at collection
-
-**Files modified:** `tests/models/test_census_compat.py`
-**Commit:** `10f7ad9` (test-only change)
-**Applied fix:** `_load_census_module` snapshots and restores the environment around
-`exec_module` (pop before, restore/remove in a `finally`), so collection-time loading no
-longer reroutes the whole pytest process through `hf-mirror.com` or clobbers a user-/CI-
-provided endpoint. The script's CLI behavior (mirror at import) and the generated child
-programs (endpoint set in their own source) are unchanged.
-
-### WR-03: Probe subprocesses inherit the full runner environment, including `GITHUB_TOKEN`
-
-**Files modified:** `scripts/census_compat.py`, `tests/models/test_census_compat.py`
-**Commit:** `6187404`
-**Applied fix:** New `sanitized_probe_env()` (module constant `BLOCKED_PROBE_ENV_PREFIXES
-= ("GITHUB_", "RUNNER_", "ACTIONS_")`, matching the reviewer's snippet) is passed as
-`env=` to both `run_import_probe` and `run_load_probe` subprocess calls. Blocklist chosen
-over the prose allowlist deliberately: it is the reviewer's operative code suggestion and
-cannot break interpreter/venv/hub-cache/CUDA plumbing on the self-hosted GPU box in ways
-offline tests cannot catch. The children keep everything else, including `HF_HOME`,
-`PATH`, `HOME`, and CUDA variables.
+**Files modified:** `tests/test_runner_infra_contracts.py`
+**Commit:** `44b0cf6`
+**Applied fix:** Added `test_no_continue_on_error_anywhere` to `TestCensusLaneInstallSequence`
+(immediately after the sibling `test_no_masked_failure_in_the_lane`), pinning that neither
+the `census-compat` job nor any of its steps carries a `continue-on-error` key in the parsed
+workflow YAML — the reviewer's snippet, with one adaptation: the job-level assert's message
+is wrapped in the file's parenthesized style because the suggested one-line form is 103
+characters (over the ruff format limit of 100). `ruff format --check` confirms the file is
+format-clean. The class docstring's "or masking the kernel build" claim is now backed by an
+actual pin against this masking vector, not just `|| true`.
 
 ## Verification
 
-**Where gates ran:** main checkout (`workflow.use_worktrees=false` — no isolated
-worktree; all four commits landed directly on `v1.4`). Numbers are reproducible from the
-current tree.
+**Where gates ran:** main checkout (`workflow.use_worktrees=false` — no isolated worktree;
+both commits landed directly on `v1.4`). Numbers are reproducible from the current tree.
 
 Per-commit (before each commit):
-- `pytest tests/models/test_census_compat.py` — 72 / 78 / 80 / 83 passed at the
-  respective commits (68 baseline + 15 new tests)
-- `ruff check` + `ruff format --check` on both touched files — clean at every commit
-- `python -c "import ast; ast.parse(...)"` on touched Python files — ok
-- Workflow YAML parse check (`yaml.safe_load`) after the CR-01 workflow edit — ok
+- CR-01: `yaml.safe_load` parse of `.github/workflows/census_compat.yml` — ok; census step
+  run block verified to contain the post-checkout `mkdir` ahead of the `cp`;
+  `pytest tests/test_runner_infra_contracts.py -q` — **12 passed** (workflow edit broke no pin)
+- WR-01: `python -c "import ast; ast.parse(...)"` — ok; `ruff format --check` — "1 file
+  already formatted"; `ruff check` — "All checks passed!";
+  `pytest tests/test_runner_infra_contracts.py -q` — **13 passed** (12 + the new pin)
+- Negative check on the WR-01 detection expression: injecting a synthetic
+  `continue-on-error` step (and job key) into the parsed workflow trips both assertions
+  (`flagged == ['masked-build']`, job key detected) — the pin fails red when the masking
+  vector is actually present.
 
-Post-fix (after `6187404`):
-- `pytest tests/models/ tests/utils/` — **933 passed** (918 baseline + 15 new; no regressions)
-- `python scripts/census_compat.py --verify --artifact tests/models/compat_census.json` (dry) — exit 0
-- `python scripts/census_compat.py --emit-docs docs/user_guide/model_compatibility.md` —
-  "docs page already current", byte-identical (`DOCS_DATA_DATE` untouched; determinism held)
-- New CR-01 end-to-end offline regression (`TestSeededFreshRunVerification`): committed
-  artifact → fresh-shaped records (dispositions/previous_status stripped, green loads
-  parked) → `merge_records` → `verify_registry` against the real roster = 0. This is the
-  composition that structurally could not exit 0 before the fixes.
+Post-fix state: working tree clean apart from the pre-existing untracked
+`.planning/ui-reviews/`; both commits carry no attribution trailers per owner rule.
 
 **Not verified here:** a live dispatch of the `census_compat` workflow (needs the
-self-hosted GPU runner and network). The offline seeded simulation covers the same code
-path; the owner should dispatch the lane once to confirm end-to-end.
+self-hosted GPU runner and network; dispatch is deferred until the v1.4→main merge per
+27-05-SUMMARY). The CR-01 fix is deterministic per actions/checkout v4.2.2's
+`prepareExistingDirectory` behavior and mirrors the feasibility.yml pattern already proven
+on the same box; the owner should dispatch the lane once after merge to confirm end-to-end
+green, as with the prior cycle.
 
 ## Skipped Issues
 
-None — all four in-scope findings were fixed.
+None — both in-scope findings were fixed. IN-01, IN-02, IN-03 are out of scope for this
+pass (critical_warning scope) and remain open for a future cycle if the owner chooses.
 
 ---
 
-_Fixed: 2026-10-27T12:05:00Z_
+_Fixed: 2026-10-28T09:55:08Z_
 _Fixer: Claude (gsd-code-fixer)_
 _Iteration: 1_
