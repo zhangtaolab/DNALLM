@@ -5,10 +5,10 @@ current_phase: "27.1"
 current_phase_name: "Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)"
 status: executing
 stopped_at: Halted 27.1-03 (DISP-01 deferred by owner to post-v1.4->main-merge operator step)
-last_updated: "2026-10-28T14:17:35.770Z"
+last_updated: "2026-10-28T14:21:20.865Z"
 last_activity: 2026-10-28
-last_activity_desc: 27.1-03 closed out as halted (DISP-01 deferred by owner)
-state_head: 1982f0f4ada7b19d26b8b736ece142d7e773535f
+last_activity_desc: Phase 27.1 execution started
+state_head: a570cb9116459125e99759e5a6db6a295393b3d7
 progress:
   total_phases: 2
   completed_phases: 5
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-10-28)
 
 ## Current Position
 
-Phase: 27.1 (Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)) — READY TO EXECUTE
-Plan: 3 of 3 — HALTED (owner defer-dispatch: DISP-01 deferred)
-Status: Plan 27.1-03 halted; DISP-01 deferred to the post-v1.4→main-merge operator step; plans 01/02 complete
-Last activity: 2026-10-28 — 27.1-03 close-out: deferral recorded, registration commit d661998 preserved on wip/27.1-03-census-registration
+Phase: 27.1 (Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)) — EXECUTING
+Plan: 4 of 4
+Status: Executing Phase 27.1
+Last activity: 2026-10-28 — Phase 27.1 execution started
 
 ## Performance Metrics
 
