@@ -1763,21 +1763,29 @@ def docs_blocked_reason(evidence: str | None) -> str:
     """Return the plain-language reason of a census-blocked verdict.
 
     Rule: map the two committed blocking shapes (unreachable repo; unusable
-    repository layout) to biologist-readable reasons; any other shape falls
-    back to its first ``;``-clause. Raw cache paths never reach the page.
+    repository layout) to biologist-readable reasons. Any other shape is an
+    unknown blocking form - the generator fails closed rather than publish a
+    raw evidence clause (blocked evidence carries local cache paths, which
+    must never reach the public page).
 
     Args:
         evidence: The entry's ``tf_compat_evidence`` string.
 
     Returns:
-        The reason text (empty when the evidence is empty).
+        The plain-language reason for one of the two committed shapes.
+
+    Raises:
+        ValueError: When the evidence is empty or matches neither committed
+            blocking shape.
     """
     detail = _docs_evidence_detail(evidence)
+    if not detail:
+        raise ValueError("blocked entry carries no evidence to classify")
     if "unreachable on both hubs" in detail:
         return "its repository could not be reached on either download site"
     if "cannot read fetched config.json" in detail:
         return "its repository does not provide a usable configuration file at the top level"
-    return detail.split(";")[0].strip()
+    raise ValueError(f"blocked evidence matches no plain-language blocked reason: {detail!r}")
 
 
 def docs_status_cell(entry) -> str:

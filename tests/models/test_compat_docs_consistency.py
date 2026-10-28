@@ -138,13 +138,19 @@ def _broken_cause(evidence: str | None) -> str:
 
 
 def _blocked_reason(evidence: str | None) -> str:
-    """Derive the blocked reason clause (raw cache paths never reach the page)."""
+    """Derive the blocked reason clause (raw cache paths never reach the page).
+
+    Fails closed (pytest.fail) when the evidence matches neither committed
+    blocking shape: the gate cannot verify a plain reason the registry never
+    described, so an unmapped blocking form must surface, never pass silently
+    (mirrors the generator's ValueError, checker-independently).
+    """
     detail = _evidence_detail(evidence)
     if "unreachable on both hubs" in detail:
         return "its repository could not be reached on either download site"
     if "cannot read fetched config.json" in detail:
         return "its repository does not provide a usable configuration file at the top level"
-    return detail.split(";")[0].strip()
+    pytest.fail(f"blocked evidence matches no plain-language blocked reason: {detail!r}")
 
 
 def _lead_class(evidence: str | None) -> str:
@@ -422,3 +428,48 @@ class TestBrokenRowPlainLanguage:
             f"What-we-found cells exceed the {CELL_MAX_CHARS}-character cap: {offenders} -- "
             "bound the technical fragment tighter (generator + gate in lockstep)"
         )
+
+
+def _blocked_rows() -> list[tuple[str, str]]:
+    """Return (name, model) for every committed census-blocked entry."""
+    return [
+        (entry.name, entry.model)
+        for entry in _pretrained()
+        if entry.tf_compat_status == "census-blocked"
+    ]
+
+
+# The two exact needles the generator and this gate map to plain-language
+# reasons; every committed blocked row's evidence detail must carry one.
+BLOCKED_REASON_NEEDLES = (
+    "unreachable on both hubs",
+    "cannot read fetched config.json",
+)
+
+
+class TestBlockedRowPlainLanguage:
+    """Every committed census-blocked row maps to one of the two safe reasons.
+
+    Blocked evidence is raw census text (it can carry local cache paths); the
+    page may only ever show the two mapped plain-language reasons.
+    """
+
+    def test_every_committed_blocked_row_maps_to_a_plain_reason(self):
+        """No unforeseen blocking shape on the committed registry (fail-closed pin).
+
+        The generator raises on an unmapped blocking shape; this gate cannot
+        execute the generator (checker independence), so it pins the same fact
+        from the registry side: the blocked roster is non-empty, and every
+        committed blocked evidence detail matches one of the two exact
+        mapping needles.
+        """
+        rows = _blocked_rows()
+        assert rows, "the registry carries no census-blocked rows (nothing pins the blocked map)"
+        for name, model in rows:
+            entry = next(e for e in _pretrained() if e.model == model)
+            detail = _evidence_detail(entry.tf_compat_evidence)
+            assert any(needle in detail for needle in BLOCKED_REASON_NEEDLES), (
+                f"blocked entry {model} ({name}) matches no plain-language reason needle: "
+                f"{detail!r} -- the generator's fail-closed ValueError would also fire here; "
+                "add the mapping in lockstep (generator + gate)"
+            )
