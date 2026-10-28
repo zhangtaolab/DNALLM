@@ -5,11 +5,11 @@ titles: json
 findings:
   - id: CR-01
     severity: critical
-    disposition: open
+    disposition: fixed
     title: "Census lane's seeded `cp` targets a directory deleted by checkout's default clean — the lane is permanently red on every live dispatch"
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "The no-masking contract pin misses `continue-on-error` — a step-level flag that produces exactly the \"silent red-to-green lie\" the pin forbids"
   - id: IN-01
     severity: info
@@ -43,17 +43,17 @@ findings:
     severity: info
     disposition: open
     title: "`docs_blocked_reason` fails open to the raw first clause for unforeseen blocked shapes"
-open: 8
+open: 6
 total: 10
-recorded: 2026-10-28T02:23:54.856Z
+recorded: 2026-10-28T09:56:21.747Z
 ---
 
 # Phase 27: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| CR-01 | critical | open | - |
-| WR-01 | warning | open | - |
+| CR-01 | critical | fixed | 27-REVIEW-FIX.md |
+| WR-01 | warning | fixed | 27-REVIEW-FIX.md |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
