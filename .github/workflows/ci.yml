@@ -7,6 +7,7 @@ on:
       - master
       - dev
       - v1.3
+      - v1.4
       # 2026-10-07 lesson: the matrix legs run on push/PR only, so a
       # long-lived working branch that never opens PRs reaches the merge
       # to dev with ZERO matrix exposure -- the v1.1 merge surfaced three
@@ -22,6 +23,14 @@ on:
       # the self-hosted box; deploy stays main/master-only. Removal decision
       # recorded at phase-19 closeout in 19-EVIDENCE.md -- the entry stays
       # until the actual merge to main or explicit owner removal.
+      # 2026-10-28: temporary v1.4 milestone-closeout vehicle (the 2026-10-07
+      # lesson applied -- long-lived working branches otherwise reach the
+      # merge with zero matrix exposure; the
+      # matrix legs, including the ty hard gate, need push exposure on
+      # v1.4 for first-exposure-free merge evidence). Nightly legs stay
+      # cron/workflow_dispatch-gated per D-19 so v1.4 pushes never reach
+      # the self-hosted box; deploy stays main/master-only. The entry
+      # stays until the actual v1.4-to-main merge or explicit owner removal.
   pull_request:
     branches: [ main, master, dev ]
   # Per-lane dispatch selection (2026-10-26): a manual dispatch used to
