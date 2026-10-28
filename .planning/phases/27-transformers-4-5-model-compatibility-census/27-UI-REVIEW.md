@@ -1,93 +1,70 @@
-# Phase 27 — UI Review
+# Phase 27 — UI Review (Re-audit)
 
-**Audited:** 2026-10-27
-**Baseline:** Abstract 6-pillar standards + project directives (plain-language-for-biologists, honest-labeling)
-**Screenshots:** not captured (no dev server — no web app exists in this phase; the only user-facing surface is a static MkDocs Markdown page)
+**Audited:** 2026-10-28
+**Baseline:** abstract 6-pillar standards + owner plain-language directive (2026-10-21); no UI-SPEC for this phase (frontend surface is the generated docs page `docs/user_guide/model_compatibility.md`)
+**Screenshots:** not captured (no dev server on 3000/5173/8080 — Markdown/MkDocs deliverable, docs/code-only audit)
 **Interaction captures:** off (workflow.ui_interaction_capture is false)
 
-**Scope note:** Phase 27 is a backend/CLI/data phase (census tool, compat shims, registry write-back, CI lanes). The only user-facing surface is the generated documentation page `docs/user_guide/model_compatibility.md`. Pillars with no applicable surface are graded N/A rather than invented.
+**Re-audit scope:** prior review's WARNING (a) jargon-led failure cells and (c) >300-char cells were to be closed by plan 27-05; WARNING (b) footnote markers is owner-deferred and is not counted against the phase.
 
----
+## Verification Evidence
+
+- `python -I scripts/census_compat.py --emit-docs /tmp/mc-audit.md && cmp` → **BYTE-IDENTICAL** (page is generator-produced, never hand-edited)
+- `pytest tests/models/test_compat_docs_consistency.py -q` → **68 passed** (baseline 54; extension includes independent lead map, suffix bound, jargon blocklist, 300-char cap)
+- Row count: 49; header summary 19+21+1+6+2 = 49, consistent with table
+- Max What-we-found cell length: 287 chars (all ≤300)
+- All six remote-code-broken rows lead with a plain-language sentence before the ` (technical: ` parenthetical; four distinct honest leads (damaged-files / own-defect / external-package / library-change ×2)
 
 ## Pillar Scores
 
 | Pillar | Score | Key Finding |
 |--------|-------|-------------|
-| 1. Copywriting | 3/4 | Status wording is plain and pinned, but failure Details cells carry engineering jargon that violates the plain-language-for-biologists directive |
-| 2. Visuals | 3/4 | Clean 3-column table with consistent hierarchy; long failure cells make rows visually unbalanced |
-| 3. Color | N/A | No color surface (static Markdown; MkDocs theme provides styling, not this phase's code) |
-| 4. Typography | N/A | No typography surface (Markdown; rendered by MkDocs Material theme) |
-| 5. Spacing | N/A | No spacing surface |
-| 6. Experience Design | 3/4 | Byte-identical regeneration, nav entry, and 54-test drift gate are excellent; page lacks inline footnote markers and per-row navigation aids |
+| 1. Copywriting | 4/4 | Six failure rows now lead biologist-readable, honest per failure class; technical cause demoted to a bounded parenthetical (≤100 chars, word boundary) |
+| 2. Visuals | 3/4 | Clean table, clear Details column; footnote texts 1–2 exist but no row references them (owner-deferred), and status has no visual weight differentiation for scanning |
+| 3. Color | 3/4 | N/A for plain Markdown — no color tokens; status is word-only ("Not usable…" vs "Tested working"), which forces full-cell reading to spot failures |
+| 4. Typography | 3/4 | Consistent headings/table; status cells are long (up to 287 chars) relative to other cells, mildly unbalancing column rhythm |
+| 5. Spacing | 4/4 | Uniform table structure, 49 rows, no irregular rows or stray artifacts; generated deterministically |
+| 6. Experience Design | 4/4 | Every state covered honestly (working / code-verified / shim-fixed / broken-with-cause / unchecked-with-reason); drift gate + fail-closed lead mapping + byte-identical regeneration prevent regression |
 
-**Scored surface overall: 9/12** (3 applicable pillars; N/A pillars excluded from total)
-
----
+**Overall: 21/24**
 
 ## Top 3 Priority Fixes
 
-1. **Failure Details cells are engineering-internal, not plain language** (`docs/user_guide/model_compatibility.md:40-42,45,53,55`) — a biologist reading "torch.Tensor(list) stays on cpu while torch.arange lands on meta" or "type_vocab_size=2" gets no usable signal, contra the 2026-10-21 owner directive — move the technical cause into a collapsed/parenthetical suffix and lead each failure cell with a plain-language sentence ("This model's published code uses a feature the new library version removed; it cannot be loaded until the model authors update it").
-2. **Footnotes 1/2 have no inline markers in the table** (`model_compatibility.md:62-63`) — the two provenance qualifiers (tested-on-5.17 / inferred-4) apply per-row but nothing in the table links them, so a reader scanning one row never sees the inference caveat — add a marker (e.g. `*` on import-verified rows, `†` on the page-wide "tested on 5.17.0" claim) wired to the footnotes; note this requires extending the generator + drift gate in lockstep.
-3. **Long failure cells break table scannability** (`model_compatibility.md:41,53`) — the GENA-LM and MutBERT rows are 300+ character single cells, pushing the table layout wide in rendered MkDocs — cap Details at one short sentence and move full technical causes to a separate "Technical notes" section below the table (same generator change, keeps determinism since all content stays registry-derived).
+1. **No visual differentiation of failure rows** (Pillars 2/3, WARNING) — a reader scanning 49 rows must parse full sentences to find the 6 broken + 2 unchecked models — bold the status lead ("**Not usable with the current transformers**", "**Could not be checked**") or group broken/unchecked rows after the working ones; trivial generator change + lockstep gate edit.
+2. **Footnote markers absent from cells** (Pillar 2, DEFERRED — do not action) — footnotes 1/2 are never referenced in the table; **owner-deferred by explicit decision recorded in 27-UAT.md / 27-05-SUMMARY; recorded here only**.
+3. **DNABERT-2 and GENA-LM technical suffixes end mid-clause at the truncation boundary** (Pillar 1, minor) — "(rebuild_alibi_tensor line 399:…)" and "buffer starts with…" read as cut-off; the trailing ellipsis makes this honest, but rounding to the nearest complete sub-clause would read better — cosmetic, bounded by the same 100-char constant.
 
----
+## Prior-Warning Disposition
+
+- **(a) Engineering jargon leading failure cells — CLOSED.** All six broken rows verified to lead with a plain sentence; the jargon lives only inside the parenthetical and is bounded (e.g. lines 40–55 of the page).
+- **(b) Footnote markers — DEFERRED (owner decision, not counted).**
+- **(c) Cells exceeding 300 chars — CLOSED.** Max observed 287; page-wide cap pinned by a gate test.
 
 ## Detailed Findings
 
-### Pillar 1: Copywriting (3/4)
-
-**Good evidence:**
-- Five pinned, plain status wordings ("Tested working", "Tested loading its code; full run inferred from the family model", "Works with DNALLM's built-in compatibility fixes (tested)", "Not usable with the current transformers", "Could not be checked") — consistent across all 49 rows.
-- Intro introduces transformers in plain terms ("a widely used AI library called *transformers*, which is the software that loads and runs the models") and never assumes census/taxonomy vocabulary.
-- Count sentence (line 8) matches the table composition (19+21+1+6+2 = 49).
-- Honest labeling honored: no unqualified "compatible with transformers 4 and 5" claim anywhere in the table (prohibited by the drift gate).
-- Provenance footnotes include the owner-approved Chinese originals verbatim.
-
-**Failures (WARNING):**
-- Failure Details cells leak engineering jargon to the biologist audience: `model_compatibility.md:40` ("builds its ALiBi tensor eagerly in __init__ … torch.arange lands on meta"), `:41` ("persisted bert.embeddings.token_type_ids buffer … type_vocab_size=2"), `:42` ("block-sparse attention … deepspeed package"), `:53` ("input_shape = input_ids.size()[:-1] ('# modified' in the repo's own source)"), `:55` ("imports olmo.config.ModelConfig"). 27-04's key decision deliberately improved the Omni-DNA cell but the fix pattern was not extended to the other five failure rows.
-- Footnote language is good but unanchored (see Pillar 6).
+### Pillar 1: Copywriting (4/4)
+Leads are class-honest (a version-independent defect is never worded as a library removal — GENA-LM/MutBERT rows confirm). Census-blocked rows ("Could not be checked…") carry plain reasons. Header paragraph explains transformers in plain terms and states the tested/inferred distinction. Bilingual footnote labels per D-05.
 
 ### Pillar 2: Visuals (3/4)
+Table structure consistent; Details column shows repo ids plus "full run tested on X" provenance. Findings: no per-row anchor to footnotes (deferred); no scannable status emphasis.
 
-**Good evidence:**
-- Clear focal structure: title → plain intro → count summary → table → footnotes → provenance line.
-- Consistent 3-column schema (Model / What we found / Details); status column reads as the visual hierarchy anchor; repo ids are consistently placed in Details.
-- GENERATED header comment (line 1) prevents manual-edit confusion.
+### Pillar 3: Color (3/4)
+Plain Markdown — no color system applies. Scored on differentiation substitutes: status distinction exists only through wording. Not a defect against the deliverable's medium; bold/grouping would compensate (fix 1).
 
-**Findings (WARNING):**
-- Rows 41 and 53 have very long Details cells; the visual rhythm of the table breaks — status column becomes hard to scan when one cell dominates the row height.
-- "Details" column conflates two kinds of content (repo id vs failure cause vs family representative) without typographic separation; backtick code spans help but the mixing is consistent-by-accident, not by design.
+### Pillar 4: Typography (3/4)
+One heading level + table + ordered footnotes; uniform. Status cells up to 287 chars dominate their rows — inherent to the honest-cause approach and capped; acceptable.
 
-### Pillar 6: Experience Design (3/4)
+### Pillar 5: Spacing (4/4)
+Deterministic generator output; byte-identical regeneration verified; no layout irregularities.
 
-**Good evidence (strong for a docs surface):**
-- Byte-identical regeneration verified live during this audit: `python -I scripts/census_compat.py --emit-docs` output `cmp`-identical to the committed page; drift gate `tests/models/test_compat_docs_consistency.py` passes 54/54 in 0.30s.
-- MkDocs nav entry present (`mkdocs.yml:68`, under User Guide after Preset Model Loading) — the page is reachable.
-- Footer states the source of truth and the overwrite-on-regeneration contract — correct expectation-setting for a reader who might edit.
-- Fail-closed everywhere: generator fails on missing verdicts/unknown statuses; gate fails (never skips) on table-structure damage.
-
-**Findings (WARNING):**
-- Footnotes 1 and 2 qualify per-row claims ("tested on 5.17.0", "4-side inferred") but carry no inline markers — a reader landing on a single row via search misses the inference caveat entirely. This is the honesty-labeling weakest link on the page.
-- No anchors/deep links per model row (MkDocs generates table-row anchors unreliably); a biologist sharing "the GENA-LM result" has no stable link target. Minor for a 49-row page.
-- Six "not working" models get no next-step guidance (e.g. "use a tested alternative from this table" or issue link) — the page informs but does not route the user to an action.
-
-### Pillars 3, 4, 5: N/A
-
-Static Markdown rendered by the pre-existing MkDocs Material theme; this phase introduced no color, typography, or spacing surface. No findings invented.
-
----
+### Pillar 6: Experience Design (4/4)
+State coverage complete across all five outcome classes; drift gate independently re-derives every cell (checker independence, no generator import); fail-closed ValueError on unmapped failure classes; deliberate-red demonstrations recorded in 27-05-SUMMARY.
 
 ## Registry Safety Audit
-
-`components.json` absent — shadcn not initialized. No third-party UI registries in scope. **Registry audit: skipped (no shadcn).**
-
----
+`components.json` absent — skipped (no shadcn / no third-party registries).
 
 ## Files Audited
-
-- `docs/user_guide/model_compatibility.md` (primary audited surface, read in full)
-- `scripts/census_compat.py` (`--emit-docs` regeneration executed; byte-identical output confirmed)
-- `tests/models/test_compat_docs_consistency.py` (executed: 54 passed)
-- `mkdocs.yml` (nav entry, line 68)
-- `dnallm/models/model_info.yaml` (tf_compat_status field presence spot-check)
-- Phase artifacts: `27-CONTEXT.md`, `27-01..27-04-SUMMARY.md`, `27-01..27-04-PLAN.md`
+- docs/user_guide/model_compatibility.md (live page, 49 rows)
+- scripts/census_compat.py (generator — via byte-identical regeneration)
+- tests/models/test_compat_docs_consistency.py (drift gate, 68 tests)
+- 27-01..27-05 PLAN/SUMMARY, 27-CONTEXT.md
