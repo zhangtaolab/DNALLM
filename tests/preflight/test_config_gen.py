@@ -24,8 +24,13 @@ from pydantic import BaseModel, ValidationError
 
 from dnallm.configuration.configs import (
     BenchmarkConfig,
+    Ia3Config,
+    InferenceConfig,
+    LoraConfig,
+    SweepConfig,
     TaskConfig,
     TrainingConfig,
+    VepConfig,
     load_config,
     validate_sections,
 )
@@ -305,6 +310,42 @@ class TestCollectAllValidation:
         assert errors[0].field == "task"
         assert "must be a mapping" in errors[0].message
         assert isinstance(configs["finetune"], TrainingConfig)
+
+    def test_collect_all_constructs_each_validated_section_with_its_exact_type(self):
+        """Fallback-path characterization: every valid section constructs
+        with its exact Pydantic class (the per-key TypedDict contract),
+        while the broken benchmark contributes the only error records."""
+        from dnallm.preflight.config_gen import _validate_collect_all
+
+        raw = {
+            "task": {"task_type": "binary"},
+            "inference": {},
+            "finetune": {},
+            "lora": {},
+            "ia3": {},
+            "vep": {},
+            "sweep": {},
+            "benchmark": {"models": []},
+        }
+        expected_types = {
+            "task": TaskConfig,
+            "inference": InferenceConfig,
+            "finetune": TrainingConfig,
+            "lora": LoraConfig,
+            "ia3": Ia3Config,
+            "vep": VepConfig,
+            "sweep": SweepConfig,
+        }
+
+        configs, errors = _validate_collect_all(raw)
+
+        assert set(configs) == set(expected_types)
+        for key, expected in expected_types.items():
+            assert type(configs[key]) is expected, (
+                f"section {key!r} constructed with {type(configs[key]).__name__}"
+            )
+        assert errors
+        assert {e.section for e in errors} == {"benchmark"}
 
     def test_section_order_constant_is_canonical(self):
         """_SECTION_ORDER is the fixed deterministic error-ordering contract."""

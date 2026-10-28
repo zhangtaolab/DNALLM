@@ -83,19 +83,11 @@ _SECTION_ORDER = (
     "benchmark",
 )
 
-# The validated sections and their classes — the same classes
-# validate_sections constructs, applied per section by the collect-all
-# wrapper. ``model`` is a passthrough dict; ``benchmark`` consumes the
-# full raw dict.
-_SECTION_CLASSES = {
-    "task": TaskConfig,
-    "inference": InferenceConfig,
-    "finetune": TrainingConfig,
-    "lora": LoraConfig,
-    "ia3": Ia3Config,
-    "vep": VepConfig,
-    "sweep": SweepConfig,
-}
+# The validated sections construct with the same classes
+# validate_sections applies, but per key: each TypedDict key is assigned its
+# exact section class (a dynamic table lookup would produce the union of all
+# classes for every key). ``model`` is a passthrough dict; ``benchmark``
+# consumes the full raw dict.
 
 
 def _validation_errors(section: str, exc: ValidationError) -> list[SectionError]:
@@ -187,7 +179,22 @@ def _validate_collect_all(config_dict: dict) -> tuple[DNALLMConfig, list[Section
             )
             continue
         try:
-            configs[section] = _SECTION_CLASSES[section](**value)
+            # Explicit per-key construction: each DNALLMConfig key gets its
+            # exact section class, so the typed contract holds key by key.
+            if section == "task":
+                configs["task"] = TaskConfig(**value)
+            elif section == "inference":
+                configs["inference"] = InferenceConfig(**value)
+            elif section == "finetune":
+                configs["finetune"] = TrainingConfig(**value)
+            elif section == "lora":
+                configs["lora"] = LoraConfig(**value)
+            elif section == "ia3":
+                configs["ia3"] = Ia3Config(**value)
+            elif section == "vep":
+                configs["vep"] = VepConfig(**value)
+            elif section == "sweep":
+                configs["sweep"] = SweepConfig(**value)
         except ValidationError as exc:
             errors.extend(_validation_errors(section, exc))
     return configs, errors
