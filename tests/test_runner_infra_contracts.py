@@ -266,6 +266,9 @@ CENSUS_MAMBA_INSTALL = (
 )
 CENSUS_RUN_LINE = "python scripts/census_compat.py --run --with-loads --verify"
 
+# The unpinned installer pipeline, kept ONLY as the wiped-box fallback (IN-05).
+CENSUS_UV_INSTALLER = "curl -LsSf https://astral.sh/uv/install.sh | sh"
+
 
 def _load_census_workflow_text() -> str:
     """Return the committed census lane workflow text (the auditable source)."""
@@ -340,6 +343,53 @@ class TestCensusLaneInstallSequence:
         )
         flagged = [s.get("name", s.get("uses")) for s in steps if "continue-on-error" in s]
         assert not flagged, f"steps carrying continue-on-error: {flagged}"
+
+    def test_uv_install_skips_provisioned_binary(self) -> None:
+        """Install uv keeps the box's provisioned uv and only installs on a wiped box.
+
+        The persistent runner carries a mirror-configured uv under
+        ``$HOME/.local/bin`` (runner ops, owner directive); an unconditional
+        ``curl | sh`` both fetches unpinned code on every dispatch and
+        silently replaces that binary (IN-05). The guard must check
+        ``command -v uv`` BEFORE any installer fetch, print the provisioned
+        version, and keep the installer pipeline only in the else branch.
+        """
+        doc = yaml.safe_load(_load_census_workflow_text())
+        steps = doc["jobs"]["census-compat"]["steps"]
+        uv_steps = [s for s in steps if s.get("name") == "Install uv"]
+        assert len(uv_steps) == 1, (
+            f"census_compat.yml must carry exactly one Install uv step (found {len(uv_steps)})"
+        )
+        step = uv_steps[0]
+        assert step.get("if") == "steps.gpu-check.outputs.has_gpu == 'true'", (
+            "the Install uv step must keep its GPU guard -- IN-05 changes the run body only"
+        )
+        run = step.get("run", "")
+        assert 'export PATH="$HOME/.local/bin:$PATH"' in run, (
+            "the Install uv guard must export $HOME/.local/bin first (runner-"
+            "ops uv lives there; A1 in 27.1-RESEARCH.md)"
+        )
+        assert "command -v uv" in run, (
+            "the Install uv step must probe `command -v uv` and skip the "
+            "installer when the box already carries uv (IN-05)"
+        )
+        assert "$(uv --version)" in run, (
+            "the skip branch must echo the provisioned uv version so the "
+            "dispatch log names the toolchain actually used"
+        )
+        assert CENSUS_UV_INSTALLER in run, (
+            "the wiped-box fallback installer pipeline must stay in the else "
+            f"branch: {CENSUS_UV_INSTALLER!r}"
+        )
+        assert run.index("command -v uv") < run.index(CENSUS_UV_INSTALLER), (
+            "the `command -v uv` guard must precede the installer fetch -- an "
+            "unconditional install replaces the box's mirror-configured uv "
+            "on every census dispatch (IN-05)"
+        )
+        assert "UV_VERSION" not in run, (
+            "UV_VERSION does not exist in the served astral installer "
+            "(refuted in 27.1-RESEARCH.md); do not plan around it"
+        )
 
     def test_dispatch_only_posture_unchanged(self) -> None:
         """Triggers, permissions, runner, guard, and timeout are exactly the D-08 posture."""
