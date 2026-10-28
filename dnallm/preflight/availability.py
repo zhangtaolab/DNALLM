@@ -482,9 +482,9 @@ def _hf_adapter(repo_id: str) -> AvailabilityReport:
     api = HfApi(endpoint=hf_constants.ENDPOINT)
     info = api.model_info(repo_id, files_metadata=True)
     size_bytes = sum(
-        int(sibling.size)
+        int(size)
         for sibling in (info.siblings or [])
-        if getattr(sibling, "size", None) is not None
+        if (size := getattr(sibling, "size", None)) is not None
     )
     return AvailabilityReport(
         state=AvailabilityState.REMOTE_CONFIRMED,
