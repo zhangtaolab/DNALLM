@@ -318,6 +318,102 @@ class TestTiedWeightsBookkeepingOnLoad:
         PreTrainedModel._finalize_model_loading(compliant, None, None)
         assert compliant.__dict__.get("tie_weights") is None
 
+    def test_kwargs_only_receiver_materializes(self, monkeypatch):
+        """A kwargs-only call materializes the bookkeeping on the supplied model
+        (IN-04: transformers may call the load-boundary hook with keywords)."""
+        _rung("_patch_tied_weights_bookkeeping_on_load")
+
+        recorded = {}
+
+        def fake_original(model, load_config, loading_info):
+            recorded["model"] = model
+            recorded["load_config"] = load_config
+            recorded["loading_info"] = loading_info
+            return "delegated"
+
+        monkeypatch.setattr(
+            transformers_compat, "_tied_bookkeeping_original_finalize", fake_original
+        )
+
+        model = _FakeBookkeepingModel()
+        result = PreTrainedModel._finalize_model_loading(
+            model=model, load_config="load-config", loading_info="loading-info"
+        )
+
+        assert result == "delegated"
+        assert recorded["model"] is model
+        assert recorded["load_config"] == "load-config"
+        assert recorded["loading_info"] == "loading-info"
+        assert hasattr(model, "all_tied_weights_keys"), (
+            "a kwargs-only call must still materialize all_tied_weights_keys "
+            "on the supplied model (IN-04)"
+        )
+
+    def test_kwargs_receiver_wins_over_class_shaped_positional(self, monkeypatch):
+        """A kwargs ``model`` receiver beats any positional, so a class-shaped
+        positional never receives model-instance bookkeeping (IN-04)."""
+        _rung("_patch_tied_weights_bookkeeping_on_load")
+
+        class _ClassShapedReceiver:
+            """Class carrying the computation surface, like a bound class receiver."""
+
+            @classmethod
+            def get_expanded_tied_weights_keys(cls, all_submodels=False):
+                return {"head.weight": "backbone.weight"}
+
+            @classmethod
+            def named_children(cls):
+                return iter(())
+
+            @classmethod
+            def tie_weights(cls, missing_keys=None, recompute_mapping=True):
+                """Native-shaped tie_weights (the bridge must leave it alone)."""
+
+        recorded = {}
+
+        def fake_original(*args, **kwargs):
+            recorded["args"] = args
+            recorded["kwargs"] = kwargs
+            return "delegated"
+
+        monkeypatch.setattr(
+            transformers_compat, "_tied_bookkeeping_original_finalize", fake_original
+        )
+
+        model = _FakeBookkeepingModel()
+        result = PreTrainedModel._finalize_model_loading(
+            _ClassShapedReceiver, model=model, load_config=None, loading_info=None
+        )
+
+        assert result == "delegated"
+        assert recorded["kwargs"]["model"] is model, (
+            "the delegated original must receive the caller's keyword arguments unchanged"
+        )
+        assert "all_tied_weights_keys" not in vars(_ClassShapedReceiver), (
+            "a class-shaped positional must never gain model-instance bookkeeping"
+        )
+        assert hasattr(model, "all_tied_weights_keys")
+
+    def test_missing_receiver_delegates(self, monkeypatch):
+        """With no plausible receiver the call delegates unchanged and never
+        reaches a receiver helper (IN-04)."""
+        _rung("_patch_tied_weights_bookkeeping_on_load")
+
+        def fail_helper(*_args, **_kwargs):
+            raise AssertionError("no receiver helper may run without a receiver")
+
+        monkeypatch.setattr(transformers_compat, "_materialize_tied_weights_bookkeeping", fail_helper)
+        monkeypatch.setattr(transformers_compat, "_bridge_legacy_tie_weights", fail_helper)
+
+        def fake_original(*args, **kwargs):
+            return "delegated"
+
+        monkeypatch.setattr(
+            transformers_compat, "_tied_bookkeeping_original_finalize", fake_original
+        )
+
+        assert PreTrainedModel._finalize_model_loading() == "delegated"
+
     def test_patch_is_idempotent(self):
         """A second rung call does not re-wrap the classmethod."""
         patch = _rung("_patch_tied_weights_bookkeeping_on_load")
