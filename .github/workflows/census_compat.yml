@@ -72,6 +72,9 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           if command -v uv >/dev/null 2>&1; then
             echo "uv already provisioned: $(uv --version)"
+            # Persist the path for later steps: the curl installer this guard
+            # replaces wrote GITHUB_PATH, and every later step calls bare `uv`.
+            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           else
             curl -LsSf https://astral.sh/uv/install.sh | sh
           fi

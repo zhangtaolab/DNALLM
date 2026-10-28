@@ -269,6 +269,13 @@ CENSUS_RUN_LINE = "python scripts/census_compat.py --run --with-loads --verify"
 # The unpinned installer pipeline, kept ONLY as the wiped-box fallback (IN-05).
 CENSUS_UV_INSTALLER = "curl -LsSf https://astral.sh/uv/install.sh | sh"
 
+# CR-01 (27.1 review): the skip branch must persist the provisioned uv's
+# directory to $GITHUB_PATH, exactly as the curl installer it replaces did
+# (the served install.sh appends its install dir when GITHUB_PATH is set) --
+# a run step's `export PATH` dies with its own shell, so without this write
+# the next step's bare `uv venv` cannot resolve uv on the provisioned box.
+CENSUS_UV_GITHUB_PATH_WRITE = 'echo "$HOME/.local/bin" >> "$GITHUB_PATH"'
+
 
 def _load_census_workflow_text() -> str:
     """Return the committed census lane workflow text (the auditable source)."""
@@ -352,7 +359,9 @@ class TestCensusLaneInstallSequence:
         ``curl | sh`` both fetches unpinned code on every dispatch and
         silently replaces that binary (IN-05). The guard must check
         ``command -v uv`` BEFORE any installer fetch, print the provisioned
-        version, and keep the installer pipeline only in the else branch.
+        version, keep the installer pipeline only in the else branch, and
+        persist the uv directory to ``$GITHUB_PATH`` so later steps' bare
+        ``uv`` resolves (CR-01, 27.1 review).
         """
         doc = yaml.safe_load(_load_census_workflow_text())
         steps = doc["jobs"]["census-compat"]["steps"]
@@ -385,6 +394,27 @@ class TestCensusLaneInstallSequence:
             "the `command -v uv` guard must precede the installer fetch -- an "
             "unconditional install replaces the box's mirror-configured uv "
             "on every census dispatch (IN-05)"
+        )
+        assert CENSUS_UV_GITHUB_PATH_WRITE in run, (
+            "the skip branch must append the provisioned uv's directory to "
+            f"$GITHUB_PATH as `{CENSUS_UV_GITHUB_PATH_WRITE}` -- a run step's "
+            "export PATH dies with its own shell, and the curl installer this "
+            "guard replaces performed exactly this write (verified in the "
+            "served install.sh), so without it the next step's bare `uv venv` "
+            "fails with 'uv: command not found' on the provisioned box and "
+            "reddens the single allowed DISP-01 dispatch for an environment "
+            "reason (CR-01, 27.1 review)"
+        )
+        assert (
+            run.index("command -v uv")
+            < run.index(CENSUS_UV_GITHUB_PATH_WRITE)
+            < run.index(CENSUS_UV_INSTALLER)
+        ), (
+            "the $GITHUB_PATH write belongs INSIDE the skip branch (between "
+            "the `command -v uv` guard and the else-branch installer): the "
+            "wiped-box fallback gets its GITHUB_PATH write from the installer "
+            "itself, while the provisioned-box path this guard adds has no "
+            "other writer (CR-01, 27.1 review)"
         )
         assert "UV_VERSION" not in run, (
             "UV_VERSION does not exist in the served astral installer "
