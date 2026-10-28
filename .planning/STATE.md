@@ -4,11 +4,11 @@ milestone: v1.4
 current_phase: "27.1"
 current_phase_name: "Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)"
 status: executing
-stopped_at: Completed 27.1-02-PLAN.md
-last_updated: "2026-10-28T12:18:09.986Z"
+stopped_at: Halted 27.1-03 (DISP-01 deferred by owner to post-v1.4->main-merge operator step)
+last_updated: "2026-10-28T13:06:25.396Z"
 last_activity: 2026-10-28
-last_activity_desc: Phase 27.1 execution started
-state_head: 821340706845dbcf55224932900e5b162ae98056
+last_activity_desc: 27.1-03 closed out as halted (DISP-01 deferred by owner)
+state_head: 2f8e6a92f121205812fccc72606a21cf220d11a1
 progress:
   total_phases: 2
   completed_phases: 5
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-10-28)
 ## Current Position
 
 Phase: 27.1 (Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)) — EXECUTING
-Plan: 3 of 3
-Status: Ready to execute
-Last activity: 2026-10-28 — Phase 27.1 execution started
+Plan: 3 of 3 — HALTED (owner defer-dispatch: DISP-01 deferred)
+Status: Plan 27.1-03 halted; DISP-01 deferred to the post-v1.4→main-merge operator step; plans 01/02 complete
+Last activity: 2026-10-28 — 27.1-03 close-out: deferral recorded, registration commit d661998 preserved on wip/27.1-03-census-registration
 
 ## Performance Metrics
 
@@ -136,6 +136,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 27.1]: 27.1-01: the pre-existing repo-wide ruff format failure on docs/user_guide/preset_loading.md (untouched; last changed b35f64d) is out of scope and recorded in the phase deferred-items.md + WINDOWS ledger; the plan's four touched files are format-clean under pinned ruff 0.17.1
 - [Phase 27.1]: 27.1-02: load-boundary receiver selection resolves kwargs model/self before any positional shape -- a class-shaped positional never receives model bookkeeping, and no receiver delegates unchanged (IN-04)
 - [Phase 27.1]: 27.1-02: census lane keeps the runner-provisioned uv (skip-if-present, command -v uv before curl) -- the wiped-box curl|sh fallback stays unpinned as accepted residual exposure T-27.1-06, and no UV_VERSION knob exists (IN-05)
+- [Phase 27.1]: 27.1-03: owner selected option-a (minimal byte-identical workflow registration commit) -- the direct push to main was rejected by branch protection (GH006: PR required, 1 approving review, 2 required checks, enforce_admins=true); the single-file commit d661998 is preserved on wip/27.1-03-census-registration, nothing pushed
+- [Phase 27.1]: 27.1-03: owner then chose defer-dispatch -- DISP-01 moves to the v1.4->main milestone merge (workflow lands naturally with the merge PR) plus exactly one post-merge 'gh workflow run census_compat.yml --ref v1.4' operator step; no main mutation and no dispatch now; plan summarized as halted
 
 ### Pending Todos
 
@@ -148,6 +150,7 @@ Carried open ledger items from the v1.1/v1.2 handoffs (owner-scoped, outside act
 - [Phase 24 review WR-01, deferred] 24 third-party family names resolve repo ids via hardcoded `source="modelscope"` (hosting unprobed — research A2); Phase 26's MCP listing surfaces the names neutrally (repo_id/task_type/overlay only, no hosting claim) — the unprobed-source concern itself remains open for any future UX that names a download hub
 
 Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/v1.1-MILESTONE-AUDIT.md`. v1.3 known gaps carried in the WINDOWS ledger: #25 PyPI trusted-publisher registration, #27 Windows KDA smoke, #26 pip-side alias resolve.
+- Phase 27.1 plan 27.1-03 Task 2 HALTED: direct push of the owner-approved option-a registration commit to main was rejected by branch protection (GH006). main requires PRs (1 approving review) + 2 required status checks (coverage-gate (py3.12, fast leg), docs-validation); enforce_admins=true blocks even the owner from direct push. The byte-identical single-file commit d661998 (only .github/workflows/census_compat.yml == origin/v1.4) is preserved: local branch wip/27.1-03-census-registration (nothing pushed); the temp worktree was removed during close-out (branch alone anchors the commit). **RESOLVED 2026-10-28 by owner defer-dispatch:** DISP-01 is deferred to the post-v1.4→main-merge operator step (the Phase 27 deferred operational act above); plan 27.1-03 summarized as halted; no main mutation and no dispatch occurred.
 
 ### Quick Tasks Completed
 
@@ -182,8 +185,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-28T12:18:09.908Z
-Stopped at: Completed 27.1-02-PLAN.md
+Last session: 2026-10-28T13:06:25.319Z
+Stopped at: Halted 27.1-03 (DISP-01 deferred by owner to post-v1.4->main-merge operator step)
 Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)
@@ -194,5 +197,5 @@ Resume file: None
 ## Operator Next Steps
 
 - Pre-merge (v1.4→main): resolve the 27 first-party ty diagnostics (workers.py/config_gen.py/download.py/availability.py — see Session Continuity) or the coverage-gate ty hard gate goes red on first exposure; consider adding `v1.4` to ci.yml push triggers per the documented 2026-10-07 first-exposure lesson
-- Plan the inserted urgent phase 27.1 (tech debt: IN-01..IN-06 + census lane live dispatch) with /gsd-plan-phase 27.1, then /gsd-execute-phase 27.1
+- Phase 27.1 execution status: plans 01 and 02 complete; plan 27.1-03 HALTED by owner defer-dispatch (DISP-01 not delivered). After the v1.4→main milestone merge PR lands, run exactly one `gh workflow run census_compat.yml --ref v1.4` and verify 49 matched records, the OK registry-match line, no UNEXPECTED, no VERSION DRIFT, and the `census-fresh-evidence` artifact; the preserved registration commit d661998 stays anchored on `wip/27.1-03-census-registration`
 - After Phase 27.1 closes, re-close the v1.4 line and start the next milestone with /gsd-new-milestone
