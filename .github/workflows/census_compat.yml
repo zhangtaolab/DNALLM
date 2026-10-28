@@ -59,7 +59,22 @@ jobs:
 
       - name: Install uv
         if: steps.gpu-check.outputs.has_gpu == 'true'
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+        # IN-05 (phase 27.1): this persistent box carries a runner-ops uv
+        # under ~/.local/bin with the TUNA mirror configured in
+        # ~/.config/uv/uv.toml. An unconditional curl|sh both fetches
+        # unpinned remote code and silently replaces that binary on every
+        # dispatch (the served installer embeds its own version; there is no
+        # UV_VERSION knob -- refuted in 27.1-RESEARCH.md). Skip when uv
+        # already resolves; the installer pipeline remains the wiped-box
+        # fallback only, and that fallback stays unpinned (accepted residual
+        # supply-chain exposure, T-27.1-06).
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          if command -v uv >/dev/null 2>&1; then
+            echo "uv already provisioned: $(uv --version)"
+          else
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+          fi
 
       - name: Create virtual environment and install dependencies
         if: steps.gpu-check.outputs.has_gpu == 'true'
