@@ -54,7 +54,7 @@ Plans:
 Plans:
 **Wave 1**
 - [x] 27.1-01-PLAN.md — Generated-docs correctness: balanced fragments, fail-closed blocked reasons, direct helper tests, and summary-count gate (IN-01/IN-02/IN-03/IN-06)
-- [ ] 27.1-02-PLAN.md — Compat-wrapper receiver hardening and provisioned-uv census lane guard (IN-04/IN-05)
+- [x] 27.1-02-PLAN.md — Compat-wrapper receiver hardening and provisioned-uv census lane guard (IN-04/IN-05)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 27.1-03-PLAN.md — Owner-gated main-landing choice, workflow registration, and one live green `v1.4` dispatch (DISP-01)

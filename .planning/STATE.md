@@ -4,11 +4,11 @@ milestone: v1.4
 current_phase: "27.1"
 current_phase_name: "Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)"
 status: executing
-stopped_at: Completed 27.1-01-PLAN.md
-last_updated: "2026-10-28T12:10:14.123Z"
+stopped_at: Completed 27.1-02-PLAN.md
+last_updated: "2026-10-28T12:18:09.986Z"
 last_activity: 2026-10-28
 last_activity_desc: Phase 27.1 execution started
-state_head: ed017cd5af14cb659c35e36524caf38c002a60cc
+state_head: 821340706845dbcf55224932900e5b162ae98056
 progress:
   total_phases: 2
   completed_phases: 5
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-28)
 ## Current Position
 
 Phase: 27.1 (Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-10-28 — Phase 27.1 execution started
 
@@ -63,6 +63,7 @@ Last activity: 2026-10-28 — Phase 27.1 execution started
 | Phase 27 P04 | 19min | 3 tasks | 6 files |
 | Phase 27 P05 | 21 min | 3 tasks | 5 files |
 | Phase 27.1 P01 | 8 min | 3 tasks | 4 files |
+| Phase 27.1 P02 | 6 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -133,6 +134,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 27.1]: 27.1-01: docs_blocked_reason fails closed with distinct ValueErrors (empty evidence; unmapped shape), mirrored by pytest.fail in the gate plus a registry-side pin over every committed census-blocked row -- raw census text and local cache paths can never reach the public page
 - [Phase 27.1]: 27.1-01: the summary-sentence pin rebuilds the complete sentence from Counter over tf_compat_status in the independent gate -- no hardcoded counts, no generator import, and a mutated-count negative probe proves the pin discriminates
 - [Phase 27.1]: 27.1-01: the pre-existing repo-wide ruff format failure on docs/user_guide/preset_loading.md (untouched; last changed b35f64d) is out of scope and recorded in the phase deferred-items.md + WINDOWS ledger; the plan's four touched files are format-clean under pinned ruff 0.17.1
+- [Phase 27.1]: 27.1-02: load-boundary receiver selection resolves kwargs model/self before any positional shape -- a class-shaped positional never receives model bookkeeping, and no receiver delegates unchanged (IN-04)
+- [Phase 27.1]: 27.1-02: census lane keeps the runner-provisioned uv (skip-if-present, command -v uv before curl) -- the wiped-box curl|sh fallback stays unpinned as accepted residual exposure T-27.1-06, and no UV_VERSION knob exists (IN-05)
 
 ### Pending Todos
 
@@ -179,8 +182,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-28T12:10:14.063Z
-Stopped at: Completed 27.1-01-PLAN.md
+Last session: 2026-10-28T12:18:09.908Z
+Stopped at: Completed 27.1-02-PLAN.md
 Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)
