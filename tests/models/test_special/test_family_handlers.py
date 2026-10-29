@@ -935,6 +935,340 @@ class TestLucaoneHandler:
         )
 
 
+class TestMissingExtraGuidance:
+    """D-17: missing deepspeed / flash-attn extras become actionable install guidance.
+
+    Every helper and loader symbol is imported inside the test body (RED-run
+    discipline): each target test fails on the missing symbol it asserts,
+    never on a collection error.
+    """
+
+    BIGBIRD = "AIRI-Institute/gena-lm-bigbird-base-sparse"
+    GUIDE_URL = "https://zhangtaolab.github.io/DNALLM/user_guide/optional_dependencies/"
+    FLASH_ERROR_TEXT = (
+        "Please install Flash Attention via `pip install flash-attn --no-build-isolation` first"
+    )
+
+    @staticmethod
+    def _missing(name: str) -> ModuleNotFoundError:
+        """Return a real ModuleNotFoundError carrying the given module name."""
+        try:
+            raise ModuleNotFoundError(f"No module named {name!r}", name=name)
+        except ModuleNotFoundError as error:
+            return error
+
+    @staticmethod
+    def _flash_loader(error: Exception) -> Mock:
+        """Return a from_pretrained loader boundary that raises *error*."""
+        return Mock(**{"from_pretrained.side_effect": error})
+
+    @staticmethod
+    def _crossdna_checkpoint(tmp_path) -> "os.PathLike":
+        """Write a CrossDNA-shaped 8.1M checkpoint dir under *tmp_path*."""
+        import json
+
+        checkpoint = tmp_path / "8.1M"
+        checkpoint.mkdir()
+        (checkpoint / "config.json").write_text(
+            json.dumps(
+                {
+                    "model_type": "crossdna",
+                    "auto_map": {"AutoModelForMaskedLM": "repo--CrossDNAForMaskedLM"},
+                }
+            ),
+            encoding="utf-8",
+        )
+        return checkpoint
+
+    # ── _raise_missing_extra_import_error: deepspeed shapes (BigBird) ──────
+
+    def test_direct_deepspeed_missing_raises_actionable_import_error(self):
+        """A direct ModuleNotFoundError named deepspeed becomes install guidance."""
+        from dnallm.models.model import _raise_missing_extra_import_error
+
+        trigger = self._missing("deepspeed")
+        with pytest.raises(ImportError) as exc_info:
+            _raise_missing_extra_import_error(trigger, self.BIGBIRD)
+        message = str(exc_info.value)
+        assert self.BIGBIRD in message
+        assert "pip install 'dnallm[deepspeed]'" in message
+        assert "0.19.7" in message  # the mandatory band-cap caveat
+        assert self.GUIDE_URL in message
+        assert exc_info.value.__cause__ is trigger  # original cause retained
+
+    def test_nested_deepspeed_submodule_via_cause_chain_raises_guidance(self):
+        """A deepspeed.ops.* ModuleNotFoundError nested under __cause__ is found."""
+        from dnallm.models.model import _raise_missing_extra_import_error
+
+        trigger = self._missing("deepspeed.ops.sparse_attention")
+        try:
+            raise RuntimeError("model construction failed") from trigger
+        except RuntimeError as wrapped:
+            with pytest.raises(ImportError) as exc_info:
+                _raise_missing_extra_import_error(wrapped, self.BIGBIRD)
+        assert "pip install 'dnallm[deepspeed]'" in str(exc_info.value)
+        assert exc_info.value.__cause__ is trigger
+
+    def test_nested_deepspeed_via_context_chain_raises_guidance(self):
+        """A deepspeed ModuleNotFoundError nested under __context__ is found."""
+        from dnallm.models.model import _raise_missing_extra_import_error
+
+        trigger = self._missing("deepspeed")
+        try:
+            raise trigger
+        except ModuleNotFoundError:
+            try:
+                raise ValueError("wrapped the import failure")
+            except ValueError as wrapped:
+                assert wrapped.__context__ is trigger
+                with pytest.raises(ImportError) as exc_info:
+                    _raise_missing_extra_import_error(wrapped, self.BIGBIRD)
+        assert exc_info.value.__cause__ is trigger
+
+    def test_deepspeed_inside_a_cyclic_chain_still_matches(self):
+        """The cycle guard terminates traversal without losing the deepspeed node."""
+        from dnallm.models.model import _raise_missing_extra_import_error
+
+        trigger = self._missing("deepspeed")
+        outer = ValueError("outer")
+        inner = RuntimeError("inner")
+        outer.__context__ = inner
+        inner.__cause__ = outer
+        inner.__context__ = trigger
+        with pytest.raises(ImportError) as exc_info:
+            _raise_missing_extra_import_error(outer, self.BIGBIRD)
+        assert exc_info.value.__cause__ is trigger
+
+    def test_pure_cycle_of_unrelated_errors_terminates_as_none(self):
+        """A cause/context cycle with no deepspeed node returns None, never hangs."""
+        from dnallm.models.model import _raise_missing_extra_import_error
+
+        first = ValueError("first")
+        second = RuntimeError("second")
+        first.__context__ = second
+        second.__cause__ = first
+        assert _raise_missing_extra_import_error(first, self.BIGBIRD) is None
+
+    def test_unrelated_missing_module_returns_none(self):
+        """A ModuleNotFoundError for another package is never relabeled."""
+        from dnallm.models.model import _raise_missing_extra_import_error
+
+        assert _raise_missing_extra_import_error(self._missing("left_pad"), self.BIGBIRD) is None
+
+    def test_unrelated_exception_returns_none(self):
+        """A plain ValueError is left for the generic wrap, never relabeled."""
+        from dnallm.models.model import _raise_missing_extra_import_error
+
+        assert _raise_missing_extra_import_error(ValueError("boom"), self.BIGBIRD) is None
+
+    def test_already_guided_crossdna_error_is_reraised_unchanged(self):
+        """The CrossDNA guidance ImportError survives the helper untouched."""
+        from dnallm.models.model import _raise_missing_extra_import_error
+        from dnallm.models.special.crossdna import (
+            _DNALLM_MISSING_EXTRA_GUIDANCE_ATTR,
+            _from_pretrained_with_flash_attn_guidance,
+        )
+
+        with pytest.raises(ImportError) as guided_info:
+            _from_pretrained_with_flash_attn_guidance(
+                self._flash_loader(ImportError(self.FLASH_ERROR_TEXT)), "/ckpt", {}
+            )
+        guided = guided_info.value
+        assert getattr(guided, _DNALLM_MISSING_EXTRA_GUIDANCE_ATTR, False) is True
+        with pytest.raises(ImportError) as reraised:
+            _raise_missing_extra_import_error(guided, "chengCCC/CrossDNA_pretrain")
+        assert reraised.value is guided  # the SAME error object, never re-wrapped
+
+    # ── _from_pretrained_with_flash_attn_guidance (CrossDNA) ───────────────
+
+    def test_flash_attention_import_error_becomes_install_guidance(self):
+        """fla's verbatim Flash Attention ImportError becomes extra install guidance."""
+        from dnallm.models.special.crossdna import _from_pretrained_with_flash_attn_guidance
+
+        original = ImportError(self.FLASH_ERROR_TEXT)
+        loader = self._flash_loader(original)
+        with pytest.raises(ImportError) as exc_info:
+            _from_pretrained_with_flash_attn_guidance(loader, "/ckpt", {"trust_remote_code": True})
+        message = str(exc_info.value)
+        assert "pip install --no-build-isolation 'dnallm[flash-attn]'" in message
+        assert "Linux" in message
+        assert "CUDA" in message
+        assert self.GUIDE_URL in message
+        assert exc_info.value.__cause__ is original
+        loader.from_pretrained.assert_called_once_with("/ckpt", trust_remote_code=True)
+
+    def test_unrelated_import_error_passes_through_unchanged(self):
+        """An ImportError without the Flash Attention marker is never relabeled."""
+        from dnallm.models.special.crossdna import _from_pretrained_with_flash_attn_guidance
+
+        original = ImportError("triton kernels not compiled for this platform")
+        with pytest.raises(ImportError) as exc_info:
+            _from_pretrained_with_flash_attn_guidance(self._flash_loader(original), "/ckpt", {})
+        assert exc_info.value is original
+
+    def test_non_import_error_propagates_unchanged(self):
+        """RuntimeErrors and friends never enter the translation at all."""
+        from dnallm.models.special.crossdna import _from_pretrained_with_flash_attn_guidance
+
+        original = RuntimeError("cuda out of memory")
+        with pytest.raises(RuntimeError) as exc_info:
+            _from_pretrained_with_flash_attn_guidance(self._flash_loader(original), "/ckpt", {})
+        assert exc_info.value is original
+
+    # ── both CrossDNA construction paths through _handle_crossdna_models ───
+
+    def test_mask_path_translates_flash_attention_error(self, tmp_path, monkeypatch):
+        """The mask (AutoModelForMaskedLM) path raises flash-attn guidance."""
+        from dnallm.models.special import crossdna
+
+        checkpoint = self._crossdna_checkpoint(tmp_path)
+        monkeypatch.setattr(
+            "dnallm.models.tokenizer.load_tokenizer_with_fallback", lambda *a, **k: Mock()
+        )
+        modules = {
+            "AutoConfig": Mock(),
+            "AutoTokenizer": Mock(),
+            "AutoModelForMaskedLM": self._flash_loader(ImportError(self.FLASH_ERROR_TEXT)),
+        }
+        with pytest.raises(ImportError, match=r"dnallm\[flash-attn\]"):
+            crossdna._handle_crossdna_models(
+                "mask", str(tmp_path), 2, {0: "0", 1: "1"}, {"0": 0, "1": 1}, modules
+            )
+        modules["AutoModelForMaskedLM"].from_pretrained.assert_called_once_with(
+            str(checkpoint), trust_remote_code=True
+        )
+
+    def test_classification_path_translates_flash_attention_error(self, tmp_path, monkeypatch):
+        """The sequence-classification path raises the same flash-attn guidance."""
+        from types import SimpleNamespace
+
+        from dnallm.models.special import crossdna
+
+        checkpoint = self._crossdna_checkpoint(tmp_path)
+        monkeypatch.setattr(
+            "dnallm.models.tokenizer.load_tokenizer_with_fallback", lambda *a, **k: Mock()
+        )
+
+        class _TinyBase(torch.nn.Module):
+            pass
+
+        monkeypatch.setattr(
+            crossdna, "get_class_from_dynamic_module", lambda ref, path: _TinyBase
+        )
+        config = SimpleNamespace(auto_map={"AutoModelForMaskedLM": "repo--CrossDNAForMaskedLM"})
+        modules = {
+            "AutoConfig": Mock(**{"from_pretrained.return_value": config}),
+            "AutoTokenizer": Mock(),
+            "AutoModelForSequenceClassification": self._flash_loader(
+                ImportError(self.FLASH_ERROR_TEXT)
+            ),
+        }
+        with pytest.raises(ImportError, match=r"dnallm\[flash-attn\]"):
+            crossdna._handle_crossdna_models(
+                "binary", str(tmp_path), 2, {0: "0", 1: "1"}, {"0": 0, "1": 1}, modules
+            )
+        modules["AutoModelForSequenceClassification"].from_pretrained.assert_called_once_with(
+            str(checkpoint), config=config, trust_remote_code=True
+        )
+
+    def test_handler_passes_unrelated_import_error_through(self, tmp_path, monkeypatch):
+        """A non-flash ImportError from the mask path keeps its original shape."""
+        from dnallm.models.special import crossdna
+
+        self._crossdna_checkpoint(tmp_path)
+        monkeypatch.setattr(
+            "dnallm.models.tokenizer.load_tokenizer_with_fallback", lambda *a, **k: Mock()
+        )
+        original = ImportError("huggingface_hub token required")
+        modules = {
+            "AutoConfig": Mock(),
+            "AutoTokenizer": Mock(),
+            "AutoModelForMaskedLM": self._flash_loader(original),
+        }
+        with pytest.raises(ImportError) as exc_info:
+            crossdna._handle_crossdna_models(
+                "mask", str(tmp_path), 2, {0: "0", 1: "1"}, {"0": 0, "1": 1}, modules
+            )
+        assert exc_info.value is original
+
+    # ── both generic load-chain wrap sites (dnallm/models/model.py) ────────
+
+    def test_generic_pretrained_wrap_translates_nested_deepspeed(self):
+        """The pretrained-chain wrap raises guidance instead of a bare ValueError."""
+        from dnallm.configuration.configs import TaskConfig
+        from dnallm.models.model import load_model_and_tokenizer
+
+        trigger = self._missing("deepspeed")
+
+        def _fail(*args, **kwargs):
+            raise RuntimeError("construction failed") from trigger
+
+        with (
+            patch("dnallm.models.model._setup_huggingface_mirror"),
+            patch(
+                "dnallm.models.model._get_model_path_and_imports",
+                return_value=("/downloaded/path", {"AutoConfig": Mock()}),
+            ),
+            patch("dnallm.models.model._create_label_mappings", return_value=({}, {})),
+            patch("dnallm.models.model._load_model_by_task_type", side_effect=_fail),
+        ):
+            with pytest.raises(ImportError, match=r"dnallm\[deepspeed\]") as exc_info:
+                load_model_and_tokenizer(
+                    self.BIGBIRD, TaskConfig(task_type="mask", num_labels=None)
+                )
+        assert exc_info.value.__cause__ is trigger
+
+    def test_generic_wrap_reraises_crossdna_guidance_unchanged(self):
+        """The CrossDNA guidance error leaves the generic chain as itself, not a ValueError."""
+        from dnallm.configuration.configs import TaskConfig
+        from dnallm.models.model import load_model_and_tokenizer
+        from dnallm.models.special.crossdna import _from_pretrained_with_flash_attn_guidance
+
+        with pytest.raises(ImportError) as guided_info:
+            _from_pretrained_with_flash_attn_guidance(
+                self._flash_loader(ImportError(self.FLASH_ERROR_TEXT)), "/ckpt", {}
+            )
+        guided = guided_info.value
+        with (
+            patch("dnallm.models.model._setup_huggingface_mirror"),
+            patch(
+                "dnallm.models.model._get_model_path_and_imports",
+                return_value=("/downloaded/CrossDNA_snapshot", {"AutoConfig": Mock()}),
+            ),
+            patch("dnallm.models.model._create_label_mappings", return_value=({}, {})),
+            patch("dnallm.models.model._handle_crossdna_models", side_effect=guided),
+        ):
+            with pytest.raises(ImportError) as exc_info:
+                load_model_and_tokenizer(
+                    "chengCCC/CrossDNA_pretrain", TaskConfig(task_type="mask", num_labels=None)
+                )
+        assert exc_info.value is guided
+        assert "Failed to load model" not in str(exc_info.value)
+
+    def test_random_init_wrap_translates_nested_deepspeed(self):
+        """The random-init chain wrap also raises deepspeed guidance."""
+        from dnallm.configuration.configs import TaskConfig
+        from dnallm.models.model import load_model_and_tokenizer
+
+        trigger = self._missing("deepspeed")
+
+        def _fail(*args, **kwargs):
+            raise RuntimeError("construction failed") from trigger
+
+        with (
+            patch("dnallm.models.model._setup_huggingface_mirror"),
+            patch("dnallm.models.model._create_label_mappings", return_value=({}, {})),
+            patch("dnallm.models.model._load_random_init_model", side_effect=_fail),
+        ):
+            with pytest.raises(ImportError, match=r"dnallm\[deepspeed\]"):
+                load_model_and_tokenizer(
+                    "test-scratch-bigbird",
+                    TaskConfig(task_type="mask", num_labels=None),
+                    source="huggingface",
+                    random_init=True,
+                )
+
+
 class TestSpecialExports:
     """The special package re-export surface."""
 
