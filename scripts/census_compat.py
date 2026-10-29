@@ -1345,7 +1345,14 @@ TF_COMPAT_STATUSES = frozenset({
 # mapping lands ahead of the committed flip -- the interim re-probe evidence
 # is replica-grade in /tmp until plan 27.2-03's final measured write-back;
 # the committed artifact still carries gena's skip disposition, which
-# compat_verdict consults before this table). Entries whose import a rung
+# compat_verdict consults before this table). 27.2-02: the remote
+# RoPEBertModel.forward of JadenLong/MutBERT-Human-Ref computes
+# input_shape = input_ids.size()[:-1] (the authors' own '# modified' line,
+# model line 808), dropping the sequence dimension for every 2-D input, and
+# _patch_mutbert_forward_on_load routes those calls through the remote code's
+# own inputs_embeds branch (the mapping lands ahead of the committed flip,
+# same interim discipline as gena -- the committed skip disposition still
+# governs until plan 27.2-03). Entries whose import a rung
 # restored but whose load/forward still fails carry skip dispositions in the
 # artifact and map to remote-code-broken — the D-03 verdict (load + one real
 # forward) is what the registry consumes.
@@ -1353,6 +1360,7 @@ SHIM_RESTORED_LOADS: dict[str, str] = {
     "kuleshov-group/PlantCaduceus_l32": "_patch_tied_weights_bookkeeping_on_load",
     "lgq12697/GENERanno-eukaryote-0.5b-base": "_patch_rope_default_init",
     "AIRI-Institute/gena-lm-bert-base": "_patch_gena_token_type_ids_on_load",
+    "JadenLong/MutBERT-Human-Ref": "_patch_mutbert_forward_on_load",
 }
 
 # First line of the write-back provenance block; the block is appended at end

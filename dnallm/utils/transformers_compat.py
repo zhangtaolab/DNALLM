@@ -1975,6 +1975,130 @@ def _patch_gena_token_type_ids_on_load():
     _install_remote_defects_on_load()
 
 
+# MutBERT (JadenLong/MutBERT-Human-Ref) repair, 27.2-02 Task 1 (D-07). The
+# remote RoPEBertModel.forward computes
+# ``input_shape = input_ids.size()[:-1]`` -- the authors' own ``# modified``
+# line at modeling_mutbert.py line 808, snapshot fe04deaf -- dropping the
+# sequence dimension for every two-dimensional input, so the unpack
+# ``batch_size, seq_length = input_shape`` at line 817 dies with
+# ``ValueError: not enough values to unpack (expected 2, got 1)`` (census
+# forward evidence 2026-10-27; the defect fails identically on transformers
+# 4.x -- no removed transformers API is involved). The RoPEBertForMaskedLM
+# head's own forward computes the shape correctly and delegates to
+# ``self.bert``, so the repair targets the nested model class wherever it
+# sits inside the loaded model. Per D-08 the guard is DEFECT DETECTION (the
+# exact source marker on the class's forward, unreadable source reads as no
+# defect), never a transformers-version gate: the wrapper routes
+# two-dimensional ``input_ids`` through the ``inputs_embeds`` branch -- the
+# remote code's own correct path for that shape -- by computing
+# ``self.embeddings.word_embeddings(input_ids)`` and delegating with
+# ``input_ids=None`` and every other argument unchanged. One-dimensional
+# inputs, explicit ``inputs_embeds``, and marker-free classes keep the
+# original behavior and identity; the LM head is never touched.
+
+
+_MUTBERT_DEFECT_MARKER = "input_ids.size()[:-1]"
+
+
+def _mutbert_forward_is_defective(module) -> bool:
+    """Return True when the module's class forward carries the defect marker.
+
+    Detection is source-based (D-08): the exact marker string in the class's
+    own ``forward`` source. A forward without readable source (exec'd code
+    raises OSError, builtins raise TypeError -- Pitfall 5) reads as no
+    defect: the repair never acts blind.
+    """
+    import inspect
+
+    forward = getattr(type(module), "forward", None)
+    if not callable(forward):
+        return False
+    try:
+        source = inspect.getsource(forward)
+    except (OSError, TypeError):
+        return False
+    return _MUTBERT_DEFECT_MARKER in source
+
+
+def _repair_mutbert_forward(model) -> bool:
+    """Wrap each defective MutBERT-shaped nested module's forward.
+
+    Scans ``model.modules()`` for modules whose class forward carries the
+    measured defect marker AND exposes ``embeddings.word_embeddings`` (the
+    delegation target the remote code itself uses); each match receives
+    exactly one guarded forward (a per-instance sentinel keeps repeated
+    load-boundary calls from double-wrapping). The guard only rewrites a
+    two-dimensional ``input_ids`` call with no explicit ``inputs_embeds``
+    into the remote code's own correct branch; everything else delegates to
+    the captured original with identical arguments.
+
+    Args:
+        model: The freshly loaded model (any receiver; non-matching shapes
+            are a no-op).
+
+    Returns:
+        True when at least one defective module was wrapped, False otherwise.
+    """
+    modules_walker = getattr(model, "modules", None)
+    if not callable(modules_walker):
+        return False
+    repaired = False
+    for module in modules_walker():
+        if getattr(module, "_dnallm_mutbert_forward_guard", False):
+            continue
+        if not _mutbert_forward_is_defective(module):
+            continue
+        original = getattr(module, "forward", None)
+        if not callable(original):
+            continue
+
+        def _guarded_mutbert_forward(
+            input_ids=None, *, _original=original, _module=module, **kwargs
+        ):
+            if (
+                isinstance(input_ids, torch.Tensor)
+                and input_ids.dim() == 2
+                and kwargs.get("inputs_embeds") is None
+            ):
+                word_embeddings = getattr(
+                    getattr(_module, "embeddings", None), "word_embeddings", None
+                )
+                if callable(word_embeddings):
+                    kwargs["inputs_embeds"] = word_embeddings(input_ids)
+                    input_ids = None
+            return _original(input_ids=input_ids, **kwargs)
+
+        setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch (checker-agnostic)
+            module,
+            "forward",
+            _guarded_mutbert_forward,
+        )
+        setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch (checker-agnostic)
+            module,
+            "_dnallm_mutbert_forward_guard",
+            True,
+        )
+        repaired = True
+    return repaired
+
+
+def _patch_mutbert_forward_on_load():
+    """Ensure the MutBERT forward repair runs at the load boundary (D-07).
+
+    Registers :func:`_repair_mutbert_forward` in the shared remote-defects
+    repair list (per-name idempotent -- a repeat call neither duplicates the
+    entry nor re-wraps the class) and installs the shared
+    ``_finalize_model_loading`` wrapper through
+    :func:`_install_remote_defects_on_load`. The repair itself is
+    defect-detection gated (D-08): it fires only when a nested module's
+    class forward actually carries the measured source marker, on any
+    transformers version (the author defect fails identically on 4.x).
+    """
+    if _repair_mutbert_forward not in _REMOTE_DEFECT_REPAIRS:
+        _REMOTE_DEFECT_REPAIRS.append(_repair_mutbert_forward)
+    _install_remote_defects_on_load()
+
+
 def apply_patches():
     """Apply all compatibility patches. Safe to call multiple times.
 
@@ -1999,6 +2123,7 @@ def apply_patches():
     _patch_tied_weights_bookkeeping_on_load()
     _patch_rope_default_init()
     _patch_gena_token_type_ids_on_load()
+    _patch_mutbert_forward_on_load()
 
 
 # Apply patches on module import so they are active before any
