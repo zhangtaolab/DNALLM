@@ -1812,13 +1812,18 @@ DOCS_FOOTNOTE_INFERENCE = (
     "(推断兼容（模型代码写于 transformers 4 时代）)"  # ruff: ignore[ambiguous-unicode-character-string]
 )
 
-# The five pinned "What we found" wordings for statuses that need no
-# evidence-derived continuation (the broken/blocked cells append their cause).
-DOCS_STATUS_CELLS: dict[str, str] = {
-    "verified-tf5": "Tested working",
-    "import-verified-tf5": "Tested loading its code; full run inferred from the family model",
-    "shim-required-tf5": "Works with DNALLM's built-in compatibility fixes (tested)",
-}
+
+# The status-cell wording is the shared support vocabulary (D-16, 27.2-04):
+# dnallm/models/support.py owns the three strings so the generated page, the
+# TUI listing, and the MCP listing can never drift apart. Imported lazily --
+# the census parent stays stdlib-only at module import, so loading the tool
+# never reroutes the host process through the mirror endpoint set above.
+def _docs_status_cells() -> dict[str, str]:
+    """Return the shared generated-page status wording (never a local copy)."""
+    from dnallm.models.support import DOCS_STATUS_CELLS
+
+    return DOCS_STATUS_CELLS
+
 
 DOCS_TABLE_HEADER = ("Model", "What we found", "Details")
 
@@ -2030,8 +2035,9 @@ def docs_status_cell(entry) -> str:
     status = entry.tf_compat_status
     if status is None:
         raise ValueError(f"registry entry {entry.model} carries no tf_compat_status")
-    if status in DOCS_STATUS_CELLS:
-        return DOCS_STATUS_CELLS[status]
+    docs_status_cells = _docs_status_cells()
+    if status in docs_status_cells:
+        return docs_status_cells[status]
     if status == "remote-code-broken":
         cause = docs_broken_cause(entry.tf_compat_evidence)
         if not cause:
@@ -2132,6 +2138,12 @@ def docs_page_text() -> str:
         "This page is generated from the model registry (the single source of "
         "truth) by `scripts/census_compat.py --emit-docs`; manual edits are "
         "overwritten on regeneration.",
+        "",
+        # D-14: the generator gains ONLY this one link to the hand-written
+        # guide; explanatory prose never enters the byte-identical regen gate.
+        "What each status word means, which models need an extra package, and "
+        "the exact install commands live in "
+        "[Optional dependencies and support](optional_dependencies.md).",
         "",
     ]
     page = "\n".join(lines)

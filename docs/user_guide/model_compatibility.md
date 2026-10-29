@@ -63,3 +63,5 @@ Of the 49 preset models, the team found 19 working as-is, 21 with their program 
 2. Transformers 4 compatibility is inferred - the model code was written in the transformers 4 era; no separate transformers 4 environment was tested. (推断兼容（模型代码写于 transformers 4 时代）)
 
 This page is generated from the model registry (the single source of truth) by `scripts/census_compat.py --emit-docs`; manual edits are overwritten on regeneration.
+
+What each status word means, which models need an extra package, and the exact install commands live in [Optional dependencies and support](optional_dependencies.md).

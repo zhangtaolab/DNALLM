@@ -1000,9 +1000,9 @@ class TestDocsSharedVocabulary:
     def test_docs_page_text_carries_exactly_one_guide_link(self) -> None:
         """The generated page tail links the static guide exactly once (D-14)."""
         page = census.docs_page_text()
-        assert (
-            page.count("[Optional dependencies and support](optional_dependencies.md)") == 1
-        ), "the generated page must carry exactly one relative link to the static guide"
+        assert page.count("[Optional dependencies and support](optional_dependencies.md)") == 1, (
+            "the generated page must carry exactly one relative link to the static guide"
+        )
 
     def test_guide_link_sits_after_the_compatibility_table(self) -> None:
         """The link is page-tail prose: after the table and both footnotes."""

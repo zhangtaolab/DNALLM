@@ -372,8 +372,7 @@ class TestSharedVocabularyAndGuideLink:
             "optional-dependency guide -- regenerate it with --emit-docs"
         )
         assert count == 1, (
-            "the compatibility page must link the static guide exactly once "
-            f"(found {count})"
+            f"the compatibility page must link the static guide exactly once (found {count})"
         )
 
     def test_guide_link_sits_after_the_table(self) -> None:
