@@ -1,13 +1,13 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.4
-current_phase: "28"
+current_phase: 28
 status: planning
-stopped_at: "Phase 27.2 complete — next: /gsd-discuss-phase 28"
-last_updated: "2026-10-29T09:19:43.837Z"
+stopped_at: Phase 28 context gathered
+last_updated: "2026-10-29T11:47:22.816Z"
 last_activity: 2026-10-29
 last_activity_desc: Phase 27.2 complete
-state_head: 4c54f3110b12eb67e9f3c698001acc1bed7fe7f4
+state_head: 278383736f6f97f16565cfb225b0f8c23dc1183e
 progress:
   total_phases: 2
   completed_phases: 5
@@ -218,9 +218,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-29T17:25:00+08:00
-Stopped at: Phase 27.2 complete — next: /gsd-discuss-phase 28
-Resume file: None
+Last session: 2026-10-29T11:47:22.745Z
+Stopped at: Phase 28 context gathered
+Resume file: .planning/phases/28-optional-extras-for-the-two-external-package-models-deepspee/28-CONTEXT.md
 
 ### Prior session record (2026-10-24, Mac side — retained)
 
