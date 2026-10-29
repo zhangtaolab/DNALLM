@@ -26,6 +26,7 @@ import types
 import pytest
 import torch
 import transformers.cache_utils
+import transformers.modeling_rope_utils
 import transformers.modeling_utils
 import transformers.pytorch_utils
 import transformers.utils.import_utils
@@ -464,6 +465,107 @@ class TestTiedWeightsBookkeepingOnLoad:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Rung 3 (27.2-01, D-04): the 'default' RoPE initializer restored for GENERanno
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestRopeDefaultInit:
+    """Contract: the 4.x ``'default'`` ROPE_INIT_FUNCTIONS entry is restored on 5.x.
+
+    Measured failure (27.2-01, lgq12697/GENERanno-eukaryote-0.5b-base, ms
+    commit 0ae1f40f): the remote ``GenerannoRotaryEmbedding.__init__`` sets
+    ``rope_type = "default"`` when ``config.rope_scaling`` is None and indexes
+    the table, which transformers 5.17 no longer carries (its keys are the
+    scaling variants only). The rung re-registers the vendored v4.49.0
+    default initializer IN PLACE so every module holding the live dict object
+    -- including the already-imported remote code -- sees the key (Pitfall 6:
+    never reassign the dict, remote modules hold a bound reference).
+    """
+
+    def test_default_key_resolves_on_the_live_table(self):
+        """After apply_patches, the live ROPE table answers 'default' with a callable."""
+        table = transformers.modeling_rope_utils.ROPE_INIT_FUNCTIONS
+        assert "default" in table
+        assert callable(table["default"])
+
+    def test_repeat_install_preserves_the_installed_object(self):
+        """A second rung call leaves the installed entry untouched (identity)."""
+        patch = _rung("_patch_rope_default_init")
+        table = transformers.modeling_rope_utils.ROPE_INIT_FUNCTIONS
+        installed = table["default"]
+
+        patch()
+
+        assert table["default"] is installed
+
+    def test_absence_gate_never_overwrites_a_prepopulated_key(self):
+        """A table already carrying 'default' (transformers 4.x, or already
+        patched) keeps its existing object -- the rung only ever fills an
+        ABSENT name."""
+        patch = _rung("_patch_rope_default_init")
+        table = transformers.modeling_rope_utils.ROPE_INIT_FUNCTIONS
+        original = table["default"]
+        sentinel = object()
+        table["default"] = sentinel
+        try:
+            patch()
+            assert table["default"] is sentinel, "a present 'default' key must never be overwritten"
+        finally:
+            table["default"] = original
+
+    def test_vendored_initializer_reproduces_the_v449_inv_freq_formula(self):
+        """The vendored initializer computes the 4.49 default-RoPE frequencies:
+        ``1 / rope_theta ** (arange(0, dim, 2) / dim)`` on the requested
+        device, with attention scaling 1.0."""
+        initializer = _rung("_compute_default_rope_parameters")
+
+        config = types.SimpleNamespace(
+            rope_theta=10000.0, head_dim=8, hidden_size=32, num_attention_heads=4
+        )
+        inv_freq, attention_factor = initializer(config, device="cpu")
+
+        expected = 1.0 / (
+            10000.0 ** (torch.arange(0, 8, 2, dtype=torch.int64).to(torch.float) / 8)
+        )
+        assert torch.equal(inv_freq, expected)
+        assert inv_freq.device.type == "cpu"
+        assert attention_factor == 1.0
+
+    def test_initializer_derives_dim_from_hidden_size_when_head_dim_absent(self):
+        """Without ``head_dim`` the frequency dimension is
+        ``hidden_size // num_attention_heads`` (the 4.49 fallback)."""
+        initializer = _rung("_compute_default_rope_parameters")
+
+        config = types.SimpleNamespace(
+            rope_theta=500.0, hidden_size=16, num_attention_heads=2
+        )
+        inv_freq, attention_factor = initializer(config, device=None)
+
+        # head_dim = 16 // 2 = 8 -> arange(0, 8, 2) -> 4 frequency entries
+        assert inv_freq.shape == (4,)
+        expected = 1.0 / (500.0 ** (torch.arange(0, 8, 2, dtype=torch.int64).to(torch.float) / 8))
+        assert torch.equal(inv_freq, expected)
+        assert attention_factor == 1.0
+
+    def test_initializer_honors_partial_rotary_factor(self):
+        """``partial_rotary_factor`` scales the rotary dimension (4.49 reads
+        it from the config when present, defaulting to 1.0)."""
+        initializer = _rung("_compute_default_rope_parameters")
+
+        config = types.SimpleNamespace(
+            rope_theta=10000.0, head_dim=8, partial_rotary_factor=0.5
+        )
+        inv_freq, _ = initializer(config, device=None)
+
+        # dim = int(8 * 0.5) = 4 -> arange(0, 4, 2) -> 2 frequency entries
+        assert inv_freq.shape == (2,)
+        expected = 1.0 / (
+            10000.0 ** (torch.arange(0, 4, 2, dtype=torch.int64).to(torch.float) / 4)
+        )
+        assert torch.equal(inv_freq, expected)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Closed-map discipline (prohibition T-27-04)
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -488,6 +590,7 @@ class TestClosedMapDiscipline:
         """The extended ladder keeps apply_patches idempotent end to end."""
         finalize_before = PreTrainedModel.__dict__["_finalize_model_loading"]
         chunking_before = getattr(transformers.modeling_utils, "apply_chunking_to_forward", None)
+        rope_before = transformers.modeling_rope_utils.ROPE_INIT_FUNCTIONS.get("default")
 
         apply_patches()
 
@@ -496,3 +599,4 @@ class TestClosedMapDiscipline:
             getattr(transformers.modeling_utils, "apply_chunking_to_forward", None)
             is chunking_before
         )
+        assert transformers.modeling_rope_utils.ROPE_INIT_FUNCTIONS.get("default") is rope_before

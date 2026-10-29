@@ -610,6 +610,42 @@ class TestDispositionCarryForward:
         assert "disposition" not in merged[0]
         assert "previous_status" not in merged[0]
 
+    def test_green_reprobe_drops_the_stale_skip_disposition(self) -> None:
+        # 27.2-01 D-02: a record whose import verdict is UNCHANGED (import-ok)
+        # but whose re-probed load+forward just turned green (through a new
+        # rung) must drop the prior skip judgment. compat_verdict checks the
+        # skip BEFORE the green load, so a carried skip would keep publishing
+        # remote-code-broken over measured green evidence.
+        existing = _family_record("org/repo", status="import-ok")
+        existing["load"] = {"ok": False, "error": "boom", "forward_ok": False}
+        existing["disposition"] = {"skip": "construction failure a rung now repairs"}
+        fresh = _family_record("org/repo", status="import-ok")
+        fresh["load"] = {"ok": True, "error": None, "forward_ok": True}
+        merged = census.merge_records([existing], [fresh], ["org/repo"])
+        assert "disposition" not in merged[0]
+        assert merged[0]["load"] == fresh["load"]
+
+    def test_green_reprobe_keeps_a_fix_disposition(self) -> None:
+        # A fix disposition still describes a green load (it names the rung
+        # the green needed); only the SKIP judgment goes stale on green.
+        existing = _family_record("org/repo", status="import-ok")
+        existing["disposition"] = {"fix": "_patch_rope_default_init"}
+        fresh = _family_record("org/repo", status="import-ok")
+        fresh["load"] = {"ok": True, "error": None, "forward_ok": True}
+        merged = census.merge_records([existing], [fresh], ["org/repo"])
+        assert merged[0]["disposition"] == existing["disposition"]
+
+    def test_unchanged_failing_record_keeps_its_skip_disposition(self) -> None:
+        # The discriminator's negative arm: green drops the skip, an unchanged
+        # still-failing record keeps it (the judgment still describes it).
+        existing = _family_record("org/repo", status="import-ok")
+        existing["load"] = {"ok": False, "error": "boom", "forward_ok": False}
+        existing["disposition"] = {"skip": "still broken for a structural reason"}
+        fresh = _family_record("org/repo", status="import-ok")
+        fresh["load"] = {"ok": False, "error": "boom again", "forward_ok": False}
+        merged = census.merge_records([existing], [fresh], ["org/repo"])
+        assert merged[0]["disposition"] == existing["disposition"]
+
 
 class TestRunCensusUnreachableRecording:
     """Unreachable repos are recorded census evidence, not a run failure (CR-01).
@@ -725,6 +761,18 @@ class TestDocsBrokenLeadClass:
             ValueError, match=r"broken evidence matches no plain-language lead class"
         ):
             census.docs_broken_lead_class("hf org/repo@sha; a shape nobody classified")
+
+    def test_non_persistent_buffer_needle_is_most_specific(self) -> None:
+        # 27.2-01: the corrected GENA-LM construction-path evidence names the
+        # non-persistent buffer; a detail mentioning BOTH the new needle and
+        # the superseded damaged-files key must resolve to library-change
+        # (most-specific-first ordering), never to damaged-files.
+        evidence = (
+            "hf AIRI-Institute/gena-lm-bert-base@sha; the non-persistent "
+            "token_type_ids buffer is materialized with garbage - this is not "
+            "a checkpoint data defect"
+        )
+        assert census.docs_broken_lead_class(evidence) == "library-change"
 
 
 class TestDocsBlockedReason:
@@ -1132,6 +1180,15 @@ class TestCompatVerdictMapping:
         assert status == "shim-required-tf5"
         assert "_patch_tied_weights_bookkeeping_on_load" in evidence
 
+    def test_generanno_green_load_maps_to_shim_required_naming_rope_rung(self) -> None:
+        # 27.2-01: GENERanno's green load passes ONLY through the ROPE
+        # 'default' rung; without the SHIM_RESTORED_LOADS entry the write-back
+        # would publish a false verified-tf5 ("works as-is") claim (D-03).
+        record = _verdict_record({"repo": "lgq12697/GENERanno-eukaryote-0.5b-base"})
+        status, evidence = census.compat_verdict(record, self.REPS)
+        assert status == "shim-required-tf5"
+        assert "_patch_rope_default_init" in evidence
+
     def test_census_blocked_maps_to_census_blocked_with_reason(self) -> None:
         record = _verdict_record({
             "status": "census-blocked",
@@ -1172,6 +1229,21 @@ finetuned:
       task_type: "binary"
 # Fixture provenance block (must survive the write byte-identically).
 """
+
+# The same fixture AFTER a 27-03-shaped write-back: the block already carries
+# its (now stale) tf_compat_* triple, contiguous, in writer order, directly
+# after max_length. 27.2-01's update-capable writer must REPLACE this triple
+# in place on a changed verdict -- never duplicate a field, never round-trip
+# the YAML.
+_STALE_TRIPLE = (
+    "    tf_compat_status: remote-code-broken\n"
+    '    tf_compat_evidence: "ms synth/base@e66bf2535aa2fc3297f677195d6b7e122c3a0510; stale old evidence"\n'
+    '    tf_compat_tested: "5.17.0"\n'
+)
+FIXTURE_YAML_WITH_COMPAT = FIXTURE_YAML.replace(
+    "    max_length: 512\n",
+    "    max_length: 512\n" + _STALE_TRIPLE,
+)
 
 FIXTURE_ROSTER = ["synth/base"]
 
@@ -1281,3 +1353,113 @@ class TestWriteRegistry:
         # A second apply must not append the block again.
         assert census.write_registry(artifact, yaml_path, apply=True, roster=FIXTURE_ROSTER) == 0
         assert yaml_path.read_text(encoding="utf-8").count(sentinel) == 1
+
+    # ── 27.2-01: update-capable write-back (anchored replacement) ─────────────
+
+    _GREEN_TRIPLE = (
+        "    tf_compat_status: verified-tf5\n"
+        '    tf_compat_evidence: "ms synth/base@e66bf2535aa2fc3297f677195d6b7e122c3a0510"\n'
+        '    tf_compat_tested: "5.17.0"\n'
+    )
+
+    @staticmethod
+    def _fixture_yaml_with_compat(tmp_path) -> Path:
+        target = tmp_path / "fixture_model_info.yaml"
+        target.write_text(FIXTURE_YAML_WITH_COMPAT, encoding="utf-8")
+        return target
+
+    def test_identical_triple_stays_in_the_unchanged_path(self, tmp_path, capsys) -> None:
+        """An existing triple that already matches the verdict is left alone.
+
+        Apply once over the stale fixture (replacement), then re-run against
+        the now-current triple: the row is reported already/unchanged and the
+        file stays byte-identical.
+        """
+        yaml_path = self._fixture_yaml_with_compat(tmp_path)
+        artifact = _fixture_artifact(tmp_path, [_green_record()])
+        assert census.write_registry(artifact, yaml_path, apply=True, roster=FIXTURE_ROSTER) == 0
+        once = yaml_path.read_text(encoding="utf-8")
+
+        assert census.write_registry(artifact, yaml_path, apply=True, roster=FIXTURE_ROSTER) == 0
+
+        assert yaml_path.read_text(encoding="utf-8") == once
+        assert "already" in capsys.readouterr().out
+
+    def test_changed_triple_is_replaced_without_duplication(self, tmp_path) -> None:
+        """A changed verdict replaces all three existing tf_compat_* fields.
+
+        Exactly one of each field survives, in canonical order, directly where
+        the stale triple sat; everything else (comments, task block, finetuned
+        section) is byte-identical apart from the appended provenance block.
+        """
+        yaml_path = self._fixture_yaml_with_compat(tmp_path)
+        artifact = _fixture_artifact(tmp_path, [_green_record()])
+        assert census.write_registry(artifact, yaml_path, apply=True, roster=FIXTURE_ROSTER) == 0
+        text = yaml_path.read_text(encoding="utf-8")
+
+        assert text.count("tf_compat_status:") == 1
+        assert text.count("tf_compat_evidence:") == 1
+        assert text.count("tf_compat_tested:") == 1
+        assert self._GREEN_TRIPLE in text
+        assert "stale old evidence" not in text
+        assert "# Fixture provenance block (must survive the write byte-identically)." in text
+        # Byte-stability outside the triple: restoring the stale triple over
+        # the green one rebuilds the original fixture exactly, with only the
+        # appended provenance block remaining.
+        rebuilt = text.replace(self._GREEN_TRIPLE, _STALE_TRIPLE)
+        assert rebuilt.startswith(FIXTURE_YAML_WITH_COMPAT)
+        assert rebuilt[len(FIXTURE_YAML_WITH_COMPAT) :].startswith(
+            census.COMPAT_PROVENANCE_SENTINEL
+        )
+
+    def test_replacement_dry_run_writes_nothing(self, tmp_path, capsys) -> None:
+        """A changed row plans a replacement in dry-run mode and writes nothing."""
+        yaml_path = self._fixture_yaml_with_compat(tmp_path)
+        artifact = _fixture_artifact(tmp_path, [_green_record()])
+
+        exit_code = census.write_registry(artifact, yaml_path, apply=False, roster=FIXTURE_ROSTER)
+
+        assert exit_code == 0
+        assert yaml_path.read_text(encoding="utf-8") == FIXTURE_YAML_WITH_COMPAT
+        out = capsys.readouterr().out
+        assert "synth/base" in out
+        assert "verified-tf5" in out
+
+    def test_replacement_second_apply_is_idempotent(self, tmp_path) -> None:
+        """After a replacement, the second apply writes nothing (identical triple)."""
+        yaml_path = self._fixture_yaml_with_compat(tmp_path)
+        artifact = _fixture_artifact(tmp_path, [_green_record()])
+        assert census.write_registry(artifact, yaml_path, apply=True, roster=FIXTURE_ROSTER) == 0
+        once = yaml_path.read_text(encoding="utf-8")
+
+        assert census.write_registry(artifact, yaml_path, apply=True, roster=FIXTURE_ROSTER) == 0
+
+        assert yaml_path.read_text(encoding="utf-8") == once
+
+    def test_replacement_never_touches_finetuned_entries(self, tmp_path) -> None:
+        """The replacement path stays pretrained-only: the finetuned block
+        carries no tf_compat_* lines and is byte-identical."""
+        yaml_path = self._fixture_yaml_with_compat(tmp_path)
+        artifact = _fixture_artifact(tmp_path, [_green_record()])
+        assert census.write_registry(artifact, yaml_path, apply=True, roster=FIXTURE_ROSTER) == 0
+        text = yaml_path.read_text(encoding="utf-8")
+        finetuned_block = text.split("finetuned:", 1)[1]
+        assert "tf_compat_" not in finetuned_block.split("# Fixture", 1)[0]
+
+    def test_non_canonical_compat_layout_fails_closed(self, tmp_path, capsys) -> None:
+        """A hand-mangled tf_compat_* layout (partial or disordered triple) is
+        refused loudly -- the writer never guesses on a shape it did not write."""
+        mangled = FIXTURE_YAML_WITH_COMPAT.replace(
+            '    tf_compat_evidence: "ms synth/base@e66bf2535aa2fc3297f677195d6b7e122c3a0510; '
+            'stale old evidence"\n',
+            "",
+        )
+        yaml_path = tmp_path / "fixture_model_info.yaml"
+        yaml_path.write_text(mangled, encoding="utf-8")
+        artifact = _fixture_artifact(tmp_path, [_green_record()])
+
+        exit_code = census.write_registry(artifact, yaml_path, apply=True, roster=FIXTURE_ROSTER)
+
+        assert exit_code == 1
+        assert "synth/base" in capsys.readouterr().out
+        assert yaml_path.read_text(encoding="utf-8") == mangled

@@ -354,11 +354,12 @@ TF_COMPAT_VOCABULARY = {
 }
 
 # Measured distribution of the committed write-back (49 rows): 19 verified
-# (green family-representative loads), 21 import-verified (siblings), 1
-# shim-required (PlantCaduceus_l32 via rung 13), 7 remote-code-broken (2
-# import-fail + 5 structurally failed load/forward), 1 census-blocked.
-EXPECTED_REMOTE_CODE_BROKEN = 7
-EXPECTED_SHIM_REQUIRED = 1
+# (green family-representative loads), 21 import-verified (siblings), 2
+# shim-required (PlantCaduceus_l32 via rung 13; GENERanno via the 27.2-01 ROPE
+# 'default' rung), 6 remote-code-broken (2 import-fail + 4 structurally failed
+# load/forward), 1 census-blocked.
+EXPECTED_REMOTE_CODE_BROKEN = 6
+EXPECTED_SHIM_REQUIRED = 2
 
 COMPAT_SHIM_SOURCE = Path(dnallm.__file__).parent / "utils" / "transformers_compat.py"
 
@@ -467,6 +468,15 @@ def test_compat_census_artifact_matches_registry() -> None:
     by_repo = {record["repo"]: record for record in records}
     pretrained = [e for e in registry.all_entries() if e.kind == "pretrained"]
     assert {e.model for e in pretrained} == set(by_repo), "registry/artifact roster drift"
+    # The independent mirror of scripts/census_compat.py SHIM_RESTORED_LOADS:
+    # the repos whose census-green load+forward passes ONLY through a compat
+    # rung (the artifact records the load but not which rung it needed).
+    # 27-03: PlantCaduceus_l32 (rung 13, tied-weights bookkeeping). 27.2-01:
+    # GENERanno (ROPE 'default' table entry, _patch_rope_default_init).
+    SHIM_RESTORED_MIRROR = {
+        "kuleshov-group/PlantCaduceus_l32",
+        "lgq12697/GENERanno-eukaryote-0.5b-base",
+    }
     mismatches = []
     for entry in pretrained:
         record = by_repo[entry.model]
@@ -477,7 +487,7 @@ def test_compat_census_artifact_matches_registry() -> None:
             expected = "census-blocked"
         elif skip:
             expected = "remote-code-broken"
-        elif green and record["repo"] == "kuleshov-group/PlantCaduceus_l32":
+        elif green and record["repo"] in SHIM_RESTORED_MIRROR:
             expected = "shim-required-tf5"
         elif green:
             expected = "verified-tf5"

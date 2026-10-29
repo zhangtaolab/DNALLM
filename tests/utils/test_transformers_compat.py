@@ -1356,6 +1356,8 @@ EXPECTED_PATCH_INSTALLERS = frozenset({
     # 27-02 census-driven rungs (tests/models/compat_census.json evidence)
     "_patch_apply_chunking_to_forward",
     "_patch_tied_weights_bookkeeping_on_load",
+    # 27.2-01 census-measured rung: GENERanno ROPE 'default' table entry
+    "_patch_rope_default_init",
 })
 
 

@@ -70,9 +70,13 @@ BROKEN_LEADS = {
 }
 
 # The class map: distinctive evidence substrings (most-specific first) to
-# lead classes. Keys are grounded in the six committed evidence details;
-# check order matters only when one detail could match two keys.
+# lead classes. Keys are grounded in the committed evidence details; check
+# order matters only when one detail could match two keys. The
+# non-persistent-buffer needle (27.2-01, GENA-LM's corrected
+# construction-path cause) leads: a detail mentioning both it and the
+# superseded damaged-files key is a library change, never damaged files.
 BROKEN_LEAD_CLASSES = (
+    ("non-persistent token_type_ids", "library-change"),
     ("checkpoint data defect", "damaged-files"),
     ("forward-contract", "own-defect"),
     ("outside dnallm's dependency set", "external-package"),
