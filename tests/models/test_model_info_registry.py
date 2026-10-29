@@ -344,11 +344,12 @@ def test_spot_pinned_enrichment_values() -> None:
 # tests/models/compat_census.json (27-02).
 # ─────────────────────────────────────────────────────────────────────────────
 
-# The five-value verdict vocabulary (mirrors RegistryEntry's Literal).
+# The six-value verdict vocabulary (mirrors RegistryEntry's Literal).
 TF_COMPAT_VOCABULARY = {
     "verified-tf5",
     "import-verified-tf5",
     "shim-required-tf5",
+    "extra-required-tf5",
     "remote-code-broken",
     "census-blocked",
 }
@@ -357,12 +358,37 @@ TF_COMPAT_VOCABULARY = {
 # (green family-representative loads), 21 import-verified (siblings), 5
 # shim-required (PlantCaduceus_l32 via rung 13; GENERanno via the 27.2-01 ROPE
 # 'default' rung; GENA-LM and MutBERT via the 27.2-01/02 load-boundary
-# repairs; DNABERT-2 via the 27.2-02 pre-construction installer), 4
-# remote-code-broken (GPN and Omni-DNA external packages, GENA-LM-BigBird
-# deepspeed, CrossDNA's measured flash-attn requirement -- all authored
-# skips), 0 census-blocked (CrossDNA re-measured to a real verdict, 27.2-03).
-EXPECTED_REMOTE_CODE_BROKEN = 4
+# repairs; DNABERT-2 via the 27.2-02 pre-construction installer), 1
+# extra-required (CrossDNA via the curated flash-attn extra, 28-02 owner
+# ruling A), 3 remote-code-broken (GPN and Omni-DNA external packages plus
+# GENA-LM-BigBird, whose deepspeed extra greens the load but whose forward
+# is blocked by the upstream-dead triton superblock API - owner ruling A
+# keeps the committed skip disposition with the split named in evidence), 0
+# census-blocked.
+EXPECTED_REMOTE_CODE_BROKEN = 3
+EXPECTED_EXTRA_REQUIRED = 1
 EXPECTED_SHIM_REQUIRED = 5
+
+# 28-02 owner ruling A pins: exactly CrossDNA flips to extra-required-tf5;
+# BigBird keeps remote-code-broken with the load-green/forward-red split
+# named in its evidence; GPN and Omni-DNA stay unchanged broken rows.
+EXTRA_REQUIRED_ROWS = {
+    "chengCCC/CrossDNA_pretrain": (
+        "hf chengCCC/CrossDNA_pretrain@cd118dc45eaa0f2debb05f03ed0290fe56a78ab1; "
+        "load+forward verified via the flash-attn extra (flash-attn 2.8.3.post2)"
+    ),
+}
+BROKEN_EVIDENCE_PINS = {
+    "AIRI-Institute/gena-lm-bigbird-base-sparse": (
+        "load works with the deepspeed extra but forward is blocked by an "
+        "upstream-dead Triton API",
+        "deepspeed 0.19.6",
+        "_patch_apply_chunking_to_forward",
+        "outside dnallm's default dependency set",
+    ),
+    "songlab/gpn-brassicales": "ConvNetForMaskedLM was removed from transformers 5.x",
+    "zehui127/Omni-DNA-116M": "remote configuration_olmo.py line 8 imports olmo.config.ModelConfig",
+}
 
 COMPAT_SHIM_SOURCE = Path(dnallm.__file__).parent / "utils" / "transformers_compat.py"
 # The one handler-owned repair (D-05 locks DNABERT-2's fix in the special
@@ -410,6 +436,41 @@ def test_remote_code_broken_evidence_names_failing_import() -> None:
         assert "transformers" in detail or re.search(r"\w+\.\w+", detail), (
             f"{repo}: evidence detail names no transformers symbol or dotted path: {detail!r}"
         )
+
+
+def test_extra_required_evidence_pins_the_measured_extra_verdicts() -> None:
+    """28-02 owner ruling A: exactly CrossDNA carries extra-required-tf5.
+
+    The pinned evidence string is the full writer-produced triple text: the
+    measured hub/repo@revision stamp plus the flash-attn enabler naming the
+    curated extra and its pinned version.
+    """
+    extra_rows = [e for e in _pretrained() if e.get("tf_compat_status") == "extra-required-tf5"]
+    assert len(extra_rows) == EXPECTED_EXTRA_REQUIRED
+    by_repo = {entry["model"]: entry for entry in extra_rows}
+    assert set(by_repo) == set(EXTRA_REQUIRED_ROWS), sorted(by_repo)
+    for repo, expected_evidence in EXTRA_REQUIRED_ROWS.items():
+        assert by_repo[repo]["tf_compat_evidence"] == expected_evidence, repo
+
+
+def test_broken_evidence_pins_unchanged_under_ruling_a() -> None:
+    """BigBird keeps remote-code-broken with the split named; GPN/Omni-DNA unchanged.
+
+    Owner ruling A (2026-10-29): BigBird's committed skip disposition stays;
+    its evidence names the load-green/forward-red split honestly (deepspeed
+    extra greens the load; the triton superblock API is upstream-dead), and
+    the _patch_apply_chunking_to_forward rung mention survives. GPN and
+    Omni-DNA keep their 27.2 evidence substrings verbatim.
+    """
+    by_repo = {entry["model"]: entry for entry in _pretrained()}
+    for repo, needles in BROKEN_EVIDENCE_PINS.items():
+        entry = by_repo[repo]
+        assert entry["tf_compat_status"] == "remote-code-broken", repo
+        evidence = entry["tf_compat_evidence"]
+        if isinstance(needles, str):
+            needles = (needles,)
+        for needle in needles:
+            assert needle in evidence, f"{repo}: evidence lost {needle!r}"
 
 
 def test_shim_required_evidence_names_rung() -> None:
@@ -487,11 +548,16 @@ def test_compat_census_artifact_matches_registry() -> None:
     consistency-checker independence: the gate must not share the writer's
     mapping code in scripts/census_compat.py, so a writer bug cannot
     self-approve). Reads the frozen artifact and the TYPED registry — never a
-    second yaml parse. The fact both sides must encode is the repair
+    second yaml parse. The facts both sides must encode are the repair
     dependency of the five shim-restored green loads (the artifact records
-    the load but not which repair it needed; SHIM_RESTORED_MIRROR above).
-    An absent or unparseable artifact is a test failure, never a skip
-    (audit_skips posture).
+    the load but not which repair it needed; SHIM_RESTORED_MIRROR above) and
+    the 28-02 extra-before-skip-and-green branch order: a disposition.extra
+    judgment wins over a skip, over a green load (an extras-green record can
+    never publish a false works-as-is claim), and over the family-rep
+    inference, so both the extras-green seed and a future default-env
+    failure shape map to the same extra-required-tf5 verdict. An absent or
+    unparseable artifact is a test failure, never a skip (audit_skips
+    posture).
     """
     from dnallm.models import registry
 
@@ -510,9 +576,13 @@ def test_compat_census_artifact_matches_registry() -> None:
         record = by_repo[entry.model]
         load = record.get("load") if isinstance(record.get("load"), dict) else {}
         green = load.get("ok") is True and load.get("forward_ok") is True
-        skip = isinstance(record.get("disposition"), dict) and record["disposition"].get("skip")
+        disposition = record.get("disposition") if isinstance(record.get("disposition"), dict) else {}
+        skip = bool(disposition.get("skip"))
+        extra = bool(disposition.get("extra"))
         if record["status"] == "census-blocked":
             expected = "census-blocked"
+        elif extra:
+            expected = "extra-required-tf5"
         elif skip:
             expected = "remote-code-broken"
         elif green and record["repo"] in SHIM_RESTORED_MIRROR:

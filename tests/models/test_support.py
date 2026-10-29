@@ -3,9 +3,9 @@
 One registry-derived word per entry: the docs generator, the TUI listing,
 and the MCP listing must show the same support vocabulary, with finetuned
 entries inheriting their base model's status and exact external-package
-overrides for the three repos whose need a status word cannot express.
+overrides for the four repos whose need a status word cannot express.
 Branch-complete: every status, every override, actual and synthetic base
-inheritance, missing bases, cycles, unknown values, and the three verbatim
+inheritance, missing bases, cycles, unknown values, and the four verbatim
 generated-page strings.
 
 Every ``support`` attribute is accessed inside a test body, never at module
@@ -28,22 +28,30 @@ EXPECTED_SUPPORT_WORDS = {
     "verified-tf5": "works",
     "import-verified-tf5": "family-tested",
     "shim-required-tf5": "works with built-in fixes",
+    # 28-02 D-01/D-14: a model measured green only after installing a curated
+    # optional extra (owner ruling A: CrossDNA is the one committed row).
+    "extra-required-tf5": "works with an optional extra",
     "remote-code-broken": "not working with transformers 5",
     "census-blocked": "untested",
 }
 
+# 28-02 ruling A note: BigBird KEEPS "needs deepspeed" (its forward is
+# measured structurally dead even with the extra - a "works with the
+# deepspeed extra" word would overclaim); CrossDNA gains its exact word.
 EXPECTED_OVERRIDES = {
     "songlab/gpn-brassicales": "needs pip install gpn",
     "zehui127/Omni-DNA-116M": "needs pip install ai2-olmo",
     "AIRI-Institute/gena-lm-bigbird-base-sparse": "needs deepspeed",
+    "chengCCC/CrossDNA_pretrain": "works with the flash-attn extra",
 }
 
-# The three generated-page strings the census generator already emits; the
-# shared module must preserve them verbatim (byte-identical regeneration).
+# The four generated-page strings the census generator emits; the shared
+# module must preserve them verbatim (byte-identical regeneration).
 EXPECTED_DOCS_CELLS = {
     "verified-tf5": "Tested working",
     "import-verified-tf5": "Tested loading its code; full run inferred from the family model",
     "shim-required-tf5": "Works with DNALLM's built-in compatibility fixes (tested)",
+    "extra-required-tf5": "Works after installing an optional extra (tested)",
 }
 
 EXPECTED_UNTESTED = "untested"
@@ -94,12 +102,12 @@ class TestSupportWords:
         )
         assert support.support_word(entry) == EXPECTED_UNTESTED
 
-    def test_vocabulary_covers_exactly_the_five_census_statuses(self) -> None:
+    def test_vocabulary_covers_exactly_the_six_census_statuses(self) -> None:
         assert set(support.SUPPORT_WORDS) == set(EXPECTED_SUPPORT_WORDS)
 
 
 class TestRepoOverrides:
-    """The three external-package repos show their exact need, not a status word."""
+    """The four external-package repos show their exact need, not a status word."""
 
     @pytest.mark.parametrize(
         ("repo", "word"),
@@ -115,7 +123,7 @@ class TestRepoOverrides:
         assert support.support_word(entry) == "needs pip install gpn"
 
     def test_real_registry_override_rows_word_correctly(self) -> None:
-        """Over the committed registry: all three override repos resolve by name."""
+        """Over the committed registry: all four override repos resolve by name."""
         for repo, word in EXPECTED_OVERRIDES.items():
             assert support.support_word(registry.resolve(repo)) == word, repo
 
@@ -179,7 +187,7 @@ class TestBaseInheritance:
 class TestDocsStatusCells:
     """The generated-page strings live here verbatim, shared with the generator."""
 
-    def test_three_cells_verbatim(self) -> None:
+    def test_four_cells_verbatim(self) -> None:
         assert support.DOCS_STATUS_CELLS == EXPECTED_DOCS_CELLS
 
     def test_docs_cells_subset_of_status_vocabulary(self) -> None:

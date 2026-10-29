@@ -750,13 +750,14 @@ def test_registry_task_types_are_loadable_and_structurally_consistent() -> None:
 # 27-03 census compatibility fields (tf_compat_*) on RegistryEntry
 # ─────────────────────────────────────────────────────────────────────────────
 
-# The five-value census verdict vocabulary (Phase 27 D-07; the committed data
-# arrives in Task 2's write-back — these loader-side tests pin the schema shape
-# against synthetic constructions and the as-yet-uncensused packaged data).
+# The six-value census verdict vocabulary (Phase 27 D-07 + 28-02 extra-required;
+# these loader-side tests pin the schema shape against synthetic
+# constructions and the committed packaged data).
 TF_COMPAT_VOCABULARY = {
     "verified-tf5",
     "import-verified-tf5",
     "shim-required-tf5",
+    "extra-required-tf5",
     "remote-code-broken",
     "census-blocked",
 }
@@ -790,7 +791,7 @@ def test_registry_entry_accepts_all_tf_compat_statuses() -> None:
 
 
 def test_registry_entry_rejects_status_outside_vocabulary() -> None:
-    """A tf_compat_status outside the five-value Literal raises ValidationError."""
+    """A tf_compat_status outside the six-value Literal raises ValidationError."""
     with pytest.raises(ValidationError):
         registry.RegistryEntry.model_validate(
             _compat_entry_payload(

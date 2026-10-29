@@ -37,12 +37,13 @@ FOOTNOTE_INFERENCE = (
 # carry (Pitfall 8): the transformers 4 side is inferred, not tested.
 FORBIDDEN_CLAIM = "compatible with transformers 4 and 5"
 
-# The five pinned "What we found" wordings that need no evidence-derived
+# The six pinned "What we found" wordings that need no evidence-derived
 # continuation; broken/blocked cells append their derived cause/reason.
 STATUS_CELLS = {
     "verified-tf5": "Tested working",
     "import-verified-tf5": "Tested loading its code; full run inferred from the family model",
     "shim-required-tf5": "Works with DNALLM's built-in compatibility fixes (tested)",
+    "extra-required-tf5": "Works after installing an optional extra (tested)",
 }
 
 # Plain-language leads for the remote-code-broken family (G-27-2, the
@@ -74,9 +75,15 @@ BROKEN_LEADS = {
 # order matters only when one detail could match two keys. The
 # non-persistent-buffer needle (27.2-01, GENA-LM's corrected
 # construction-path cause) leads: a detail mentioning both it and the
-# superseded damaged-files key is a library change, never damaged files.
+# superseded damaged-files key is a library change, never damaged files. The
+# upstream-dead-Triton needle (28-02 owner ruling A, GENA-LM-BigBird's
+# corrected residual cause: the deepspeed extra greens the load, the forward
+# blocker is the removed triton superblock API - not an external-package
+# gap, which installing something would fix) sits in the same
+# most-specific-first region.
 BROKEN_LEAD_CLASSES = (
     ("non-persistent token_type_ids", "library-change"),
+    ("upstream-dead Triton API", "library-change"),
     ("checkpoint data defect", "damaged-files"),
     ("forward-contract", "own-defect"),
     ("outside dnallm's dependency set", "external-package"),
@@ -318,11 +325,11 @@ class TestPageContract:
 
         A stale or hand-edited count survives every per-row check, so the
         whole sentence is re-derived here: ``Counter`` over
-        ``entry.tf_compat_status`` supplies all six numbers, and the exact
-        prose (including the family-inference parenthetical and the final
-        period) must occur in the committed page. The generator's template is
-        never imported or called (checker independence), and no current count
-        is hardcoded.
+        ``entry.tf_compat_status`` supplies all seven numbers (total plus
+        the six category counts), and the exact prose (including the
+        family-inference parenthetical and the final period) must occur in
+        the committed page. The generator's template is never imported or
+        called (checker independence), and no current count is hardcoded.
         """
         pretrained = _pretrained()
         counts = Counter(entry.tf_compat_status for entry in pretrained)
@@ -332,6 +339,7 @@ class TestPageContract:
             f"{counts['import-verified-tf5']} with their program code loading verified "
             "(the full run is expected to match a tested close relative in the same model family), "
             f"{counts['shim-required-tf5']} working through DNALLM's built-in compatibility fixes, "
+            f"{counts['extra-required-tf5']} working after installing an optional extra, "
             f"{counts['remote-code-broken']} not working with the new version, and "
             f"{counts['census-blocked']} that could not be checked."
         )

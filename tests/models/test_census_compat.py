@@ -788,6 +788,35 @@ class TestDispositionCarryForward:
         merged = census.merge_records([existing], [fresh], ["org/repo"])
         assert merged[0]["disposition"] == existing["disposition"]
 
+    def test_unchanged_verdict_carries_an_extra_disposition(self) -> None:
+        # 28-02 D-02: the extra judgment describes an extras-green measured
+        # record; an unchanged verdict carries it exactly like a skip.
+        existing = _family_record("org/repo", status="import-ok")
+        existing["load"] = {"ok": True, "error": None, "forward_ok": True}
+        existing["disposition"] = {"extra": "load+forward verified via the flash-attn extra"}
+        fresh = _family_record("org/repo", status="import-ok")
+        fresh["load"] = {"ok": True, "error": None, "forward_ok": True}
+        merged = census.merge_records([existing], [fresh], ["org/repo"])
+        assert merged[0]["disposition"] == existing["disposition"]
+
+    def test_extra_disposition_survives_a_default_env_reprobe(self) -> None:
+        # The default census lane re-probes WITHOUT the extra installed: the
+        # fresh load fails, the verdict stays import-ok, and the carried extra
+        # disposition keeps the row mapped to extra-required-tf5 (the
+        # green-drop rule drops only skip judgments, never extra).
+        existing = _family_record("org/repo", status="import-ok")
+        existing["load"] = {"ok": True, "error": None, "forward_ok": True}
+        existing["disposition"] = {"extra": "load+forward verified via the flash-attn extra"}
+        fresh = _family_record("org/repo", status="import-ok")
+        fresh["load"] = {
+            "ok": False,
+            "error": "ImportError: Please install Flash Attention",
+            "forward_ok": False,
+        }
+        merged = census.merge_records([existing], [fresh], ["org/repo"])
+        assert merged[0]["load"] == fresh["load"]  # fresh default-env evidence wins
+        assert merged[0]["disposition"] == existing["disposition"]
+
     def test_unchanged_failing_record_keeps_its_skip_disposition(self) -> None:
         # The discriminator's negative arm: green drops the skip, an unchanged
         # still-failing record keeps it (the judgment still describes it).
@@ -1239,8 +1268,12 @@ class TestDispositionCompleteness:
     failed load or forward. Each must carry a ``disposition`` object with
     exactly one of ``fix`` (a ``_patch_*`` rung name that must exist in
     ``dnallm/utils/transformers_compat.py``, or a descriptive tool-fix
-    string) or ``skip`` (a concrete structural reason longer than a bare
-    word). Records with no failure signal carry no disposition key at all.
+    string), ``skip`` (a concrete structural reason longer than a bare
+    word), or ``extra`` (28-02: the curated-extra judgment naming the extra
+    that made a measured load+forward green - valid on both a failed default
+    load and a green extras load). Records with no failure signal carry no
+    disposition key at all, except the one judgment that describes a green
+    record: an extras-green row keeps its ``extra`` disposition.
     """
 
     ARTIFACT = REPO_ROOT / "tests" / "models" / "compat_census.json"
@@ -1283,7 +1316,7 @@ class TestDispositionCompleteness:
             disposition = record.get("disposition")
             assert isinstance(disposition, dict), f"{repo}: disposition must be an object"
             keys = set(disposition)
-            assert keys <= {"fix", "skip"}, f"{repo}: unknown disposition keys {keys}"
+            assert keys <= {"fix", "skip", "extra"}, f"{repo}: unknown disposition keys {keys}"
             assert len(keys) == 1, f"{repo}: exactly one disposition key, got {keys}"
             if "fix" in disposition:
                 value = disposition["fix"]
@@ -1293,17 +1326,30 @@ class TestDispositionCompleteness:
                     assert f"def {value}(" in shim_source, (
                         f"{repo}: fix rung {value} does not exist in transformers_compat.py"
                     )
+            elif "extra" in disposition:
+                value = disposition["extra"]
+                assert isinstance(value, str), f"{repo}: extra value must be a string"
+                assert len(value.strip()) > 10, f"{repo}: placeholder extra value {value!r}"
             else:
                 reason = disposition["skip"]
                 assert isinstance(reason, str), f"{repo}: skip reason must be a string"
                 assert len(reason.strip()) > 10, f"{repo}: placeholder skip reason {reason!r}"
 
-    def test_passing_records_carry_no_disposition_key(self) -> None:
+    def test_passing_records_carry_at_most_an_extra_disposition(self) -> None:
+        # A green record carries either no judgment at all or exactly the
+        # extra judgment that names the curated extra behind its green run
+        # (the 28-02 CrossDNA seed). A skip/fix on a green record is a stale
+        # judgment shape this gate must catch.
         for record in self._entries():
             if not self._is_failure_record(record):
-                assert "disposition" not in record, (
-                    f"{record['repo']}: passing records must not carry a disposition"
+                disposition = record.get("disposition")
+                if disposition is None:
+                    continue
+                assert set(disposition) == {"extra"}, (
+                    f"{record['repo']}: a passing record may carry only the extra "
+                    f"judgment, got {disposition!r}"
                 )
+                assert isinstance(disposition["extra"], str) and disposition["extra"].strip()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1434,6 +1480,69 @@ class TestCompatVerdictMapping:
         status, evidence = census.compat_verdict(record, self.REPS)
         assert status == "shim-required-tf5"
         assert "_install_dnabert2_tf5_shims" in evidence
+
+    def test_extra_disposition_with_green_load_maps_to_extra_required(self) -> None:
+        # 28-02 D-01/D-03: the extras-green seed (CrossDNA shape). The extra
+        # judgment must win over the green load: an extras-green record can
+        # never publish a false verified-tf5 "works as-is" claim.
+        record = _verdict_record({
+            "repo": "chengCCC/CrossDNA_pretrain",
+            "name": "CrossDNA",
+            "hub": "hf",
+            "revision": "cd118dc45eaa0f2debb05f03ed0290fe56a78ab1",
+            "family": "CrossDNAForMaskedLM",
+            "disposition": {
+                "extra": "load+forward verified via the flash-attn extra (flash-attn 2.8.3.post2)"
+            },
+        })
+        status, evidence = census.compat_verdict(record, self.REPS)
+        assert status == "extra-required-tf5"
+        assert evidence == (
+            "hf chengCCC/CrossDNA_pretrain@cd118dc45eaa0f2debb05f03ed0290fe56a78ab1; "
+            "load+forward verified via the flash-attn extra (flash-attn 2.8.3.post2)"
+        )
+
+    def test_extra_disposition_with_failed_load_maps_to_extra_required(self) -> None:
+        # 28-02 D-02: the symmetric default-install shape. The default census
+        # measures a FAILED load (no flash-attn installed); the carried extra
+        # disposition still maps the row to extra-required-tf5 - one branch,
+        # both environments, never an unclassifiable ValueError.
+        record = _verdict_record({
+            "repo": "chengCCC/CrossDNA_pretrain",
+            "hub": "hf",
+            "revision": "cd118dc45eaa0f2debb05f03ed0290fe56a78ab1",
+            "load": {
+                "ok": False,
+                "error": "ImportError: Please install Flash Attention",
+                "forward_ok": False,
+                "output_shape": None,
+                "device": "cuda",
+                "duration_s": 2.4,
+            },
+            "disposition": {
+                "extra": "load+forward verified via the flash-attn extra (flash-attn 2.8.3.post2)"
+            },
+        })
+        status, _evidence = census.compat_verdict(record, self.REPS)
+        assert status == "extra-required-tf5"
+
+    def test_extra_disposition_wins_over_skip(self) -> None:
+        # The branch sits immediately before skip on purpose: a record whose
+        # judgment was replaced by the extra shape must never fall back to a
+        # superseded skip and re-publish remote-code-broken.
+        record = _verdict_record({
+            "disposition": {"skip": "superseded skip judgment", "extra": "the extra judgment"},
+        })
+        status, evidence = census.compat_verdict(record, self.REPS)
+        assert status == "extra-required-tf5"
+        assert "the extra judgment" in evidence
+
+    def test_empty_extra_string_falls_through_fail_closed(self) -> None:
+        # An empty extra string is not a judgment: the record falls through to
+        # the fail-closed unclassifiable ValueError like any other shape.
+        record = _verdict_record({"load": None, "disposition": {"extra": ""}})
+        with pytest.raises(ValueError, match=r"cannot map"):
+            census.compat_verdict(record, self.REPS)
 
     def test_census_blocked_maps_to_census_blocked_with_reason(self) -> None:
         record = _verdict_record({
