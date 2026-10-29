@@ -92,7 +92,7 @@ Plans:
 **Goal:** Make the two fixable external-package models installable via curated optional extras, following the mamba-extra precedent: `.[deepspeed]` for GENA-LM-BigBird and a flash-attn extra for CrossDNA (uv index pinning / sha256-pinned installer as needed), with CI lanes covering the extras. Dispositions flip only on a measured green probe in an extras-equipped environment (census discipline); GPN/Omni-DNA stay version-locked guidance cases. Support words, docs (optional_dependencies.md, model_compatibility.md), and handler error messages update to name the extras.
 **Requirements**: TBD (owner decision 2026-10-29: option 1 chosen — extras over isolated-venv recipe or status quo)
 **Depends on:** Phase 27.2
-**Plans:** 2/5 plans executed
+**Plans:** 3/5 plans executed
 
 Plans:
 **Wave 1**
@@ -100,7 +100,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion; plans 02, 03, and 05 are file-disjoint)*
 - [x] 28-02-PLAN.md — Missing-extra interception, symmetric extra-required status seed, measured registry flips, support words, and generated docs (D-01..D-04, D-14, D-15, D-17)
-- [ ] 28-03-PLAN.md — Optional-dependency guide rewrite and PlantHelixSeek notebook/base-install migration (D-09, D-14, D-16)
+- [x] 28-03-PLAN.md — Optional-dependency guide rewrite and PlantHelixSeek notebook/base-install migration (D-09, D-14, D-16)
 - [ ] 28-05-PLAN.md — README, installation, troubleshooting, and Windows base-fla documentation migration (D-09, D-13)
 
 **Wave 3** *(blocked on Plans 01 and 02)*

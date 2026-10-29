@@ -4,11 +4,11 @@ milestone: v1.4
 current_phase: 28
 current_phase_name: "Optional extras: deepspeed & flash-attn model support"
 status: executing
-stopped_at: Completed 28-02-PLAN.md
-last_updated: "2026-10-29T16:08:42.737Z"
+stopped_at: Completed 28-03-PLAN.md
+last_updated: "2026-10-29T16:24:34.468Z"
 last_activity: 2026-10-29
 last_activity_desc: Phase 28 execution started
-state_head: 3997652810ebcda44c3d55f31104ee7e1d072814
+state_head: cfc465a1095c91a7003acfcccc7c45eea5230127
 progress:
   total_phases: 2
   completed_phases: 5
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-29)
 ## Current Position
 
 Phase: 28 (Optional extras: deepspeed & flash-attn model support) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-10-29 — Phase 28 execution started
 
@@ -73,6 +73,7 @@ Last activity: 2026-10-29 — Phase 28 execution started
 | Phase 27.2 P05 | 7 min | 3 tasks | 8 files |
 | Phase 28 P01 | 92min | 3 tasks | 5 files |
 | Phase 28 P02 | 16min | 2 tasks | 14 files |
+| Phase 28 P03 | 11min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -173,6 +174,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 28]: 28-02: owner ruling A executed - CrossDNA-only extra-required-tf5 flip (writer: exactly 2 replacements; 49 matched; distribution 19/21/5/1/3/0); BigBird keeps skip with split evidence naming deepspeed 0.19.6 + _patch_apply_chunking_to_forward + the load-green/forward-red split; docs lead reclassified library-change via new lockstep needle
 - [Phase 28]: 28-02: BigBird support word stays 'needs deepspeed' (plan-literal works-word withheld - forward measured structurally dead, would overclaim and break out-of-plan pins); CrossDNA gains 'works with the flash-attn extra'; TestDispositionCompleteness vocabulary grows to fix/skip/extra with green-record extra judgment allowed
 - [Phase 28]: 28-02: disposition.extra branch ordered before skip AND green so the extras-green seed and default-env failure shapes map to one extra-required-tf5 verdict; guidance-marker exception attribute (_dnallm_missing_extra_guidance) lets specific ImportErrors survive broad except-Exception wraps
+- [Phase 28]: 28-03: ruling A governs the static guide — BigBird keeps 'needs deepspeed' in legend/summary/table; the verify-required phrase 'works with the deepspeed extra' appears only inside the honest split sentence quoted from the generated page (load works with the deepspeed extra but forward is blocked by an upstream-dead Triton API)
+- [Phase 28]: 28-03: PlantHelixSeek guide section support word is 'works' (verified-tf5) — 'built-in' describes the dependency in the four-row summary only, never a new status vocabulary
+- [Phase 28]: 28-03: notebook fla retirement = one-line occurrence-asserted text swap per surface (guard hint '.[fla]' to '.[full]'/'[full,notebook]', md fences drop ',fla'), byte-preserving, no JSON round-trip; sync gate holds the 24-pair baseline
 
 ### Pending Todos
 
@@ -230,8 +234,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-29T16:08:42.618Z
-Stopped at: Completed 28-02-PLAN.md
+Last session: 2026-10-29T16:24:34.364Z
+Stopped at: Completed 28-03-PLAN.md
 Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)
