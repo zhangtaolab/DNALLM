@@ -654,6 +654,23 @@ class TestGenaTokenTypeIdsRepair:
 
         assert repair(model) is False
 
+    def test_non_positive_type_vocab_size_is_untouched(self):
+        """A type_vocab_size of 0 (or negative) answers no valid range."""
+        repair = _rung("_repair_gena_token_type_ids")
+        model = _GenaShapedModel(type_vocab_size=0)
+
+        assert repair(model) is False
+
+    def test_unreadable_meta_buffer_is_untouched(self):
+        """A buffer the range comparison cannot evaluate (the meta tensor
+        seen PRE-materialization at the load boundary -- measured: reading a
+        meta value raises) reads as no-defect: never repair blind."""
+        repair = _rung("_repair_gena_token_type_ids")
+        model = _GenaShapedModel()
+        model.bert.embeddings.token_type_ids = torch.zeros((1, 4), dtype=torch.long, device="meta")
+
+        assert repair(model) is False
+
     def test_second_repair_call_is_a_no_op(self):
         """After the first repair the buffer is healthy: a repeat call (e.g.
         a second load through the same process) changes nothing."""
@@ -767,6 +784,23 @@ class TestGenaTokenTypeIdsOnLoad:
         patch()
 
         assert getattr(_BareClass, "_dnallm_remote_defects_patch", False) is False
+
+    def test_noop_when_finalize_only_inherited(self, monkeypatch):
+        """A class resolving ``_finalize_model_loading`` only through
+        inheritance (nothing in its own ``__dict__``) is left untouched --
+        the wrapper never re-wraps a binding it cannot capture."""
+        _rung("_install_remote_defects_on_load")
+
+        class _InheritingBase:
+            _finalize_model_loading = staticmethod(lambda *a: a)
+
+        class _InheritingChild(_InheritingBase):
+            pass
+
+        monkeypatch.setattr(transformers.modeling_utils, "PreTrainedModel", _InheritingChild)
+
+        assert transformers_compat._install_remote_defects_on_load() is None
+        assert getattr(_InheritingChild, "_dnallm_remote_defects_patch", False) is False
 
 
 # ─────────────────────────────────────────────────────────────────────────────
