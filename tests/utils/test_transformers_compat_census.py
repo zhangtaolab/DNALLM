@@ -804,6 +804,263 @@ class TestGenaTokenTypeIdsOnLoad:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Rung 6 (27.2-02 Task 1, D-07/D-08): MutBERT two-dimensional input forward repair
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class _MutbertEmbeddings(torch.nn.Module):
+    """RoPEBertEmbeddings shape: the word_embeddings the wrapper delegates to."""
+
+    def __init__(self, vocab_size: int = 8, hidden_size: int = 4):
+        super().__init__()
+        self.word_embeddings = torch.nn.Embedding(vocab_size, hidden_size)
+
+
+class _MarkerRoPEBertModel(torch.nn.Module):
+    """RoPEBertModel-shaped class whose forward source carries the defect marker.
+
+    Reproduces the measured author defect of JadenLong/MutBERT-Human-Ref
+    (modeling_mutbert.py line 808, the authors' own ``# modified`` line): the
+    input_ids branch computes ``input_shape = input_ids.size()[:-1]``, dropping
+    the sequence dimension, so ``batch_size, seq_length = input_shape`` raises
+    ValueError for every two-dimensional input. The inputs_embeds branch
+    computes the shape correctly.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.embeddings = _MutbertEmbeddings()
+
+    def forward(self, input_ids=None, attention_mask=None, token_type_ids=None, inputs_embeds=None):
+        if input_ids is not None:
+            input_shape = input_ids.size()[:-1]  # modified (the authors' defect)
+            batch_size, seq_length = input_shape  # ValueError on 2-D input
+            inputs_embeds = self.embeddings.word_embeddings(input_ids)
+        hidden = inputs_embeds * 2.0
+        return {"hidden": hidden, "attention_mask": attention_mask}
+
+
+class _PlainModel(torch.nn.Module):
+    """A module without the defect marker: must keep its original forward."""
+
+    def forward(self, input_ids=None, **kwargs):
+        return "plain"
+
+
+class _MutbertContainer(torch.nn.Module):
+    """Top-level container shaped like the loaded ``RoPEBertForMaskedLM``.
+
+    The defective ``RoPEBertModel`` is nested (the LM head's own forward is
+    correct and delegates to ``self.bert``), so the repair must find it
+    through ``model.modules()``.
+    """
+
+    def __init__(self, inner: torch.nn.Module):
+        super().__init__()
+        self.bert = inner
+
+
+class TestMutbertForwardRepair:
+    """Contract: marker-positive modules get exactly one guarded forward;
+    every other shape keeps its original behavior and identity (D-08)."""
+
+    def test_marker_positive_nested_module_is_wrapped_exactly_once(self):
+        """A two-dimensional-input defective module found through
+        model.modules() receives the guarded forward once; a repeated repair
+        call (e.g. a second load through the same process) is a no-op."""
+        repair = _rung("_repair_mutbert_forward")
+        model = _MutbertContainer(_MarkerRoPEBertModel())
+
+        assert repair(model) is True
+        wrapped = model.bert.forward
+        assert getattr(model.bert, "_dnallm_mutbert_forward_guard", False) is True
+
+        assert repair(model) is False, "a repeat repair must not double-wrap"
+        assert model.bert.forward is wrapped, "the first wrapper must be preserved"
+
+    def test_two_dimensional_input_routes_through_inputs_embeds(self):
+        """A 2-D input_ids call with no inputs_embeds computes
+        self.embeddings.word_embeddings(input_ids), delegates with
+        input_ids=None, and the forward runs instead of raising."""
+        repair = _rung("_repair_mutbert_forward")
+        model = _MutbertContainer(_MarkerRoPEBertModel())
+        repair(model)
+
+        input_ids = torch.tensor([[1, 2, 3]])
+        output = model.bert(input_ids)
+
+        expected = model.bert.embeddings.word_embeddings(input_ids) * 2.0
+        assert torch.equal(output["hidden"], expected)
+
+    def test_unrepaired_marker_module_keeps_the_defective_behavior(self):
+        """Control: without the repair the same 2-D call raises the measured
+        ValueError (the wrapper is what fixes it, not the fixture)."""
+        model = _MutbertContainer(_MarkerRoPEBertModel())
+
+        with pytest.raises(ValueError, match="not enough values to unpack"):
+            model.bert(torch.tensor([[1, 2, 3]]))
+
+    def test_other_keyword_arguments_are_preserved(self):
+        """Every other keyword argument reaches the original forward unchanged."""
+        repair = _rung("_repair_mutbert_forward")
+        model = _MutbertContainer(_MarkerRoPEBertModel())
+        repair(model)
+
+        attention_mask = torch.ones(1, 3)
+        output = model.bert(torch.tensor([[1, 2, 3]]), attention_mask=attention_mask)
+
+        assert output["attention_mask"] is attention_mask
+
+    def test_one_dimensional_input_keeps_original_behavior(self):
+        """A 1-D input_ids is not intercepted: the original branch (and its
+        unpack error) runs exactly as before."""
+        repair = _rung("_repair_mutbert_forward")
+        model = _MutbertContainer(_MarkerRoPEBertModel())
+        repair(model)
+
+        with pytest.raises(ValueError, match="not enough values to unpack"):
+            model.bert(torch.tensor([1, 2, 3]))
+
+    def test_explicit_inputs_embeds_keeps_original_behavior(self):
+        """An explicit inputs_embeds is never overridden -- with input_ids
+        absent the original branch runs, and with both given the original's
+        own conflict handling runs (the fixture: the input_ids branch)."""
+        repair = _rung("_repair_mutbert_forward")
+        model = _MutbertContainer(_MarkerRoPEBertModel())
+        repair(model)
+
+        embeds = torch.zeros(1, 3, 4)
+        output = model.bert(inputs_embeds=embeds)
+        assert torch.equal(output["hidden"], embeds * 2.0)
+
+        with pytest.raises(ValueError, match="not enough values to unpack"):
+            model.bert(torch.tensor([[1, 2, 3]]), inputs_embeds=embeds)
+
+    def test_class_without_the_marker_is_untouched(self):
+        """A module whose forward source lacks the marker keeps its original
+        forward object and identity."""
+        repair = _rung("_repair_mutbert_forward")
+        model = _MutbertContainer(_PlainModel())
+
+        assert repair(model) is False
+        assert "forward" not in vars(model.bert), "no instance forward may be installed"
+        assert getattr(model.bert, "_dnallm_mutbert_forward_guard", False) is False
+        assert model.bert(torch.tensor([1])) == "plain"
+
+    def test_unreadable_exec_defined_source_is_untouched(self):
+        """A forward defined by exec (no source file -- inspect.getsource
+        raises OSError) reads as no-defect: never repair blind (Pitfall 5)."""
+        repair = _rung("_repair_mutbert_forward")
+        namespace: dict = {}
+        exec(  # noqa: S102 - deliberate source-less function for the OSError arm
+            "def forward(self, input_ids=None):\n    return input_ids\n", namespace
+        )
+        exec_cls = type("_ExecDefined", (torch.nn.Module,), {"forward": namespace["forward"]})
+        model = _MutbertContainer(exec_cls())
+
+        assert repair(model) is False
+        assert getattr(model.bert, "_dnallm_mutbert_forward_guard", False) is False
+
+    def test_builtin_forward_source_is_untouched(self):
+        """A builtin forward (inspect.getsource raises TypeError) reads as
+        no-defect: never repair blind (Pitfall 5)."""
+        repair = _rung("_repair_mutbert_forward")
+        builtin_cls = type("_BuiltinForward", (torch.nn.Module,), {"forward": staticmethod(len)})
+        model = _MutbertContainer(builtin_cls())
+
+        assert repair(model) is False
+        assert getattr(model.bert, "_dnallm_mutbert_forward_guard", False) is False
+
+    def test_receiver_without_modules_walker_is_a_noop(self):
+        """A receiver without a modules() walker (any object may pass the load
+        boundary) is skipped, never a raise."""
+        repair = _rung("_repair_mutbert_forward")
+
+        assert repair(_FakeBookkeepingModel()) is False
+
+
+class TestMutbertForwardOnLoad:
+    """Contract: the MutBERT repair runs at the ``_finalize_model_loading``
+    boundary through the shared remote-defects wrapper, exactly like the
+    GENA-LM repair beside it."""
+
+    def test_rung_is_installed_on_the_live_class(self):
+        """apply_patches registered the repair and the shared wrapper."""
+        assert getattr(PreTrainedModel, "_dnallm_remote_defects_patch", False) is True
+        assert transformers_compat._repair_mutbert_forward in (
+            transformers_compat._REMOTE_DEFECT_REPAIRS
+        )
+
+    def test_wrapped_finalize_delegates_then_repairs_mutbert(self, monkeypatch):
+        """A MutBERT-shaped receiver passing the load boundary is repaired
+        AFTER the original finalize returns: a 2-D forward through the
+        model's own entry point then runs (the measured crash was at the
+        load probe's forward, not at load)."""
+        _rung("_patch_mutbert_forward_on_load")
+
+        monkeypatch.setattr(
+            transformers_compat,
+            "_remote_defects_original_finalize",
+            lambda *a, **k: "delegated",
+        )
+        model = _MutbertContainer(_MarkerRoPEBertModel())
+
+        result = PreTrainedModel._finalize_model_loading(model, None, None)
+
+        assert result == "delegated"
+        input_ids = torch.tensor([[1, 2, 3]])
+        output = model.bert(input_ids)
+        assert torch.equal(
+            output["hidden"], model.bert.embeddings.word_embeddings(input_ids) * 2.0
+        )
+
+    def test_healthy_receiver_passes_through_unmodified(self, monkeypatch):
+        """A receiver without any marker-positive module delegates unchanged."""
+        _rung("_patch_mutbert_forward_on_load")
+
+        monkeypatch.setattr(
+            transformers_compat,
+            "_remote_defects_original_finalize",
+            lambda *a, **k: "delegated",
+        )
+        probe = _FakeBookkeepingModel()
+
+        assert PreTrainedModel._finalize_model_loading(probe, None, None) == "delegated"
+
+    def test_repeat_installer_preserves_the_wrapper_and_repairs(self):
+        """A second rung call neither re-wraps the class nor duplicates the
+        registered repair (sentinel idempotency, no double-wrap)."""
+        patch = _rung("_patch_mutbert_forward_on_load")
+
+        wrapper_before = PreTrainedModel.__dict__["_finalize_model_loading"]
+        original_before = transformers_compat._remote_defects_original_finalize
+        repairs_before = list(transformers_compat._REMOTE_DEFECT_REPAIRS)
+
+        patch()
+
+        assert PreTrainedModel.__dict__["_finalize_model_loading"] is wrapper_before
+        assert transformers_compat._remote_defects_original_finalize is original_before
+        assert transformers_compat._REMOTE_DEFECT_REPAIRS == repairs_before
+        assert transformers_compat._REMOTE_DEFECT_REPAIRS.count(
+            transformers_compat._repair_mutbert_forward
+        ) == 1
+
+    def test_noop_when_finalize_model_loading_absent(self, monkeypatch):
+        """A transformers without ``_finalize_model_loading`` (4.x shape) is
+        left untouched."""
+        patch = _rung("_patch_mutbert_forward_on_load")
+
+        class _BareClass:
+            pass
+
+        monkeypatch.setattr(transformers.modeling_utils, "PreTrainedModel", _BareClass)
+
+        patch()
+
+        assert getattr(_BareClass, "_dnallm_remote_defects_patch", False) is False
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Closed-map discipline (prohibition T-27-04)
 # ─────────────────────────────────────────────────────────────────────────────
 

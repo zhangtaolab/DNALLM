@@ -1360,6 +1360,8 @@ EXPECTED_PATCH_INSTALLERS = frozenset({
     "_patch_rope_default_init",
     # 27.2-01 Task 2 author-defect repair: GENA-LM token_type_ids buffer
     "_patch_gena_token_type_ids_on_load",
+    # 27.2-02 Task 1 author-defect repair: MutBERT 2-D input forward
+    "_patch_mutbert_forward_on_load",
 })
 
 
