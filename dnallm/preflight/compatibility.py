@@ -41,6 +41,7 @@ from ..models.registry import (
     sort_key_lab_first,
     try_resolve,
 )
+from ..models.support import support_word
 from ..utils import get_logger
 from .report import (
     AvailabilityReasonCode,
@@ -564,7 +565,14 @@ def _intent_listing(task_type: str | None, intent: str) -> list[RegistryEntry]:
 
 
 def _build_listing(entries: list[RegistryEntry]) -> list[ListingEntry]:
-    """Turn registry entries into listing rows carrying task-head metadata."""
+    """Turn registry entries into listing rows carrying task-head metadata.
+
+    Each row also carries the shared plain-language support word (D-16),
+    derived through :func:`dnallm.models.support.support_word` — the single
+    vocabulary source the docs, TUI, and MCP listings all use. Finetuned
+    entries inherit their base model's word through that function; nothing
+    is re-implemented here.
+    """
     return [
         ListingEntry(
             model=entry.model,
@@ -573,6 +581,7 @@ def _build_listing(entries: list[RegistryEntry]) -> list[ListingEntry]:
             task_type=entry.task.task_type,
             num_labels=entry.task.num_labels,
             label_names=entry.task.label_names,
+            support=support_word(entry),
         )
         for entry in entries
     ]

@@ -333,6 +333,11 @@ class ListingEntry(BaseModel):
         label_names: Ordered label names when the entry ships a head.
         availability: Availability metadata (an :class:`AvailabilityReport`
             for shortlisted entries, else None) — consumed by 23-03.
+        support: Plain-language support word derived from the entry's
+            transformers-5 census verdict (D-16): whether the model works,
+            works through DNALLM's built-in fixes, needs an external package,
+            or is untested. Never a raw registry enum. Defaults to
+            ``"untested"`` so a directly constructed row stays valid.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -344,6 +349,7 @@ class ListingEntry(BaseModel):
     num_labels: int | None = Field(default=None, gt=0)
     label_names: list[str] | None = None
     availability: AvailabilityReport | None = None
+    support: str = Field(default="untested", min_length=1)
 
 
 class CompatibilityReport(BaseModel):
