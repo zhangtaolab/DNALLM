@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 13
+open_count: 15
 waived_count: 3
 fixed_count: 19
-total_count: 35
-last_updated: 2026-10-29T15:31:50.260Z
+total_count: 37
+last_updated: 2026-10-29T16:07:04.687Z
 ---
 
 # Broken Windows Ledger
@@ -50,6 +50,8 @@ last_updated: 2026-10-29T15:31:50.260Z
 | 33 | 27.2 | deviation | docs/user_guide/optional_dependencies.md |  | 27.2-04 Rule 3: the plan's verify command yaml.safe_load(nav) cannot parse mkdocs.yml's pre-existing !!python/name: emoji tags - the parse leg runs with yaml.UnsafeLoader (the loader mkdocs config requires); mkdocs build --strict is the independent structural check. | open |  | 2026-10-29T05:15:45.029Z |  |
 | 34 | 27.2 | deviation | docs/user_guide/optional_dependencies.md |  | 27.2-04 Rule 1: GENERanno guide section's meta-sentence ('you never claim the model works as-is') replaced with direct plain-language wording per the 2026-10-21 biologist-readable directive. | open |  | 2026-10-29T05:15:45.126Z |  |
 | 35 | 28 | unmet-truth | .scratch/p28-extras/compat.json |  | BigBird forward_ok=true unmet (28-01): deepspeed 0.19.6 sparse kernel needs triton libtriton.superblock (removed before triton 3.x; absent in 3.6.0 and 3.8.0) — load greens with the extra, forward structurally blocked; owner ruling pending for Plan 02 | open |  | 2026-10-29T15:31:50.260Z |  |
+| 36 | 28 | deviation | scripts/census_compat.py |  | Plan verify-3 command re-scoped under owner ruling A: BigBird asserts remote-code-broken with split evidence, not extra-required-tf5 (CrossDNA-only flip) | open |  | 2026-10-29T16:07:04.565Z |  |
+| 37 | 28 | deviation | dnallm/models/support.py |  | Plan-literal BigBird support word 'works with the deepspeed extra' withheld under owner ruling A: forward measured structurally dead, override stays 'needs deepspeed' | open |  | 2026-10-29T16:07:04.687Z |  |
 
 ````json
 [
@@ -505,6 +507,32 @@ last_updated: 2026-10-29T15:31:50.260Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-10-29T15:31:50.260Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
+  },
+  {
+    "id": 36,
+    "kind": "deviation",
+    "phase": "28",
+    "file": "scripts/census_compat.py",
+    "line": null,
+    "description": "Plan verify-3 command re-scoped under owner ruling A: BigBird asserts remote-code-broken with split evidence, not extra-required-tf5 (CrossDNA-only flip)",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-29T16:07:04.565Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
+  },
+  {
+    "id": 37,
+    "kind": "deviation",
+    "phase": "28",
+    "file": "dnallm/models/support.py",
+    "line": null,
+    "description": "Plan-literal BigBird support word 'works with the deepspeed extra' withheld under owner ruling A: forward measured structurally dead, override stays 'needs deepspeed'",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-29T16:07:04.687Z",
     "resolved_at": null,
     "milestone": "v1.4"
   }
