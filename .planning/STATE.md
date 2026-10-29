@@ -4,11 +4,11 @@ milestone: v1.4
 current_phase: "27.2"
 current_phase_name: "Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED)"
 status: executing
-stopped_at: Phase 27.2 context gathered
-last_updated: "2026-10-29T03:16:31.498Z"
+stopped_at: Completed 27.2-01-PLAN.md
+last_updated: "2026-10-29T04:03:14.129Z"
 last_activity: 2026-10-29
-last_activity_desc: Completed quick task 261029-c95 (GENERanno retarget + measured census verdict)
-state_head: dadd839db7da680da2919f55918187cae4e86e3f
+last_activity_desc: Phase 27.2 execution started
+state_head: e6f817475132eae63e0d0db05a8d96dca3c0bd8e
 progress:
   total_phases: 2
   completed_phases: 5
@@ -26,14 +26,14 @@ Total Phases: 2
 See: .planning/PROJECT.md (updated 2026-10-28)
 
 **Core value:** One terminal flow takes a user from their own data to a validated, model-compatible config, with the model registry as the runtime single source of truth (Track A first) — suite, coverage gate, and CI honest-green throughout.
-**Current focus:** Phase 27.2 — Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED). Phase 27.1 stays mid-flight: 27.1-03 halted (owner defer-dispatch), 27.1-04 executes post-merge.
+**Current focus:** Phase 27.2 — Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED)
 
 ## Current Position
 
-Phase: 27.2 (Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED)) — READY TO EXECUTE
-Plan: 0 of 0 (awaiting /gsd-plan-phase 27.2)
-Status: Phase 27.2 inserted — plan next; 27.1-04 remains the post-merge act
-Last activity: 2026-10-29 — Completed quick task 261029-c95: GENERanno retarget to lgq12697 0.5b with measured remote-code-broken verdict
+Phase: 27.2 (Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED)) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-10-29 — Phase 27.2 execution started
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Last activity: 2026-10-29 — Completed quick task 261029-c95: GENERanno retarge
 | Phase 27 P05 | 21 min | 3 tasks | 5 files |
 | Phase 27.1 P01 | 8 min | 3 tasks | 4 files |
 | Phase 27.1 P02 | 6 min | 2 tasks | 4 files |
+| Phase 27.2 P01 | 34 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 27.1]: 27.1-03: owner selected option-a (minimal byte-identical workflow registration commit) -- the direct push to main was rejected by branch protection (GH006: PR required, 1 approving review, 2 required checks, enforce_admins=true); the single-file commit d661998 is preserved on wip/27.1-03-census-registration, nothing pushed
 - [Phase 27.1]: 27.1-03: owner then chose defer-dispatch -- DISP-01 moves to the v1.4->main milestone merge (workflow lands naturally with the merge PR) plus exactly one post-merge 'gh workflow run census_compat.yml --ref v1.4' operator step; no main mutation and no dispatch now; plan summarized as halted
 - [Phase 27.1]: Preserved registration commit d661998 predates the CR-01 fix (76ea80f) and lacks the skip-branch GITHUB_PATH write — never use it as the registration source; the v1.4-to-main merge lands the correct workflow bytes. — Verifier evidence-accuracy check (27.1-VERIFICATION.md): byte-identity with origin/v1.4 no longer holds after the CR-01 fix.
+- [Phase 27.2]: 27.2-01: load-boundary author-defect repairs run POST-delegation - transformers 5's own _finalize_model_loading materializes non-persistent meta buffers (_move_missing_keys_from_meta_to_device inside it), so a pre-delegation repair sees an unreadable meta tensor and never fires; the shared wrapper hosts MutBERT in 27.2-02
+- [Phase 27.2]: 27.2-01: gena reset is torch.zeros(position_ids.size(), dtype=long) on the buffer's device, defect-detected (value outside [0, type_vocab_size)) per D-08 - never a version gate; SHIM_RESTORED_LOADS carries gena ahead of the committed flip while the independent registry mirror holds until 27.2-03
+- [Phase 27.2]: 27.2-01: registry writer is update-capable - changed canonical tf_compat triples are replaced in place (reverse position order, no duplication, non-canonical layouts fail closed) and merge_records drops a prior skip disposition on fresh green load+forward, so a green re-probe can never keep publishing remote-code-broken
 
 ### Pending Todos
 
@@ -198,9 +202,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-29T01:57:32.970Z
-Stopped at: Phase 27.2 context gathered
-Resume file: .planning/phases/27.2-transformers-5-compatibility-remediation-all-8-unsupported-p/27.2-CONTEXT.md
+Last session: 2026-10-29T04:03:00.721Z
+Stopped at: Completed 27.2-01-PLAN.md
+Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)
 
