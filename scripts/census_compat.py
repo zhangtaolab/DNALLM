@@ -971,6 +971,14 @@ def build_load_program(repo: str, hub: str, architectures: list, revision: str) 
         "            tensor = output.logits",
         "        elif hasattr(output, 'last_hidden_state'):",
         "            tensor = output.last_hidden_state",
+        # 27.2-01 Task 2: head-less ModelOutput shapes (gena-lm's
+        # BertForPreTrainingOutput: prediction_logits + relationship logits,
+        # no logits/last_hidden_state attribute) expose their tensors
+        # through to_tuple(); take the first tensor of the output object.
+        "        elif hasattr(output, 'to_tuple'):",
+        "            tensor = next(",
+        "                item for item in output.to_tuple() if isinstance(item, torch.Tensor)",
+        "            )",
         "        else:",
         "            tensor = output",
         "        result['output_shape'] = str(tuple(tensor.shape))",
@@ -1330,13 +1338,21 @@ TF_COMPAT_STATUSES = frozenset({
 # remote GenerannoRotaryEmbedding of lgq12697/GENERanno-eukaryote-0.5b-base
 # indexes ROPE_INIT_FUNCTIONS under 'default' (a key transformers 5.x
 # removed), and _patch_rope_default_init restores it (measured green
-# load+forward 2026-10-29). Entries whose import a rung restored but whose
-# load/forward still fails carry skip dispositions in the artifact and map to
-# remote-code-broken — the D-03 verdict (load + one real forward) is what the
-# registry consumes.
+# load+forward 2026-10-29); AIRI-Institute/gena-lm-bert-base's
+# non-persistent token_type_ids buffer is materialized with garbage by the
+# transformers-5 meta-device construction path, and
+# _patch_gena_token_type_ids_on_load resets it to constructor zeros (the
+# mapping lands ahead of the committed flip -- the interim re-probe evidence
+# is replica-grade in /tmp until plan 27.2-03's final measured write-back;
+# the committed artifact still carries gena's skip disposition, which
+# compat_verdict consults before this table). Entries whose import a rung
+# restored but whose load/forward still fails carry skip dispositions in the
+# artifact and map to remote-code-broken — the D-03 verdict (load + one real
+# forward) is what the registry consumes.
 SHIM_RESTORED_LOADS: dict[str, str] = {
     "kuleshov-group/PlantCaduceus_l32": "_patch_tied_weights_bookkeeping_on_load",
     "lgq12697/GENERanno-eukaryote-0.5b-base": "_patch_rope_default_init",
+    "AIRI-Institute/gena-lm-bert-base": "_patch_gena_token_type_ids_on_load",
 }
 
 # First line of the write-back provenance block; the block is appended at end

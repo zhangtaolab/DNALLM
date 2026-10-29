@@ -1578,6 +1578,39 @@ def _patch_apply_chunking_to_forward():
 # the ``_finalize_model_loading`` existence gate keep it a no-op on
 # transformers 4.x, where nothing reads the attribute.
 
+
+def _resolve_load_boundary_receiver(args: tuple, kwargs: dict, binds_class: bool) -> object | None:
+    """Resolve the model receiver of a ``_finalize_model_loading`` call.
+
+    Shared by the load-boundary rungs (tied-weights bookkeeping, remote
+    author-defect repairs). Callers may pass the model by keyword
+    (``model=``/``self=``) instead of positionally; a kwargs receiver always
+    wins -- when the wrapped original binds as a classmethod the wrapper
+    injects ``cls`` into ``args``, so positional-only resolution could select
+    the CLASS and apply model-instance repairs onto it (27.1 IN-04).
+    Positional resolution is the fallback (skipping a bound ``cls`` first
+    argument); no receiver at all returns None, and the caller must delegate
+    unchanged (never guess).
+
+    Args:
+        args: The wrapper's positional arguments.
+        kwargs: The wrapper's keyword arguments.
+        binds_class: True when the captured original's first parameter is
+            ``cls`` or ``self`` (its binding consumes the first positional).
+
+    Returns:
+        The resolved model receiver, or None when no plausible receiver
+        exists in the call.
+    """
+    for name in ("model", "self"):
+        candidate = kwargs.get(name)
+        if candidate is not None:
+            return candidate
+    if args:
+        return args[1] if binds_class and len(args) > 1 else args[0]
+    return None
+
+
 _tied_bookkeeping_original_finalize = None
 
 
@@ -1648,21 +1681,9 @@ def _patch_tied_weights_bookkeeping_on_load():
     binds_class = first_param in ("cls", "self")
 
     def _finalize_model_loading(*args, **kwargs):
-        # Receiver resolution (27.1 IN-04): callers may pass the model by
-        # keyword (``model=``/``self=``) instead of positionally. A kwargs
-        # receiver always wins -- when the original binds as a classmethod
-        # the wrapper injects ``cls`` into ``args``, so positional-only
-        # resolution can select the CLASS and materialize bookkeeping onto
-        # it. Positional resolution is the fallback, and no receiver at all
-        # means delegate unchanged (never guess).
-        receiver = None
-        for name in ("model", "self"):
-            candidate = kwargs.get(name)
-            if candidate is not None:
-                receiver = candidate
-                break
-        if receiver is None and args:
-            receiver = args[1] if binds_class and len(args) > 1 else args[0]
+        # Receiver resolution (27.1 IN-04) is shared with the remote-defects
+        # rung below through _resolve_load_boundary_receiver.
+        receiver = _resolve_load_boundary_receiver(args, kwargs, binds_class)
         if receiver is not None:
             _materialize_tied_weights_bookkeeping(receiver)
             # The same skipped-entry receivers never ran the init_weights
@@ -1775,6 +1796,185 @@ def _patch_rope_default_init():
     rope_table.setdefault("default", _compute_default_rope_parameters)
 
 
+# GENA-LM (AIRI-Institute/gena-lm-bert-base) repair, 27.2-01 Task 2 (D-06).
+# The remote modeling_bert.py registers a NON-PERSISTENT token_type_ids
+# buffer with constructor semantics torch.zeros(position_ids.size(),
+# dtype=torch.long) (modeling_bert.py lines 198-203, snapshot 416f055). The
+# published checkpoint carries no such key (209-key state-dict enumeration;
+# the only token_type entry is the embedding weight), so nothing overwrites
+# it -- but transformers 5 constructs models under a meta-device context and
+# materializes non-persistent buffers from meta with uninitialized memory:
+# the runtime value changes on every load (3901475131392 on 2026-10-27,
+# 6001647030272 and 6489494917120 measured 2026-10-29 -- constants do not
+# change between runs, uninitialized memory does). The buffer-default
+# forward (token_type_ids=None slices the buffer) then crashes with
+# IndexError on cpu and a device-side assert on cuda. The defect is a
+# transformers-5 construction-path defect in the materialized buffer, NOT
+# damaged published files -- the reset restores the constructor's own
+# zeros, exactly the values 4.x loads always had. Per D-08 the guard is
+# DEFECT DETECTION (any buffer value outside [0, config.type_vocab_size)),
+# not a transformers-version gate: it simply never fires where the
+# constructor zeros survive.
+
+
+def _repair_gena_token_type_ids(model) -> bool:
+    """Reset a defective GENA-LM token_type_ids buffer to constructor zeros.
+
+    Detects only a receiver exposing ``bert.embeddings.token_type_ids``,
+    ``bert.embeddings.position_ids`` (the shape reference) and
+    ``config.type_vocab_size`` whose buffer contains a value outside the
+    valid token-type range; the repair is ``torch.zeros(position_ids.size(),
+    dtype=torch.long)`` on the buffer's existing device. Healthy buffers,
+    absent receivers, and shapes the detection cannot answer (missing
+    position_ids, missing/invalid type_vocab_size, non-tensor buffer) are
+    never touched -- the repair never acts blind.
+
+    Args:
+        model: The freshly loaded model (any receiver; non-matching shapes
+            are a no-op).
+
+    Returns:
+        True when a defective buffer was repaired, False otherwise.
+    """
+    embeddings = getattr(getattr(model, "bert", None), "embeddings", None)
+    if embeddings is None:
+        return False
+    buffer = getattr(embeddings, "token_type_ids", None)
+    position_ids = getattr(embeddings, "position_ids", None)
+    if not isinstance(buffer, torch.Tensor) or not isinstance(position_ids, torch.Tensor):
+        return False
+    type_vocab_size = getattr(getattr(model, "config", None), "type_vocab_size", None)
+    if not isinstance(type_vocab_size, int) or isinstance(type_vocab_size, bool):
+        return False
+    if type_vocab_size <= 0:
+        return False
+    try:
+        out_of_range = bool((buffer < 0).any()) or bool((buffer >= type_vocab_size).any())
+    except (RuntimeError, TypeError):
+        # A dtype/shape the range comparison cannot evaluate reads as
+        # "unreadable shape": never repair blind.
+        return False
+    if not out_of_range:
+        return False
+    repaired = torch.zeros(position_ids.size(), dtype=torch.long, device=buffer.device)
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic buffer replacement (checker-agnostic)
+        embeddings,
+        "token_type_ids",
+        repaired,
+    )
+    return True
+
+
+# Shared load-boundary host for remote author-defect repairs (27.2-01): each
+# entry is called with the resolved model receiver at
+# ``_finalize_model_loading`` time, AFTER weight materialization (the buffer
+# is real by then -- measured seam probe 2026-10-29: the garbage value at
+# finalize time equals the post-from_pretrained value). Repairs self-guard
+# (defect detection, D-08); the MutBERT forward wrap registers here in
+# 27.2-02.
+_REMOTE_DEFECT_REPAIRS: list[Callable[[object], None]] = []
+
+_remote_defects_original_finalize = None
+
+
+def _install_remote_defects_on_load():
+    """Wrap ``_finalize_model_loading`` to run the remote author-defect repairs.
+
+    The wrapper resolves the model receiver exactly like the tied-weights
+    bookkeeping rung (:func:`_resolve_load_boundary_receiver` -- kwargs
+    ``model``/``self`` first, positional fallback, no receiver delegates
+    unchanged), delegates to the captured original with identical arguments,
+    and applies every registered repair AFTER the original returns:
+    transformers 5's own ``_finalize_model_loading`` is what materializes
+    the non-persistent buffers from meta
+    (``_move_missing_keys_from_meta_to_device`` inside it), so a repair
+    running before delegation would see the constructor-time meta tensor,
+    not the materialized garbage (measured 2026-10-29: pre-delegation the
+    buffer raises ``NotImplementedError: Cannot copy out of meta tensor``,
+    post-delegation it holds the uninitialized value the forward crashes
+    on). Install is gated on ``_finalize_model_loading`` existing on the
+    class (absent on transformers 4.x, where the construction-path defect
+    cannot occur either -- a natural no-op) and on a class sentinel for
+    idempotency; the captured original is kept in the module-level
+    ``_remote_defects_original_finalize`` so repeat installs and tests can
+    compare identity, and the wrapper reads it at call time.
+    """
+    global _remote_defects_original_finalize
+
+    try:
+        import transformers.modeling_utils
+    except Exception:  # pragma: no cover - transformers not installed
+        return
+
+    model_cls = transformers.modeling_utils.PreTrainedModel
+
+    if getattr(model_cls, "_dnallm_remote_defects_patch", False):
+        return
+
+    if not hasattr(model_cls, "_finalize_model_loading"):
+        return
+
+    original = model_cls.__dict__.get("_finalize_model_loading")
+    if original is None:
+        return
+    _remote_defects_original_finalize = (
+        original.__func__ if isinstance(original, (classmethod, staticmethod)) else original
+    )
+
+    import inspect
+
+    first_param = next(iter(inspect.signature(_remote_defects_original_finalize).parameters), None)
+    binds_class = first_param in ("cls", "self")
+
+    def _finalize_model_loading(*args, **kwargs):
+        receiver = _resolve_load_boundary_receiver(args, kwargs, binds_class)
+        result = _remote_defects_original_finalize(*args, **kwargs)
+        if receiver is not None:
+            # Repairs run POST-delegation, measured on transformers 5.17: the
+            # original _finalize_model_loading itself materializes the
+            # non-persistent buffers from meta
+            # (_move_missing_keys_from_meta_to_device inside it), so before
+            # delegation the GENA-LM buffer is still a meta tensor the range
+            # comparison cannot read -- the garbage appears exactly when the
+            # original returns. The MutBERT source-marker detection (27.2-02)
+            # is equally valid post-load.
+            for repair in _REMOTE_DEFECT_REPAIRS:
+                repair(receiver)
+        return result
+
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        model_cls,
+        "_finalize_model_loading",
+        classmethod(_finalize_model_loading)
+        if binds_class
+        else staticmethod(_finalize_model_loading),
+    )
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        model_cls,
+        "_dnallm_remote_defects_patch",
+        True,
+    )
+
+
+def _patch_gena_token_type_ids_on_load():
+    """Ensure the GENA-LM token_type_ids repair runs at the load boundary (D-06).
+
+    Registers :func:`_repair_gena_token_type_ids` in the shared
+    remote-defects repair list (per-name idempotent -- a repeat call neither
+    duplicates the entry nor re-wraps the class) and installs the shared
+    ``_finalize_model_loading`` wrapper through
+    :func:`_install_remote_defects_on_load`. The repair itself is
+    defect-detection gated (D-08): it fires only when the buffer actually
+    holds a value outside the valid token-type range, on any transformers
+    version whose load path materializes it with garbage (measured on
+    transformers 5's meta-device construction path; on 4.x the constructor
+    zeros survive and the repair never fires).
+    """
+    if _repair_gena_token_type_ids not in _REMOTE_DEFECT_REPAIRS:
+        _REMOTE_DEFECT_REPAIRS.append(_repair_gena_token_type_ids)
+    _install_remote_defects_on_load()
+
+
 def apply_patches():
     """Apply all compatibility patches. Safe to call multiple times.
 
@@ -1798,6 +1998,7 @@ def apply_patches():
     _patch_apply_chunking_to_forward()
     _patch_tied_weights_bookkeeping_on_load()
     _patch_rope_default_init()
+    _patch_gena_token_type_ids_on_load()
 
 
 # Apply patches on module import so they are active before any

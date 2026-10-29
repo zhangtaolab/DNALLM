@@ -615,7 +615,9 @@ class TestGenaTokenTypeIdsRepair:
         model = _GenaShapedModel(token_type_values=values)
 
         assert repair(model) is True
-        assert torch.equal(model.bert.embeddings.token_type_ids, torch.zeros((1, 4), dtype=torch.long))
+        assert torch.equal(
+            model.bert.embeddings.token_type_ids, torch.zeros((1, 4), dtype=torch.long)
+        )
 
     def test_healthy_buffer_is_untouched(self):
         """An in-range buffer keeps its exact object (no repair, no copy)."""
@@ -677,34 +679,31 @@ class TestGenaTokenTypeIdsOnLoad:
             transformers_compat._REMOTE_DEFECT_REPAIRS
         )
 
-    def test_wrapped_finalize_repairs_then_delegates(self, monkeypatch):
-        """A defective receiver passing the load boundary is repaired before
-        the original finalize sees it (transformers 5.17 ships a static
-        method: the model is the first argument)."""
+    def test_wrapped_finalize_delegates_then_repairs(self, monkeypatch):
+        """A defective receiver passing the load boundary is repaired AFTER
+        the original finalize returns: transformers 5's own finalize
+        materializes the non-persistent buffers from meta inside itself
+        (measured 2026-10-29 -- pre-delegation the buffer is an unreadable
+        meta tensor), so the repair must see the materialized garbage."""
         _rung("_patch_gena_token_type_ids_on_load")
 
         recorded = {}
 
         def fake_original(model, load_config, loading_info):
-            recorded["model"] = model
-            recorded["repaired_at_finalize"] = bool(
-                torch.equal(
-                    model.bert.embeddings.token_type_ids,
-                    torch.zeros_like(model.bert.embeddings.position_ids),
-                )
-            )
+            # The original runs while the defect is still present.
+            recorded["garbage_at_original"] = int(model.bert.embeddings.token_type_ids.max().item())
             return "delegated"
 
-        monkeypatch.setattr(
-            transformers_compat, "_remote_defects_original_finalize", fake_original
-        )
+        monkeypatch.setattr(transformers_compat, "_remote_defects_original_finalize", fake_original)
 
         model = _GenaShapedModel()
         result = PreTrainedModel._finalize_model_loading(model, "load-config", "loading-info")
 
         assert result == "delegated"
-        assert recorded["model"] is model
-        assert recorded["repaired_at_finalize"] is True
+        assert recorded["garbage_at_original"] == 3901475131392
+        assert torch.equal(
+            model.bert.embeddings.token_type_ids, torch.zeros((1, 4), dtype=torch.long)
+        )
 
     def test_healthy_receiver_passes_through_unmodified(self, monkeypatch):
         """A receiver without the GENA-LM shape is delegated unchanged (the
@@ -714,9 +713,7 @@ class TestGenaTokenTypeIdsOnLoad:
         def fake_original(*args, **kwargs):
             return "delegated"
 
-        monkeypatch.setattr(
-            transformers_compat, "_remote_defects_original_finalize", fake_original
-        )
+        monkeypatch.setattr(transformers_compat, "_remote_defects_original_finalize", fake_original)
         probe = _FakeBookkeepingModel()
 
         assert PreTrainedModel._finalize_model_loading(probe, None, None) == "delegated"

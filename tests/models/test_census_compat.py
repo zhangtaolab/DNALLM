@@ -418,6 +418,26 @@ class TestLoadProgram:
         program = census.build_load_program("org/repo", "hf", [], "abc123")
         assert "load_kwargs['revision'] = revision" in program
 
+    def test_output_extraction_handles_head_less_model_outputs(self) -> None:
+        """Head-less ModelOutput shapes expose tensors through to_tuple().
+
+        gena-lm-bert-base's forward returns ``BertForPreTrainingOutput``
+        (prediction_logits + relationship logits) -- neither a ``logits`` nor
+        a ``last_hidden_state`` attribute -- so the shape-extraction chain
+        needs the to_tuple branch to record the forward's output shape
+        instead of dying with AttributeError on the evidence-shaping line
+        (27.2-01 Task 2: the forward itself is green once the token_type_ids
+        repair runs).
+        """
+        program = census.build_load_program("org/repo", "hf", [], "abc123")
+        assert "hasattr(output, 'to_tuple')" in program
+        assert "isinstance(item, torch.Tensor)" in program
+        # The chain stays ordered: plain tensors and logits-bearing outputs
+        # keep their faster branches ahead of the generic one.
+        assert program.index("hasattr(output, 'logits')") < program.index(
+            "hasattr(output, 'to_tuple')"
+        )
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # probe subprocess environment (untrusted remote code must not see runner creds)
