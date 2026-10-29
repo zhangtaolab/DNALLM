@@ -1420,11 +1420,12 @@ def run_census(artifact_path: Path, selected: list[str] | None, with_loads: bool
 # 27-03 registry write-back: artifact -> tf_compat_* fields (anchored insertion)
 # ─────────────────────────────────────────────────────────────────────────────
 
-# The five-value registry verdict vocabulary (mirrors RegistryEntry's Literal).
+# The six-value registry verdict vocabulary (mirrors RegistryEntry's Literal).
 TF_COMPAT_STATUSES = frozenset({
     "verified-tf5",
     "import-verified-tf5",
     "shim-required-tf5",
+    "extra-required-tf5",
     "remote-code-broken",
     "census-blocked",
 })
@@ -1480,7 +1481,12 @@ def compat_verdict(record: dict, family_reps: dict[str, str]) -> tuple[str, str]
     """Map one census evidence record to its registry (status, evidence) pair.
 
     Objective mapping table (D-07): ``census-blocked`` stays ``census-blocked``;
-    a ``skip`` disposition (import-fail or structurally failed load/forward)
+    an ``extra`` disposition (28-02) maps to ``extra-required-tf5`` naming the
+    curated extra — evaluated before skip AND before the green-load branches so
+    both the extras-green seed and a default-env failure shape (a re-probe
+    without the extra installed) map to the same verdict, and an extras-green
+    record can never publish a false verified-tf5 "works as-is" claim; a
+    ``skip`` disposition (import-fail or structurally failed load/forward)
     maps to ``remote-code-broken`` carrying the exact failing import/reason; a
     ``fix`` disposition or a shim-restored load with a green D-03 verdict maps
     to ``shim-required-tf5`` naming the rung; any other green load+forward maps
@@ -1509,6 +1515,15 @@ def compat_verdict(record: dict, family_reps: dict[str, str]) -> tuple[str, str]
     if status == "census-blocked":
         reason = record.get("failing_import") or "census blocked (see artifact)"
         return "census-blocked", f"{stamp}; {reason}"
+    # 28-02: the curated-extra judgment sits immediately before skip on
+    # purpose - it must also win over the green-load branches below, so the
+    # extras-green seed (a measured load+forward through the extra) maps to
+    # extra-required-tf5 instead of a false verified-tf5, and a default-env
+    # re-probe (load fails without the extra installed) maps to the same
+    # verdict through the carried disposition (D-02 symmetric seed).
+    extra_note = disposition.get("extra")
+    if isinstance(extra_note, str) and extra_note:
+        return "extra-required-tf5", f"{stamp}; {extra_note}"
     skip_reason = disposition.get("skip")
     if isinstance(skip_reason, str) and skip_reason:
         failing_import = record.get("failing_import")
@@ -1865,6 +1880,11 @@ DOCS_BROKEN_LEADS: dict[str, str] = {
 # damaged-files key resolves to library-change.
 DOCS_BROKEN_LEAD_CLASSES: tuple[tuple[str, str], ...] = (
     ("non-persistent token_type_ids", "library-change"),
+    # 28-02 owner ruling A: BigBird's residual blocker after the deepspeed
+    # extra greens the load - the removed triton superblock API. Classifies
+    # as library-change, NOT external-package: installing something cannot
+    # fix a forward this dead (upstream removed the API deepspeed calls).
+    ("upstream-dead Triton API", "library-change"),
     ("checkpoint data defect", "damaged-files"),
     ("forward-contract", "own-defect"),
     ("outside dnallm's dependency set", "external-package"),
@@ -2079,7 +2099,7 @@ def docs_page_text() -> str:
 
     Raises:
         ValueError: When any pretrained entry lacks a verdict, a verdict is
-            outside the five-value vocabulary, the tested-version stamps are
+            outside the six-value vocabulary, the tested-version stamps are
             not a single shared value, or a cell value would break the table.
     """
     from collections import Counter
@@ -2101,6 +2121,7 @@ def docs_page_text() -> str:
     working = counts["verified-tf5"]
     code_verified = counts["import-verified-tf5"]
     shim = counts["shim-required-tf5"]
+    extra = counts["extra-required-tf5"]
     broken = counts["remote-code-broken"]
     blocked = counts["census-blocked"]
 
@@ -2119,6 +2140,7 @@ def docs_page_text() -> str:
         f"{code_verified} with their program code loading verified (the full run "
         "is expected to match a tested close relative in the same model family), "
         f"{shim} working through DNALLM's built-in compatibility fixes, "
+        f"{extra} working after installing an optional extra, "
         f"{broken} not working with the new version, and {blocked} that could "
         "not be checked.",
         "",

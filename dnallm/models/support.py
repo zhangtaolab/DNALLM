@@ -40,22 +40,30 @@ SUPPORT_WORDS: dict[str, str] = {
     "verified-tf5": "works",
     "import-verified-tf5": "family-tested",
     "shim-required-tf5": "works with built-in fixes",
+    # 28-02 D-01/D-14: measured green only after installing a curated
+    # optional extra (the repo override names the exact extra).
+    "extra-required-tf5": "works with an optional extra",
     "remote-code-broken": "not working with transformers 5",
     # The census could not reach or resolve the repo, so the honest word is
     # the same as an unmeasured entry: no verdict was recorded either way.
     "census-blocked": "untested",
 }
 
-#: Exact external-package phrases for the three repos whose need a status
-#: word cannot express (D-10, D-11): the words a listing must show instead
-#: of the generic broken label, never claiming DNALLM ships the package.
+#: Exact external-package phrases for the four repos whose situation a
+#: generic status word cannot express (D-10, D-11, D-14): the words a listing
+#: must show instead of the generic label, never claiming DNALLM ships the
+#: package. BigBird keeps its need-word (28-02 owner ruling A: the deepspeed
+#: extra greens the load, but the forward stays structurally dead - a
+#: "works with the deepspeed extra" word would overclaim); CrossDNA's
+#: measured green run names its exact extra.
 SUPPORT_WORD_BY_REPO: dict[str, str] = {
     "songlab/gpn-brassicales": "needs pip install gpn",
     "zehui127/Omni-DNA-116M": "needs pip install ai2-olmo",
     "AIRI-Institute/gena-lm-bigbird-base-sparse": "needs deepspeed",
+    "chengCCC/CrossDNA_pretrain": "works with the flash-attn extra",
 }
 
-#: The three generated-page status strings (D-13): the canonical wording of
+#: The four generated-page status strings (D-13): the canonical wording of
 #: ``docs/user_guide/model_compatibility.md``, shared with the census
 #: generator so the byte-identical regeneration gate and the independent
 #: docs gate can both hold it to a single source.
@@ -63,6 +71,7 @@ DOCS_STATUS_CELLS: dict[str, str] = {
     "verified-tf5": "Tested working",
     "import-verified-tf5": "Tested loading its code; full run inferred from the family model",
     "shim-required-tf5": "Works with DNALLM's built-in compatibility fixes (tested)",
+    "extra-required-tf5": "Works after installing an optional extra (tested)",
 }
 
 
@@ -110,7 +119,7 @@ def support_word(entry: RegistryEntry) -> str:
 
     Returns:
         One of the shared support words (D-16), or one of the exact
-        external-package phrases for the three override repos.
+        external-package phrases for the four override repos.
     """
     resolved = _resolve_base_entry(entry)
     if resolved is None:

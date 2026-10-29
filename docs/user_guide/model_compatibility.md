@@ -5,7 +5,7 @@
 
 DNALLM depends on a widely used AI library called *transformers*, which is the software that loads and runs the models. That library has released a new major version (version 5), and the team tested every preset model that ships with DNALLM against it.
 
-Of the 49 preset models, the team found 19 working as-is, 21 with their program code loading verified (the full run is expected to match a tested close relative in the same model family), 5 working through DNALLM's built-in compatibility fixes, 4 not working with the new version, and 0 that could not be checked.
+Of the 49 preset models, the team found 19 working as-is, 21 with their program code loading verified (the full run is expected to match a tested close relative in the same model family), 5 working through DNALLM's built-in compatibility fixes, 1 working after installing an optional extra, 3 not working with the new version, and 0 that could not be checked.
 
 | Model | What we found | Details |
 | --- | --- | --- |
@@ -35,11 +35,11 @@ Of the 49 preset models, the team found 19 working as-is, 21 with their program 
 | AgroNT | Tested loading its code; full run inferred from the family model | `InstaDeepAI/agro-nucleotide-transformer-1b` (full run tested on `zhangtaolab/plant-nucleotide-transformer-BPE`) |
 | Caduceus-PH | Tested working | `kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16` |
 | Caduceus-PS | Tested loading its code; full run inferred from the family model | `kuleshov-group/caduceus-ps_seqlen-131k_d_model-256_n_layer-16` (full run tested on `kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16`) |
-| CrossDNA | Not usable with the current transformers - its code needs an extra software package that DNALLM does not install, so it cannot be loaded as published (technical: remote modeling_crossdna.py (handler-preferred 8.1M checkpoint) builds its attention mixer through…) | `chengCCC/CrossDNA_pretrain` |
+| CrossDNA | Works after installing an optional extra (tested) | `chengCCC/CrossDNA_pretrain` |
 | DNABERT | Tested loading its code; full run inferred from the family model | `zhihan1996/DNA_bert_6` (full run tested on `zhangtaolab/plant-dnabert-BPE`) |
 | DNABERT-2 | Works with DNALLM's built-in compatibility fixes (tested) | `zhihan1996/DNABERT-2-117M` |
 | GENA-LM | Works with DNALLM's built-in compatibility fixes (tested) | `AIRI-Institute/gena-lm-bert-base` |
-| GENA-LM-BigBird | Not usable with the current transformers - its code needs an extra software package that DNALLM does not install, so it cannot be loaded as published (technical: remote modeling_bert.py (bigbird block-sparse attention) imports the external deepspeed package…) | `AIRI-Institute/gena-lm-bigbird-base-sparse` |
+| GENA-LM-BigBird | Not usable with the current transformers - the new library version removed or changed something its code depends on, so it cannot be loaded until the model authors update it (technical: load works with the deepspeed extra but forward is blocked by an upstream-dead Triton API) | `AIRI-Institute/gena-lm-bigbird-base-sparse` |
 | GENERanno | Works with DNALLM's built-in compatibility fixes (tested) | `lgq12697/GENERanno-eukaryote-0.5b-base` |
 | GENERator | Tested working | `GenerTeam/GENERator-eukaryote-1.2b-base` |
 | GPN | Not usable with the current transformers - the new library version removed or changed something its code depends on, so it cannot be loaded until the model authors update it (technical: ConvNetForMaskedLM not found in transformers 5.17.0) | `songlab/gpn-brassicales` |

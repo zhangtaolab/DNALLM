@@ -293,7 +293,7 @@ pretrained:
     tokenizer_type: "PreTrainedTokenizerFast"
     max_length: 4096
     tf_compat_status: remote-code-broken
-    tf_compat_evidence: "hf AIRI-Institute/gena-lm-bigbird-base-sparse@3a9028d36137341c10df771c3bd93de530d74594; remote modeling_bert.py (bigbird block-sparse attention) imports the external deepspeed package, which is outside dnallm's dependency set - not a transformers API removal; the import itself was restored by the _patch_apply_chunking_to_forward rung (see previous_status)"
+    tf_compat_evidence: "hf AIRI-Institute/gena-lm-bigbird-base-sparse@3a9028d36137341c10df771c3bd93de530d74594; load works with the deepspeed extra but forward is blocked by an upstream-dead Triton API; deepspeed 0.19.6's sparse-attention LUT construction calls triton libtriton.superblock, a symbol absent from triton 3.6.0 and 3.8.0, so no installable resolution exists under torch>=2.4; the default install still fails at construction because remote modeling_bert.py (bigbird block-sparse attention) imports the external deepspeed package, outside dnallm's default dependency set - not a transformers API removal; the import itself was restored by the _patch_apply_chunking_to_forward rung (see previous_status)"
     tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
@@ -481,8 +481,8 @@ pretrained:
     model: "chengCCC/CrossDNA_pretrain"
     tokenizer_type: "CrossDNATokenizer"
     max_length: 1024
-    tf_compat_status: remote-code-broken
-    tf_compat_evidence: "hf chengCCC/CrossDNA_pretrain@cd118dc45eaa0f2debb05f03ed0290fe56a78ab1; remote modeling_crossdna.py (handler-preferred 8.1M checkpoint) builds its attention mixer through fla.layers.attn.Attention, which requires the separately compiled flash-attn package; flash-attn is an external package outside dnallm's dependency set, not a transformers API removal - installing it is left to the user environment"
+    tf_compat_status: extra-required-tf5
+    tf_compat_evidence: "hf chengCCC/CrossDNA_pretrain@cd118dc45eaa0f2debb05f03ed0290fe56a78ab1; load+forward verified via the flash-attn extra (flash-attn 2.8.3.post2)"
     tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."

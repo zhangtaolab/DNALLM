@@ -1349,7 +1349,8 @@ class TestDispositionCompleteness:
                     f"{record['repo']}: a passing record may carry only the extra "
                     f"judgment, got {disposition!r}"
                 )
-                assert isinstance(disposition["extra"], str) and disposition["extra"].strip()
+                assert isinstance(disposition["extra"], str)
+                assert disposition["extra"].strip()
 
 
 # ─────────────────────────────────────────────────────────────────────────────

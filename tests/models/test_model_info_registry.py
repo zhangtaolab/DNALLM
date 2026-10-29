@@ -380,8 +380,7 @@ EXTRA_REQUIRED_ROWS = {
 }
 BROKEN_EVIDENCE_PINS = {
     "AIRI-Institute/gena-lm-bigbird-base-sparse": (
-        "load works with the deepspeed extra but forward is blocked by an "
-        "upstream-dead Triton API",
+        "load works with the deepspeed extra but forward is blocked by an upstream-dead Triton API",
         "deepspeed 0.19.6",
         "_patch_apply_chunking_to_forward",
         "outside dnallm's default dependency set",
@@ -576,7 +575,9 @@ def test_compat_census_artifact_matches_registry() -> None:
         record = by_repo[entry.model]
         load = record.get("load") if isinstance(record.get("load"), dict) else {}
         green = load.get("ok") is True and load.get("forward_ok") is True
-        disposition = record.get("disposition") if isinstance(record.get("disposition"), dict) else {}
+        disposition = (
+            record.get("disposition") if isinstance(record.get("disposition"), dict) else {}
+        )
         skip = bool(disposition.get("skip"))
         extra = bool(disposition.get("extra"))
         if record["status"] == "census-blocked":

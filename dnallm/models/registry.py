@@ -108,10 +108,13 @@ class RegistryEntry(BaseModel):
             inferred from the family representative (an honest sibling label);
             ``shim-required-tf5`` means it works under transformers 5 only via
             the ``dnallm.utils.transformers_compat`` rungs (load + forward
-            verified under the shim); ``remote-code-broken`` means structurally
-            unfixable (the evidence carries the exact failing import/reason);
-            ``census-blocked`` means the census could not reach or resolve the
-            repo. Finetuned entries inherit from their bases and carry None.
+            verified under the shim); ``extra-required-tf5`` means it works
+            only after installing a curated optional extra (load + forward
+            verified with the extra installed; the evidence names the extra);
+            ``remote-code-broken`` means structurally unfixable (the evidence
+            carries the exact failing import/reason); ``census-blocked`` means
+            the census could not reach or resolve the repo. Finetuned entries
+            inherit from their bases and carry None.
         tf_compat_evidence: Hub@revision stamp plus the verdict's evidence:
             the exact failing import or structural reason (broken entries),
             the restoring rung name (shim-required), or the family
@@ -135,6 +138,7 @@ class RegistryEntry(BaseModel):
             "verified-tf5",
             "import-verified-tf5",
             "shim-required-tf5",
+            "extra-required-tf5",
             "remote-code-broken",
             "census-blocked",
         ]

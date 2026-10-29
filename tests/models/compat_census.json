@@ -558,7 +558,7 @@
         "duration_s": 29.025
       },
       "disposition": {
-        "skip": "remote modeling_bert.py (bigbird block-sparse attention) imports the external deepspeed package, which is outside dnallm's dependency set - not a transformers API removal; the import itself was restored by the _patch_apply_chunking_to_forward rung (see previous_status)"
+        "skip": "load works with the deepspeed extra but forward is blocked by an upstream-dead Triton API; deepspeed 0.19.6's sparse-attention LUT construction calls triton libtriton.superblock, a symbol absent from triton 3.6.0 and 3.8.0, so no installable resolution exists under torch>=2.4; the default install still fails at construction because remote modeling_bert.py (bigbird block-sparse attention) imports the external deepspeed package, outside dnallm's default dependency set - not a transformers API removal; the import itself was restored by the _patch_apply_chunking_to_forward rung (see previous_status)"
       },
       "fetched_at": "2026-10-27T08:39:37Z",
       "previous_status": "import-fail"
@@ -942,17 +942,17 @@
       "family": "CrossDNAForMaskedLM",
       "is_family_rep": true,
       "load": {
-        "ok": false,
-        "error": "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    ...<23 lines>...\n        bridge_dropout=0.0,\n        ^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/home/forrest/.cache/huggingface/modules/transformers_modules/_8_dot_1M/324837e8fac8641f/modeling_crossdna.py\", line 504, in __init__\n    self.branchA_core = DeepEnhancedBranch(\n                        ~~~~~~~~~~~~~~~~~~^\n        hidden_dim=d_model, comba_cfg=comba_cfg, transformer_cfg=transformer_cfg,\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        depth=depth, drop_path_rates=drop_path_rates\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/home/forrest/.cache/huggingface/modules/transformers_modules/_8_dot_1M/324837e8fac8641f/modeling_crossdna.py\", line 307, in __init__\n    self.layers.append(EnhancedHybridCore(hidden_dim, comba_cfg, layer_cfg, i, device, dtype))\n                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/.cache/huggingface/modules/transformers_modules/_8_dot_1M/324837e8fac8641f/modeling_crossdna.py\", line 270, in __init__\n    self.transformer = SlidingWindowAttention(config=transformer_cfg)\n                       ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/.cache/huggingface/modules/transformers_modules/_8_dot_1M/324837e8fac8641f/modeling_crossdna.py\", line 214, in __init__\n    self.mixer = Attention(\n                 ~~~~~~~~~^\n        hidden_size=c[\"hidden_size\"],\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    ...<5 lines>...\n        max_position_embeddings=c[\"max_position_embeddings\"]\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/fla/layers/attn.py\", line 71, in __init__\n    raise ImportError(\"Please install Flash Attention via `pip install flash-attn --no-build-isolation` first\")\nImportError: Please install Flash Attention via `pip install flash-attn --no-build-isolation` first\n",
-        "forward_ok": false,
-        "output_shape": null,
+        "ok": true,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 64, 5)",
         "device": "cuda",
-        "duration_s": 2.4
+        "duration_s": 2.807
       },
-      "fetched_at": "2026-10-29T04:48:27Z",
+      "fetched_at": "2026-10-29T15:26:08Z",
       "previous_status": "census-blocked",
       "disposition": {
-        "skip": "remote modeling_crossdna.py (handler-preferred 8.1M checkpoint) builds its attention mixer through fla.layers.attn.Attention, which requires the separately compiled flash-attn package; flash-attn is an external package outside dnallm's dependency set, not a transformers API removal - installing it is left to the user environment"
+        "extra": "load+forward verified via the flash-attn extra (flash-attn 2.8.3.post2)"
       }
     }
   ]
