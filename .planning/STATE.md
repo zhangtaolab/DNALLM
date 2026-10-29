@@ -5,10 +5,10 @@ current_phase: "27.1"
 current_phase_name: "Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)"
 status: executing
 stopped_at: Halted 27.1-03 (DISP-01 deferred by owner to post-v1.4->main-merge operator step)
-last_updated: "2026-10-28T14:21:20.865Z"
-last_activity: 2026-10-28
-last_activity_desc: Phase 27.1 execution started
-state_head: a570cb9116459125e99759e5a6db6a295393b3d7
+last_updated: "2026-10-29T01:14:59.692Z"
+last_activity: 2026-10-29
+last_activity_desc: Completed quick task 261029-c95 (GENERanno retarget + measured census verdict)
+state_head: 1aa23644ef0b97564e282ae491965115e4f2a8ae
 progress:
   total_phases: 2
   completed_phases: 5
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-28)
 Phase: 27.1 (Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)) — EXECUTING
 Plan: 4 of 4
 Status: Executing Phase 27.1
-Last activity: 2026-10-28 — Phase 27.1 execution started
+Last activity: 2026-10-29 — Completed quick task 261029-c95: GENERanno retarget to lgq12697 0.5b with measured remote-code-broken verdict
 
 ## Performance Metrics
 
@@ -173,6 +173,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/
 | 261028-vgq | Fix 1 ty@0.0.84 error[invalid-assignment] at dnallm/tui/screens/download.py:291: DownloadOperation assigned to attribute _worker typed Worker[Any] \| None; align the declared type with what is actually stored | 2026-10-28 | 379d525 | /home/forrest/Github/DNALLM/.planning/quick/261028-vgq-fix-1-ty-0-0-84-error-invalid-assignment-at-dnallm-tui-scree |
 | 261028-vgr | Fix 1 ty@0.0.84 error[invalid-argument-type] at dnallm/preflight/availability.py:485: int() called on int \| None; guard or narrow per actual runtime contract | 2026-10-28 | 55d5d3f | /home/forrest/Github/DNALLM/.planning/quick/261028-vgr-fix-1-ty-0-0-84-error-invalid-argument-type-at-dnallm-prefli |
 | 261028-vgs | Add v1.4 to .github/workflows/ci.yml on.push.branches following the documented v1.3 entry pattern (2026-10-07 first-exposure lesson comment block) so the matrix legs incl. the ty hard gate run on v1.4 pushes before the v1.4-to-main merge | 2026-10-28 | c96bbb1 | /home/forrest/Github/DNALLM/.planning/quick/261028-vgs-add-v1-4-to-github-workflows-ci-yml-on-push-branches-followi |
+| 261029-c95 | Retarget registry GENERanno to lgq12697/GENERanno-eukaryote-0.5b-base with measured census disposition (remote-code-broken: ROPE init KeyError default under tf5.17, evidence pinned at ms commit 0ae1f40f), regenerate compat docs page (7 broken / 1 blocked, DOCS_DATA_DATE 2026-10-29), align broken-count pin 6->7; v1.5 backlog note for lgq12697 bulk ingestion (~130 entries) recorded in SUMMARY | 2026-10-29 | 1aa2364 | [261029-c95-retarget-registry-generanno-to-lgq12697-](./quick/261029-c95-retarget-registry-generanno-to-lgq12697-/) |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
