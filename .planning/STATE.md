@@ -1,14 +1,14 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.4
-current_phase: "27.1"
-current_phase_name: "Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)"
+current_phase: "27.2"
+current_phase_name: "Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED)"
 status: executing
 stopped_at: Halted 27.1-03 (DISP-01 deferred by owner to post-v1.4->main-merge operator step)
-last_updated: "2026-10-29T01:14:59.692Z"
+last_updated: "2026-10-29T01:35:34.164Z"
 last_activity: 2026-10-29
 last_activity_desc: Completed quick task 261029-c95 (GENERanno retarget + measured census verdict)
-state_head: 1aa23644ef0b97564e282ae491965115e4f2a8ae
+state_head: a6e0d348cc81a27b5e959fac39826970f4a934eb
 progress:
   total_phases: 2
   completed_phases: 5
@@ -17,6 +17,8 @@ progress:
 milestone_name: Pre-flight UX & Registry-as-Truth-Source
 ---
 
+Total Phases: 2
+
 # Project State
 
 ## Project Reference
@@ -24,13 +26,13 @@ milestone_name: Pre-flight UX & Registry-as-Truth-Source
 See: .planning/PROJECT.md (updated 2026-10-28)
 
 **Core value:** One terminal flow takes a user from their own data to a validated, model-compatible config, with the model registry as the runtime single source of truth (Track A first) — suite, coverage gate, and CI honest-green throughout.
-**Current focus:** Phase 27.1 — Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)
+**Current focus:** Phase 27.2 — Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED). Phase 27.1 stays mid-flight: 27.1-03 halted (owner defer-dispatch), 27.1-04 executes post-merge.
 
 ## Current Position
 
-Phase: 27.1 (Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED)) — EXECUTING
-Plan: 4 of 4
-Status: Executing Phase 27.1
+Phase: 27.2 (Transformers-5 compatibility remediation) — INSERTED, not planned yet; v1.4 merge intentionally deferred until 27.2 lands (owner ruling 2026-10-29)
+Plan: 0 of 0 (awaiting /gsd-plan-phase 27.2)
+Status: Phase 27.2 inserted — plan next; 27.1-04 remains the post-merge act
 Last activity: 2026-10-29 — Completed quick task 261029-c95: GENERanno retarget to lgq12697 0.5b with measured remote-code-broken verdict
 
 ## Performance Metrics
@@ -72,6 +74,7 @@ Last activity: 2026-10-29 — Completed quick task 261029-c95: GENERanno retarge
 - v1.4 roadmap created (2026-10-20): 5 phases (22–26) honoring the REQUIREMENTS traceability mapping and the research-converged dependency order — registry loader → pre-flight core → `load_preset_model` rewire → TUI → MCP consistency
 - Phase 27 added: Transformers 4/5 Model Compatibility Census (owner-directed 2026-10-27; v1.4 line reopened post-archive for this phase — 238-model registry × transformers 4/5 import-level matrix, shim-or-typed-skip disposition)
 - Phase 27.1 inserted after Phase 27: Address tech debt: IN-01..IN-06 + census lane live dispatch (URGENT)
+- Phase 27.2 inserted after Phase 27: Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs — owner ruling 2026-10-29: execute ALL fixes inside v1.4 (merge delayed by design), severity major, scope includes the two author-defect repairs (GENA-LM buffer reset, MutBERT forward wrap); measured-green-probe discipline holds (replica-grade until census lane is live post-merge) (URGENT)
 
 ### Decisions
 

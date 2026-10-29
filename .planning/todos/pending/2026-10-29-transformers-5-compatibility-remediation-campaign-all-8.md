@@ -3,6 +3,7 @@ created: 2026-10-29T01:27:13.274Z
 title: "Transformers-5 compatibility remediation campaign: all 8 unsupported presets + support story in docs"
 area: general
 severity: major
+resolves_phase: 27.2
 files:
   - dnallm/utils/transformers_compat.py
   - dnallm/models/special/dnabert2.py
