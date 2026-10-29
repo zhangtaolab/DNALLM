@@ -1,14 +1,13 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.4
-current_phase: "27.2"
-current_phase_name: "Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED)"
-status: verifying
-stopped_at: Completed 27.2-05-PLAN.md
-last_updated: "2026-10-29T08:14:22.232Z"
+current_phase: "28"
+status: planning
+stopped_at: "Phase 27.2 complete — next: /gsd-discuss-phase 28"
+last_updated: "2026-10-29T09:19:43.837Z"
 last_activity: 2026-10-29
-last_activity_desc: Phase 27.2 execution started
-state_head: f28699a9d3729c7b5740ee8308ed5cbef017a1ff
+last_activity_desc: Phase 27.2 complete
+state_head: 4c54f3110b12eb67e9f3c698001acc1bed7fe7f4
 progress:
   total_phases: 2
   completed_phases: 5
@@ -23,17 +22,17 @@ Total Phases: 2
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-28)
+See: .planning/PROJECT.md (updated 2026-10-29)
 
 **Core value:** One terminal flow takes a user from their own data to a validated, model-compatible config, with the model registry as the runtime single source of truth (Track A first) — suite, coverage gate, and CI honest-green throughout.
-**Current focus:** Phase 27.2 — Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED)
+**Current focus:** Phase 28 — Optional extras: deepspeed & flash-attn model support (owner option-1 decision 2026-10-29)
 
 ## Current Position
 
-Phase: 27.2 (Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED)) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-10-29 — Phase 27.2 execution started
+Phase: 28
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-29 — Phase 27.2 complete
 
 ## Performance Metrics
 
@@ -219,8 +218,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-29T05:26:49.226Z
-Stopped at: Completed 27.2-05-PLAN.md
+Last session: 2026-10-29T17:25:00+08:00
+Stopped at: Phase 27.2 complete — next: /gsd-discuss-phase 28
 Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)

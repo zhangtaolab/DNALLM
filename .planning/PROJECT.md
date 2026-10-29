@@ -47,9 +47,15 @@ Shipped in Phase 2 (Suite Hygiene & Known-Bug Fixes, 2026-09-30):
 
 ### Active
 
-(None — all v1.4 requirements shipped and verified; the next milestone defines fresh requirements via `/gsd-new-milestone`.)
+- [ ] Phase 28 — Optional extras `.[deepspeed]` (GENA-LM-BigBird) + flash-attn extra (CrossDNA), mamba-extra precedent, CI lanes, measured-green-only disposition flips (owner option-1 decision 2026-10-29)
 
 ### Validated — v1.4 (Pre-flight UX & Registry-as-Truth-Source, shipped 2026-10-22)
+
+Shipped in Phase 27.2 (Transformers-5 compatibility remediation, INSERTED, 2026-10-29):
+
+- ✓ All 8 unsupported presets carry measured dispositions — 4 repaired via built-in rungs (GENERanno ROPE, DNABERT-2 ALiBi, GENA-LM token_type_ids, MutBERT inputs_embeds; always worded "works with built-in fixes", never "as-is"), GPN/Omni-DNA exact pip guidance, BigBird non-stubbable deepspeed disclosed, CrossDNA measured honest skip; registry 19/21/5/4/0 over 49 pretrained, census `--verify` 49/49
+- ✓ Shared plain-language support vocabulary (`dnallm/models/support.py`) surfaced on docs, TUI, and MCP listings (236 rows, 0 cross-surface mismatches; finetuned inheritance cycle-safe); optional_dependencies.md guide + README statement + mkdocs nav, pinned by 13 fail-closed content tests (validate-phase)
+- ✓ Nyquist-compliant (VALIDATION.md, 2 gaps filled, 2 manual-only UAT items closed by owner-delegated verification with evidence); threat-secure (SECURITY.md 18 rows, AR-27.2-01 accepted risk); verification regenerated at fixpoint: 23/23 passed
 
 Shipped in Phase 25 (Terminal UI — Pre-flight Wizard & `tui` Extra, 2026-10-22):
 
@@ -216,6 +222,9 @@ Shipped v1 on 2026-10-01: 1,657 tests passing (7 allowlisted skips), **96.30% li
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
+| [Phase 27.2 close] External-package models get curated optional extras (option 1), not auto-installed deps nor isolated-venv recipes only | gpn pins transformers==5.15.0 and ai2-olmo pins numpy<2 (cannot enter the main env); deepspeed/flash-attn are heavy but installable — extras follow the mamba-extra precedent with measured-green-only flips | ◆ Phase 28 planned (owner decision 2026-10-29) |
+| [Phase 27.2 close] TUI six-column legibility accepted as-is; optimization deferred | Pre-existing overflow worsened ~23% (170-col content vs 74-114 viewports); Support reachable via scroll; structure pinned by tests | ✓ Backlog 999.1; deferred at UAT 2026-10-29 |
+| [Phase 27.2 close] AR-27.2-01: runner-local paths in census-artifact tracebacks accepted | Docs surface clean; exposure limited to runner username/cache layout; scrubbing would weaken verbatim-evidence honesty — path normalization at next census recording change | ✓ Owner-accepted 2026-10-29 (SECURITY.md) |
 | [Phase 24] OQ-1 STRICT: registry entries with `task_type='classification'` (6 PlantCAD2, third-party) stay unloadable by name — no aliasing to user binary/multiclass | Smallest reading of locked D-05; all six sit outside every zhangtaolab flow; widening the mismatch definition would silently change the validated contract | ✓ Pinned by a real-entry test; documented known limitation in the docstring; registry data fix out of scope (261020-kwt discipline) |
 | [Phase 24] Patched preset configs built with `model_copy(update=...)` only — never model_validate/reconstruction; caller's TaskConfig never mutated | `model_post_init`'s regression branch would clobber registry `label_names` (e.g. `['promoter strength in tobacco leaves']`) to `['value']`; research Pitfall 2 reproduced against live data | ✓ Regression-preservation test pins verbatim labels; non-mutation asserted twice (tracer + dedicated test) |
 | [Phase 24] Registry-first resolution order with registry-wins-on-collision disclosed in the docstring (24 third-party family names change resolved repo — intentional, documented) | D-01 order + research A2: the delta is real but every zhangtaolab-default family resolves identically; discoverability beats a silent behavior change | ✓ DNABERT-2 collision pinned to `zhihan1996/*`; ModelScope-hosting assumption carried as review WR-01 (deferred, Phases 25/26 awareness) |
@@ -280,4 +289,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-28 after Phase 27 (Transformers 4/5 census — v1.4 line reopened post-archive, gap-closure cycle complete)*
+*Last updated: 2026-10-29 after Phase 27.2 (Transformers-5 remediation complete; Phase 28 extras opened)*
