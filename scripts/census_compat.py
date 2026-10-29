@@ -22,6 +22,14 @@ DEFAULT_ARTIFACT = "tests/models/compat_census.json"
 # Weights are NEVER fetched here (the import census stays KB-scale per repo).
 CODE_PATTERNS = ("*.py", "config.json", "tokenizer.json", "tokenizer_config.json", "*.model")
 
+# The single census repo whose load program additionally arms the
+# DNABERT-2 special-handler shims (D-05 census visibility, 27.2-02): the
+# repair lives in dnallm/models/special/dnabert2.py (owner-locked file
+# choice), invisible to a plain Auto* load, so build_load_program emits one
+# call to the SAME installer the product path uses -- after source
+# acquisition, before AutoConfig resolves the remote classes.
+DNABERT2_LOAD_HOOK_REPO = "zhihan1996/DNABERT-2-117M"
+
 # Pre-disposition evidence vocabulary (asserted by record validation).
 STATUSES = frozenset({"arch-ok", "import-ok", "import-fail", "census-blocked"})
 CLASSES = frozenset({"native", "remote"})
@@ -904,6 +912,16 @@ def build_load_program(repo: str, hub: str, architectures: list, revision: str) 
     """
     pinned = revision if revision and not str(revision).startswith("unpinned") else None
     auto_class_name = resolve_load_class_name(architectures[0] if architectures else None)
+    # D-05 census visibility (27.2-02): the exact DNABERT-2 repo's program
+    # arms the special-handler installer before the dynamic classes resolve
+    # (the ALiBi defect fires inside BertEncoder.__init__, so a post-load
+    # repair would be useless); every other repo's program is unchanged.
+    dnabert2_hook: list[str] = []
+    if repo == DNABERT2_LOAD_HOOK_REPO:
+        dnabert2_hook = [
+            "    from dnallm.models.special.dnabert2 import _install_dnabert2_tf5_shims",
+            "    _install_dnabert2_tf5_shims()",
+        ]
     return "\n".join([
         "import os",
         f"os.environ['HF_ENDPOINT'] = {HF_MIRROR!r}",
@@ -934,6 +952,7 @@ def build_load_program(repo: str, hub: str, architectures: list, revision: str) 
         "        source = snapshot_download(model_id=repo)",
         "    else:",
         "        source = repo",
+        *dnabert2_hook,
         "    config = AutoConfig.from_pretrained(source, trust_remote_code=True)",
         "    model_class = getattr(transformers, model_class_name)",
         # torch_dtype (not dtype): 4.x-era remote code defines its own
@@ -1352,8 +1371,16 @@ TF_COMPAT_STATUSES = frozenset({
 # _patch_mutbert_forward_on_load routes those calls through the remote code's
 # own inputs_embeds branch (the mapping lands ahead of the committed flip,
 # same interim discipline as gena -- the committed skip disposition still
-# governs until plan 27.2-03). Entries whose import a rung
-# restored but whose load/forward still fails carry skip dispositions in the
+# governs until plan 27.2-03). 27.2-02 Task 2: the remote BertEncoder of
+# zhihan1996/DNABERT-2-117M builds its ALiBi tensor eagerly in __init__ on
+# mismatched devices under transformers 5's meta construction context, and
+# _install_dnabert2_tf5_shims wraps rebuild_alibi_tensor for device
+# alignment before any constructor runs plus the measured Triton
+# neutralization (handler-owned installer per D-05, armed on the census path
+# by build_load_program's conditional hook; same interim discipline -- the
+# committed skip disposition governs until plan 27.2-03). Entries whose
+# import a rung restored but whose load/forward still fails carry skip
+# dispositions in the
 # artifact and map to remote-code-broken — the D-03 verdict (load + one real
 # forward) is what the registry consumes.
 SHIM_RESTORED_LOADS: dict[str, str] = {
@@ -1361,6 +1388,7 @@ SHIM_RESTORED_LOADS: dict[str, str] = {
     "lgq12697/GENERanno-eukaryote-0.5b-base": "_patch_rope_default_init",
     "AIRI-Institute/gena-lm-bert-base": "_patch_gena_token_type_ids_on_load",
     "JadenLong/MutBERT-Human-Ref": "_patch_mutbert_forward_on_load",
+    "zhihan1996/DNABERT-2-117M": "_install_dnabert2_tf5_shims",
 }
 
 # First line of the write-back provenance block; the block is appended at end
