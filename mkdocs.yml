@@ -66,6 +66,7 @@ nav:
     - Pre-flight Wizard (TUI): user_guide/tui/preflight_wizard.md
     - Preset Model Loading: user_guide/preset_loading.md
     - Model Compatibility: user_guide/model_compatibility.md
+    - Optional Dependencies and Support: user_guide/optional_dependencies.md
     - 15-Minute Tour: guides/getting-started.md
     - Configuration Overview: configuration/configuration.md
     - Development Guide: guides/development.md

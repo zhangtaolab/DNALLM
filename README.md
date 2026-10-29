@@ -33,6 +33,14 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 DNALLM-Suite supports a wide range of DNA large language models including:
 
+How well each model works depends on the model and on your transformers
+version: most work as-is, some work through DNALLM's built-in compatibility
+fixes, and a few need an extra package or are not usable with transformers 5.
+For the per-model verdict see the generated
+[Model Compatibility](docs/user_guide/model_compatibility.md) table, and for
+what each status word means plus the exact install commands see
+[Optional Dependencies and Support](docs/user_guide/optional_dependencies.md).
+
 **From-scratch baselines:** any generically-loadable supported model can also be
 loaded with genuinely random weights via `load_model_and_tokenizer(...,
 random_init=True)`. The model config and tokenizer files are fetched as usual,
@@ -266,10 +274,10 @@ These models are listed below:
 | EVO2     | CausalLM   | [Hugging Face](https://huggingface.co/collections/arcinstitute/evo-68e42c1bceeb21a456330fb4) | [GitHub](https://github.com/arcinstitute/evo2) |
 | PlantHelixSeek-CRE/-Anno | Token Classification / Binary | [ModelScope](https://modelscope.cn/zhangtaolab) / [Hugging Face](https://huggingface.co/zhangtaolab) | `fla` extra ([flash-linear-attention](https://github.com/fla-org/flash-linear-attention), see warning below) |
 | FungiHelixSeek | MaskedLM | [Hugging Face](https://huggingface.co/zhangtaolab) / [ModelScope](https://modelscope.cn/zhangtaolab) | `fla` extra ([flash-linear-attention](https://github.com/fla-org/flash-linear-attention)) |
-| GPN      | MaskedLM   | [Hugging Face](https://huggingface.co/songlab) | [GitHub](https://github.com/songlab-cal/gpn) |
+| GPN      | MaskedLM   | [Hugging Face](https://huggingface.co/songlab) | [gpn package](docs/user_guide/optional_dependencies.md) — measured caveats (Python 3.13 only, pins `transformers==5.15.0`, use a separate environment) |
 | megaDNA  | CausalLM   | [Hugging Face](https://huggingface.co/lingxusb) | [GitHub](https://github.com/lingxusb/megaDNA) |
 | LucaOne  | CausalLM   | [Hugging Face](https://huggingface.co/collections/LucaGroup/lucaone-689c4c52fc6577441093f208) | [GitHub](https://github.com/LucaOne/LucaOne) |
-| Omni-DNA | CausalLM   | [Hugging Face](https://huggingface.co/collections/zehui127/omni-dna-67a2230c352d4fd8f4d1a4bd) | [GitHub](https://github.com/Zehui127/Omni-DNA) |
+| Omni-DNA | CausalLM   | [Hugging Face](https://huggingface.co/collections/zehui127/omni-dna-67a2230c352d4fd8f4d1a4bd) | [ai2-olmo package](docs/user_guide/optional_dependencies.md) — pins `numpy<2`, use a separate environment |
 
 The installation method for the dependencies of these models can be found **[here](docs/getting_started/installation.md)**.
 
