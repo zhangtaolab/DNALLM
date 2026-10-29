@@ -438,6 +438,37 @@ class TestLoadProgram:
             "hasattr(output, 'to_tuple')"
         )
 
+    def test_dnabert2_repo_emits_the_pre_construction_installer(self) -> None:
+        """D-05 census visibility: the DNABERT-2 repair lives in the special
+        handler (owner-locked file choice), invisible to a plain ``Auto*``
+        load -- the program arms the SAME installer the product path uses,
+        after source acquisition and before AutoConfig resolves the remote
+        classes (the defect fires inside ``__init__``)."""
+        program = census.build_load_program("zhihan1996/DNABERT-2-117M", "hf", [], "abc123")
+        assert "from dnallm.models.special.dnabert2 import _install_dnabert2_tf5_shims" in program
+        assert "_install_dnabert2_tf5_shims()" in program
+        assert program.index("_install_dnabert2_tf5_shims()") > program.index("source = repo")
+        assert program.index("_install_dnabert2_tf5_shims()") < program.index(
+            "AutoConfig.from_pretrained"
+        )
+
+    def test_dnabert2_hook_also_precedes_config_on_the_modelscope_route(self) -> None:
+        """The ms route fetches its source via snapshot_download first; the
+        installer still lands after acquisition and before AutoConfig."""
+        program = census.build_load_program("zhihan1996/DNABERT-2-117M", "ms", [], "abc123")
+        assert program.index("_install_dnabert2_tf5_shims()") > program.index(
+            "snapshot_download(model_id=repo)"
+        )
+        assert program.index("_install_dnabert2_tf5_shims()") < program.index(
+            "AutoConfig.from_pretrained"
+        )
+
+    def test_other_repo_emits_no_dnabert2_hook(self) -> None:
+        """The hook is narrowly scoped to the exact DNABERT-2 census repo --
+        no other repo's load program carries it."""
+        program = census.build_load_program("org/repo", "hf", [], "abc123")
+        assert "_install_dnabert2_tf5_shims" not in program
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # probe subprocess environment (untrusted remote code must not see runner creds)
@@ -1218,6 +1249,24 @@ class TestCompatVerdictMapping:
         status, evidence = census.compat_verdict(record, self.REPS)
         assert status == "shim-required-tf5"
         assert "_patch_gena_token_type_ids_on_load" in evidence
+
+    def test_mutbert_green_load_maps_to_shim_required_naming_forward_rung(self) -> None:
+        # 27.2-02 Task 1: same interim discipline as gena -- the mapping lands
+        # ahead of the committed flip (the committed skip disposition still
+        # governs the committed artifact until plan 27.2-03's write-back).
+        record = _verdict_record({"repo": "JadenLong/MutBERT-Human-Ref"})
+        status, evidence = census.compat_verdict(record, self.REPS)
+        assert status == "shim-required-tf5"
+        assert "_patch_mutbert_forward_on_load" in evidence
+
+    def test_dnabert2_green_load_maps_to_shim_required_naming_installer(self) -> None:
+        # 27.2-02 Task 2: the DNABERT-2 repair is handler-owned (D-05 locks
+        # the file choice), so its dependency record names the installer, not
+        # a transformers_compat rung.
+        record = _verdict_record({"repo": "zhihan1996/DNABERT-2-117M"})
+        status, evidence = census.compat_verdict(record, self.REPS)
+        assert status == "shim-required-tf5"
+        assert "_install_dnabert2_tf5_shims" in evidence
 
     def test_census_blocked_maps_to_census_blocked_with_reason(self) -> None:
         record = _verdict_record({

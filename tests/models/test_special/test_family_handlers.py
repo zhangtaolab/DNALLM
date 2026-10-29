@@ -529,6 +529,258 @@ class TestDnabert2Handler:
         assert triton_file.read_text() == original_content
 
 
+class TestDnabert2Tf5Shims:
+    """D-05: the idempotent pre-construction DNABERT-2 transformers-5 installer.
+
+    The measured defect fires inside ``BertEncoder.__init__`` (the remote
+    ``rebuild_alibi_tensor`` multiplies a meta-default-device ``torch.arange``
+    by a legacy cpu ``torch.Tensor(list)``), so the repair must be installed
+    on the remote class BEFORE any model constructor runs -- the seam is
+    ``transformers.dynamic_module_utils.get_class_in_module``, which the
+    resolver machinery looks up as a module global at call time.
+    """
+
+    # A synthetic remote bert_layers.py: the mosaic shape (BertEncoder with
+    # rebuild_alibi_tensor + BertModel) the installer narrowly detects.
+    REMOTE_SOURCE = (
+        "class BertEncoder:\n"
+        "    def rebuild_alibi_tensor(self, size, device=None):\n"
+        "        return (size, device)\n"
+        "\n"
+        "\n"
+        "class BertModel:\n"
+        "    def __init__(self):\n"
+        "        self.encoder = BertEncoder()\n"
+    )
+    REMOTE_SOURCE_WITH_FLASH = REMOTE_SOURCE + (
+        "\n" "flash_attn_qkvpacked_func = lambda *args, **kwargs: None\n"
+    )
+
+    def _resolve_remote(self, tmp_path, monkeypatch, sub: str, class_name: str = "BertModel",
+                        source: str | None = None):
+        """Resolve a class from a synthetic remote module under a fake modules cache."""
+        import dnallm.models.special.dnabert2 as db2
+        import transformers.dynamic_module_utils as dmu
+
+        db2._install_dnabert2_tf5_shims()
+        remote_dir = tmp_path / sub
+        remote_dir.mkdir()
+        (remote_dir / "bert_layers.py").write_text(source or self.REMOTE_SOURCE)
+        monkeypatch.setattr(dmu, "HF_MODULES_CACHE", str(tmp_path))
+        resolved = dmu.get_class_in_module(class_name, f"{sub}/bert_layers.py")
+        module = sys.modules[resolved.__module__]
+        return resolved, module
+
+    def test_module_level_triton_probe_keeps_the_measured_mapping(self, monkeypatch):
+        """The lifted probe preserves the handler's measured semantics:
+        TypeError (no trans_b support) -> False; a working tl.dot -> True;
+        any other triton failure -> True (the disable path)."""
+        import dnallm.models.special.dnabert2 as db2
+
+        fake_tl = types.ModuleType("triton.language")
+        fake_tl.float32 = "f32"
+        fake_tl.zeros = lambda shape, dtype=None: (shape, dtype)
+        fake_tl.dot = lambda *args, **kwargs: None
+        fake_triton = types.ModuleType("triton")
+        monkeypatch.setitem(sys.modules, "triton", fake_triton)
+        monkeypatch.setitem(sys.modules, "triton.language", fake_tl)
+
+        assert db2._triton_supports_trans_b() is True
+
+        def dot_without_trans_b(*args, **kwargs):
+            raise TypeError("dot() got an unexpected keyword argument 'trans_b'")
+
+        fake_tl.dot = dot_without_trans_b
+        assert db2._triton_supports_trans_b() is False
+
+        def broken_zeros(shape, dtype=None):
+            raise RuntimeError("triton needs an active CUDA context")
+
+        fake_tl.dot = lambda *args, **kwargs: None
+        fake_tl.zeros = broken_zeros
+        assert db2._triton_supports_trans_b() is True
+
+    def test_wrap_pins_cpu_only_when_device_is_missing(self):
+        """The ALiBi wrapper changes only device=None; an explicit device is
+        forwarded unchanged (positional or keyword)."""
+        import dnallm.models.special.dnabert2 as db2
+
+        calls = []
+
+        class Encoder:
+            def rebuild_alibi_tensor(self, size, device=None):
+                calls.append((size, device))
+                return "ok"
+
+        assert db2._wrap_rebuild_alibi_tensor(Encoder) is True
+
+        encoder = Encoder()
+        assert encoder.rebuild_alibi_tensor(4) == "ok"
+        assert calls == [(4, "cpu")]
+        assert encoder.rebuild_alibi_tensor(4, device="cuda") == "ok"
+        assert calls[-1] == (4, "cuda")
+        assert encoder.rebuild_alibi_tensor(5, "cuda:0") == "ok"
+        assert calls[-1] == (5, "cuda:0")
+
+    def test_wrap_survives_the_meta_default_device_context(self):
+        """The measured crash shape: torch.arange honors the ambient meta
+        default device while the legacy torch.Tensor(list) constructor
+        ignores it; the pinned cpu makes both operands agree."""
+        import dnallm.models.special.dnabert2 as db2
+
+        class MetaCrashEncoder(torch.nn.Module):
+            def rebuild_alibi_tensor(self, size, device=None):
+                context = torch.arange(size, device=device)
+                slopes = torch.Tensor([0.5]).to(device)
+                return slopes.unsqueeze(1) * context.to(slopes.dtype)
+
+        with torch.device("meta"):
+            with pytest.raises(RuntimeError):
+                MetaCrashEncoder().rebuild_alibi_tensor(4)
+
+        assert db2._wrap_rebuild_alibi_tensor(MetaCrashEncoder) is True
+        with torch.device("meta"):
+            result = MetaCrashEncoder().rebuild_alibi_tensor(4)
+        assert result.device.type == "cpu"
+
+    def test_repeat_wrap_preserves_wrapper_identity(self):
+        """A second wrap call keeps the first wrapper object (no double-wrap)."""
+        import dnallm.models.special.dnabert2 as db2
+
+        class Encoder:
+            def rebuild_alibi_tensor(self, size, device=None):
+                return (size, device)
+
+        assert db2._wrap_rebuild_alibi_tensor(Encoder) is True
+        wrapped = Encoder.__dict__["rebuild_alibi_tensor"]
+        assert db2._wrap_rebuild_alibi_tensor(Encoder) is False
+        assert Encoder.__dict__["rebuild_alibi_tensor"] is wrapped
+
+    def test_class_without_or_inheriting_the_method_is_untouched(self):
+        """A class without rebuild_alibi_tensor in its own __dict__ (absent or
+        only inherited) is never wrapped -- the wrapper never re-wraps a
+        binding it cannot capture."""
+        import dnallm.models.special.dnabert2 as db2
+
+        class Plain:
+            pass
+
+        class Base:
+            def rebuild_alibi_tensor(self, size, device=None):
+                return (size, device)
+
+        class Child(Base):
+            pass
+
+        assert db2._wrap_rebuild_alibi_tensor(Plain) is False
+        assert db2._wrap_rebuild_alibi_tensor(Child) is False
+
+    def test_installer_arms_only_on_transformers_5(self, monkeypatch):
+        """Below transformers 5 the installer never arms the dynamic-class
+        hook (D-08 version gate for the construction-path class)."""
+        import transformers
+
+        import dnallm.models.special.dnabert2 as db2
+
+        armed = []
+        monkeypatch.setattr(
+            db2, "_arm_dnabert2_dynamic_class_shims", lambda dmu: armed.append(dmu) or True
+        )
+        monkeypatch.setattr(transformers, "__version__", "4.49.0")
+        db2._install_dnabert2_tf5_shims()
+        assert armed == []
+
+        monkeypatch.setattr(transformers, "__version__", "5.17.0")
+        db2._install_dnabert2_tf5_shims()
+        assert len(armed) == 1
+
+    def test_resolver_wraps_encoder_before_construction(self, tmp_path, monkeypatch):
+        """A DNABERT-2-shaped remote module resolved through the wrapped
+        lookup has its BertEncoder wrapped BEFORE any constructor runs."""
+        resolved, module = self._resolve_remote(tmp_path, monkeypatch, "dnabert2_shim_a")
+
+        assert resolved.__name__ == "BertModel"
+        encoder_cls = module.BertEncoder
+        assert getattr(encoder_cls, "_dnallm_alibi_device_patch", False) is True
+
+        encoder = encoder_cls()
+        assert encoder.rebuild_alibi_tensor(4) == (4, "cpu")
+        assert encoder.rebuild_alibi_tensor(4, device="cuda") == (4, "cuda")
+
+    def test_unrelated_remote_module_is_untouched(self, tmp_path, monkeypatch):
+        """A module without the BertEncoder shape resolves unchanged."""
+        source = "class PlainModel:\n    marker = 'untouched'\n"
+        resolved, _module = self._resolve_remote(
+            tmp_path, monkeypatch, "dnabert2_shim_b", class_name="PlainModel", source=source
+        )
+
+        assert resolved.marker == "untouched"
+        assert not hasattr(resolved, "_dnallm_alibi_device_patch")
+
+    def test_repeat_install_preserves_the_resolver_wrapper(self):
+        """A second installer call keeps the same wrapped resolver."""
+        import dnallm.models.special.dnabert2 as db2
+        import transformers.dynamic_module_utils as dmu
+
+        db2._install_dnabert2_tf5_shims()
+        wrapper = dmu.get_class_in_module
+        assert getattr(dmu, "_dnallm_dnabert2_shim_patch", False) is True
+
+        db2._install_dnabert2_tf5_shims()
+
+        assert dmu.get_class_in_module is wrapper
+
+    def test_triton_fallback_nulls_the_remote_flash_symbol(self, tmp_path, monkeypatch):
+        """When the capability probe selects the existing fallback, the same
+        narrowly detected installer nulls the remote module's
+        flash_attn_qkvpacked_func (the remote code's own None branch routes
+        attention to its PyTorch path)."""
+        import dnallm.models.special.dnabert2 as db2
+
+        monkeypatch.setattr(db2, "_triton_supports_trans_b", lambda: True)
+        _resolved, module = self._resolve_remote(
+            tmp_path, monkeypatch, "dnabert2_shim_c", source=self.REMOTE_SOURCE_WITH_FLASH
+        )
+
+        assert module.flash_attn_qkvpacked_func is None
+
+    def test_working_triton_keeps_the_remote_flash_symbol(self, tmp_path, monkeypatch):
+        """When the probe finds a compatible triton, the remote symbol stays."""
+        import dnallm.models.special.dnabert2 as db2
+
+        monkeypatch.setattr(db2, "_triton_supports_trans_b", lambda: False)
+        _resolved, module = self._resolve_remote(
+            tmp_path, monkeypatch, "dnabert2_shim_d", source=self.REMOTE_SOURCE_WITH_FLASH
+        )
+
+        assert module.flash_attn_qkvpacked_func is not None
+
+    def test_handler_installs_shims_before_loading(self, tmp_path, monkeypatch):
+        """The product path arms the installer before the delegated load."""
+        import dnallm.models.special.dnabert2 as db2
+
+        calls = []
+        monkeypatch.setattr(
+            db2, "_install_dnabert2_tf5_shims", lambda: calls.append("install")
+        )
+        model_dir = tmp_path / "dnabert-2"
+        model_dir.mkdir()
+        load_args = ["mask", str(model_dir), 0, {}, {}, {"AutoTokenizer": Mock()}]
+
+        def record_load(*args):
+            calls.append("load")
+            return ("m", "t")
+
+        with patch(
+            "dnallm.models.model._load_model_by_task_type",
+            side_effect=record_load,
+        ):
+            model, tokenizer = _handle_dnabert2_models(str(model_dir), load_args)
+
+        assert (model, tokenizer) == ("m", "t")
+        assert calls == ["install", "load"], "the installer must run before the load"
+
+
 class TestHandlerExtraRegistration:
     """The `extra` registration arms of the list-gated handlers."""
 
