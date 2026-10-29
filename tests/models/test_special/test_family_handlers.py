@@ -55,9 +55,7 @@ class TestGpnHandler:
         assert "transformers==5.15.0" in message  # the wheel's hard pin
         assert "separate environment" in message
         assert "gpn.model" in message  # the published wheel lacks this module
-        assert (
-            "https://zhangtaolab.github.io/DNALLM/user_guide/optional_dependencies/" in message
-        )
+        assert "https://zhangtaolab.github.io/DNALLM/user_guide/optional_dependencies/" in message
         assert excinfo.value.__cause__ is not None  # original ImportError preserved
 
     def test_matching_name_with_package_returns_match(self, monkeypatch):
@@ -102,9 +100,7 @@ class TestOmnidnaHandler:
         assert "numpy<2" in message  # ai2-olmo 0.6.0 pin
         assert "downgrade" in message  # the hazard of installing into a numpy-2 env
         assert "separate environment" in message
-        assert (
-            "https://zhangtaolab.github.io/DNALLM/user_guide/optional_dependencies/" in message
-        )
+        assert "https://zhangtaolab.github.io/DNALLM/user_guide/optional_dependencies/" in message
         assert excinfo.value.__cause__ is not None  # original ImportError preserved
 
     def test_matching_name_with_package_returns_match(self, monkeypatch):

@@ -25,8 +25,11 @@ def _handle_omnidna_models(model_name: str, extra: str | None = None) -> str | N
                 raise ImportError(
                     f"ai2-olmo package is required for "
                     f"{model_name} but not installed. "
-                    "Please install it following the instructions at: "
-                    "https://huggingface.co/zehui127/Omni-DNA-20M"
+                    "Install it with: pip install ai2-olmo "
+                    "(measured caveat, ai2-olmo 0.6.0: pins numpy<2 and can "
+                    "downgrade a numpy 2 environment - use a separate "
+                    "environment). See "
+                    "https://zhangtaolab.github.io/DNALLM/user_guide/optional_dependencies/"
                 ) from e
             return m
 
