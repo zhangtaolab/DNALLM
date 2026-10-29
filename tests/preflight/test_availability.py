@@ -192,9 +192,13 @@ def test_modelscope_cache_candidates_dual_layout_dots(monkeypatch, tmp_path) -> 
 
     candidates = modelscope_cache_candidates("org/name.with.dots")
 
+    # Path-joined, not f-string-with-"/": the implementation builds candidates
+    # with os.path.join (platform-native separators for the isdir probes), and
+    # a forward-slash expectation fails on Windows where the joined paths use
+    # backslashes.
     assert candidates == [
-        f"{tmp_path}/models/org/name___with___dots",
-        f"{tmp_path}/org/name___with___dots",
+        str(tmp_path / "models" / "org" / "name___with___dots"),
+        str(tmp_path / "org" / "name___with___dots"),
     ]
 
 
