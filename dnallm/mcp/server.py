@@ -74,6 +74,7 @@ from ..inference.vep import (
     evaluate_vcf,
 )
 from ..models.registry import all_entries, is_lab_model, sort_key_lab_first, try_resolve
+from ..models.support import support_word
 
 #: Documented fallback bind address when neither the CLI nor any YAML block
 #: supplies one. Unified in Phase 12 (REV-11): the argparse default used to
@@ -822,6 +823,9 @@ class DNALLMMCPServer:
         Every catalogued model is listed — the menu is honest about what
         exists — and each row says whether it is configured on this server,
         enabled, or loaded right now, so a client knows what is callable.
+        Each row also carries the shared plain-language support word (D-16),
+        derived through :func:`dnallm.models.support.support_word`; the text
+        line ends with it so a reader sees it without parsing the row.
         """
         try:
             server_config = self.config_manager.get_server_config()
@@ -855,6 +859,7 @@ class DNALLMMCPServer:
                     "configured": state is not None,
                     "enabled": bool(state and state["enabled"]),
                     "loaded": state is not None and state["server_config_key"] in loaded_keys,
+                    "support": support_word(entry),
                 }
                 if state is not None:
                     row["server_config_key"] = state["server_config_key"]
@@ -868,7 +873,10 @@ class DNALLMMCPServer:
                 else:
                     status = "available"
                 models[entry.name] = row
-                lines.append(f"{entry.name} | {entry.model} | {entry.task.task_type} | {status}")
+                lines.append(
+                    f"{entry.name} | {entry.model} | {entry.task.task_type} | "
+                    f"{status} | {row['support']}"
+                )
 
             return {
                 "content": [{"type": "text", "text": "\n".join(lines)}],
