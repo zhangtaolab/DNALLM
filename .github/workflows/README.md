@@ -16,10 +16,10 @@ The workflows are triggered on:
   - **03:00 UTC** (cron `0 3 * * *`) — fires `coverage-nightly` (full coverage census) and `test-mamba` (kernel-build leg)
   - **05:30 UTC** (cron `30 5 * * *`) — fires `example-nightly` (example-execution census; D-06 stagger, queue-serialized on the single `dnallm-nightly` runner)
   - GitHub runs cron schedules only from the default branch
-- **Manual workflow dispatch** — each nightly job's gate admits `workflow_dispatch` (on-demand census/calibration runs), and dispatch is the ONLY trigger of the `feasibility.yml` spike (runner confirmation for the GB10 feasibility verdicts; never push/PR/schedule, so PR-authored code cannot reach the self-hosted box). Since 2026-10-26 the nightly lanes are also per-lane selectable on dispatch via three boolean inputs — `run_coverage_nightly`, `run_example_nightly`, `run_test_mamba` — all defaulting to `true`, so a dispatch sent with no flags still fires all three (an all-lanes dispatch is ~6h queue-serialized on the single `dnallm-nightly` runner, and the Actions REST API cancels runs, not individual jobs, so a misaimed dispatch cannot be trimmed after the fact). The job gates read the `inputs` context because it keeps boolean inputs as booleans, while `github.event.inputs` hands them over as strings. To run exactly one lane:
+- **Manual workflow dispatch** — each nightly job's gate admits `workflow_dispatch` (on-demand census/calibration runs), and dispatch is the ONLY trigger of the `feasibility.yml` spike (runner confirmation for the GB10 feasibility verdicts; never push/PR/schedule, so PR-authored code cannot reach the self-hosted box). Since 2026-10-26 the nightly lanes are also per-lane selectable on dispatch via four boolean inputs — `run_coverage_nightly`, `run_example_nightly`, `run_test_mamba`, and (since Phase 28, D-06) `run_extras_compat` — all defaulting to `true`, so a dispatch sent with no flags still fires all four (an all-lanes dispatch is ~6h queue-serialized on the single `dnallm-nightly` runner, and the Actions REST API cancels runs, not individual jobs, so a misaimed dispatch cannot be trimmed after the fact). The job gates read the `inputs` context because it keeps boolean inputs as booleans, while `github.event.inputs` hands them over as strings. The first three booleans gate jobs inside this workflow; `run_extras_compat` instead routes the dispatch through a reusable-workflow call into `extras_compat.yml`, the dedicated extras lane. That workflow owns its own **04:00 UTC nightly cron** — this file adds no schedule entry for it — so the nightly run and a manual dispatch each execute the extras lane exactly once. To run exactly one lane:
 
   ```bash
-  gh workflow run ci.yml --ref v1.4 -f run_example_nightly=true -f run_coverage_nightly=false -f run_test_mamba=false
+  gh workflow run ci.yml --ref v1.4 -f run_example_nightly=true -f run_coverage_nightly=false -f run_test_mamba=false -f run_extras_compat=false
   ```
 
   which dispatches the example-nightly lane only.
@@ -85,7 +85,7 @@ No type-check step runs on this leg — type checking lives only on the `coverag
 2. **GPU Check**: Detects `nvidia-smi`; if the box ever loses its GPU the remaining steps are skipped as a fail-safe no-op
 3. **Python Setup**: Installs Python 3.11
 4. **UV Installation**: Installs the UV package manager
-5. **Mamba Dependency Installation**: Installs `.[full,fla]` — the same extras set the other legs use (`dev,test,notebook,mcp`; the `mcp` extra is required by the not-slow census: the `mcp_example` notebook-import tests and the `exceptiongroup` backport), plus the `fla` extra (WR-01: so the not-slow chunk_kda import guard exercises the import instead of skipping typed) — plus `.[mamba]` (kernel source build)
+5. **Mamba Dependency Installation**: Installs `.[full]` — the same extras set the other legs use (`dev,test,notebook,mcp`; the `mcp` extra is required by the not-slow census: the `mcp_example` notebook-import tests and the `exceptiongroup` backport), with `fla` riding the base dependency set since 28-01 (WR-01: the not-slow chunk_kda import guard exercises the real import without any extra suffix) — plus the mamba kernels through the sha256-pinned c++20 patch pipeline in `scripts/install_mamba.sh` (the plain `.[mamba]` extra's uv source build fails on this box; the script is the only CI kernel route)
 6. **Mamba Test Execution**: Runs tests excluding slow tests — a failing test fails the job; test logs are uploaded as an artifact on failure
 
 ### 5. Coverage Gate Job (`coverage-gate`)
@@ -110,7 +110,7 @@ No type-check step runs on this leg — type checking lives only on the `coverag
 
 **Census scope**: 27 tests carry the `slow` mark; 21 of them execute in this job. The remaining 6 — the MCP live-server probes in `dnallm/mcp/tests/test_sse_client.py` and `test_streamable_http_client.py` — target `localhost:8000`, which no CI job starts, so they skip deterministically as typed `network-unavailable:` skips (allowlisted in `tests/expected_skips.yaml`). Those probes are local-only: run them against a manually started `dnallm-mcp-server`.
 
-**Timeout**: 900 minutes — a deliberate override recorded with measurement in hand (D-12): the full census measured **1:27:14** with ~4 min of install ahead of it (job ~88 min; runs [37345067326](https://github.com/zhangtaolab/DNALLM/actions/runs/37345067326) / [37377004230](https://github.com/zhangtaolab/DNALLM/actions/runs/37377004230)), while the recomputed paper ceilings over the current per-test `@pytest.mark.timeout` marks are ~640 min for the marks that can actually bind in this job's `.[full,fla]` venv (~3920 min over all full-tree marks — the examples-lane majority typed-skips at gate time here and belongs to `example-nightly`). The per-test marks stay the **primary** hang protection — a hung test dies at its own mark with junit and the skip audit still produced — and the job kill is the backstop, kept at 900 because raising it buys no protection the marks do not already provide.
+**Timeout**: 900 minutes — a deliberate override recorded with measurement in hand (D-12): the full census measured **1:27:14** with ~4 min of install ahead of it (job ~88 min; runs [37345067326](https://github.com/zhangtaolab/DNALLM/actions/runs/37345067326) / [37377004230](https://github.com/zhangtaolab/DNALLM/actions/runs/37377004230)), while the recomputed paper ceilings over the current per-test `@pytest.mark.timeout` marks are ~640 min for the marks that can actually bind in this job's `.[full]` venv (fla rides the base install since 28-01) (~3920 min over all full-tree marks — the examples-lane majority typed-skips at gate time here and belongs to `example-nightly`). The per-test marks stay the **primary** hang protection — a hung test dies at its own mark with junit and the skip audit still produced — and the job kill is the backstop, kept at 900 because raising it buys no protection the marks do not already provide.
 
 **Model Caches**: none — the `models.lock`-keyed hub cache layer was removed (D-11, owner decision 2026-10-05): cold pulls are proven (a 65-min all-cold example stage 1 against a 2700-min budget) and the lock-only cache (~15.2GiB) exceeded the 10GB Actions cache quota without ever successfully saving. The runner box's local `$HOME` hub caches remain the warm path and are never cleaned (owner rule).
 
@@ -149,7 +149,23 @@ No type-check step runs on this leg — type checking lives only on the `coverag
 
 **Caches**: uv dependency cache + bedtools rootless prefix + mamba kernel wheelhouse only. The `models.lock`-keyed hub cache layer is gone (D-11 — cold pulls by design; the box's local `$HOME` caches are the warm path), and the evo provisioning steps (isolated venv, flash-attention wheelhouse, giant-model prefetch) are deleted per D-04 — the flash-attn build-isolation failure of run 37278002681 dissolved with that deletion. The evo family's committed executed-notebook outputs remain the evidence, and the dispatch/manual lane keeps working from the local giants model tier (never cleaned, owner rule).
 
-### 8. Feasibility Spike Job (`feas-spike`)
+### 8. Extras Compat Job (`extras-compat` / `extras_compat.yml`)
+
+**Purpose**: The extras-environment guard for the two external-package models (Phase 28, D-05..D-08). It answers the mirror question of `census_compat.yml`: the default census keeps measuring the default install — where `AIRI-Institute/gena-lm-bigbird-base-sparse` and `chengCCC/CrossDNA_pretrain` must keep showing their missing-extra failures — while this lane installs the curated extras (`deepspeed` through the plain extra; `flash-attn` ONLY through the sha256-pinned `scripts/install_flash_attn.sh`, D-12) and proves the two models still work in that environment.
+
+**Trigger**: `extras_compat.yml` owns its own **04:00 UTC nightly cron** (staggered after this file's 03:00/05:30 lanes, queue-serialized on the single `dnallm-nightly` runner) plus standalone `workflow_dispatch` for reproduction. `workflow_call` is not an independent public trigger — its only caller is the `extras-compat` job in `ci.yml`, admitted solely when that dispatch's `run_extras_compat` input is true (the fourth selector, D-06), so PR-authored code (including forks) can never reach the self-hosted GPU box. Never push/pull_request.
+
+**Runner**: `self-hosted` GPU box (`dnallm-nightly`), 360-minute timeout (the uncached flash-attn source build measured ~64 min at `MAX_JOBS=8`; self-hosted jobs have no platform cap, so this is the whole-job bound), `contents: read`, no secrets.
+
+**Probe anatomy**: seeds `census-artifacts/extras-fresh.json` from the committed 49-record census (the dispositions and full roster live there), nulls the two entries' seeded load evidence so both models are re-measured fresh every run, then runs `census_compat.py` single-entry mode through a diff-proven length-64 copy of the tool — sparse BigBird requires `seq_len % 64 == 0`, so the committed tool's length-32 probe can only ever forward-red on divisibility and mask the real kernel verdict (28-01 measured fact, D-07).
+
+**Two independent pass gates** (D-08; both must hold):
+1. **Gate 1 — fresh probe evidence** (owner ruling A, 2026-10-29): CrossDNA loads AND forwards green through the flash-attn extra; BigBird's load greens through the deepspeed extra while its forward stays structurally red at the known cause (deepspeed 0.19.6's sparse-attention LUT needs the removed triton `superblock` API). The gate reads only the raw `load.ok`/`forward_ok` booleans and the forward error text — a seeded disposition can never satisfy it, and a failure at any other cause (or a sudden green forward) reddens the lane so the registry row can be re-ruled.
+2. **Gate 2 — registry agreement**: the committed census tool's fail-closed `--verify` drift gate over the full artifact (49 matched: CrossDNA `extra-required-tf5`, BigBird `remote-code-broken` under its ruling-A split evidence).
+
+**Evidence**: the `extras-fresh-evidence` artifact (uploaded `if: always()`) carries `census-artifacts/extras-fresh.json` and the `gpu_absent.marker`; GPU absence fails the lane rather than skipping it (zero-evidence green forbidden). The first live dispatch — `gh workflow run extras_compat.yml --ref v1.4` — is a **post-v1.4-to-main-merge operator step** (GitHub registers dispatchable workflows from the default branch only); the runner-replica run of the exact probe/gate sequence is the interim evidence.
+
+### 9. Feasibility Spike Job (`feas-spike`)
 
 **Purpose**: Runner confirmation for the Phase 5 GB10 feasibility spike (FEAS-01, D-04) — re-runs the committed per-family spike runner (`scripts/feasibility/spike_families.py`) on the same hardware class the local verdicts were taken on and uploads the logs plus the verdict matrix as artifacts. The owner fills the matrix's Runner confirmation column from those artifacts; local verdicts become official only then.
 
@@ -164,7 +180,7 @@ No type-check step runs on this leg — type checking lives only on the `coverag
 4. **Spike Execution**: `--family all --fallback` (D-06 fallback variants only — `--fallback` replaces the notebook variant, it does not run both; notebook-variant verdicts rest on the committed local evidence in `spike-logs/`); expected failures for environment-unavailable families are carried as evidence text in the artifacts, not hidden
 5. **Artifact Upload**: spike logs + `05-FEASIBILITY.md`, unconditionally (`if: always()`)
 
-### 9. Deploy Job (`deploy`)
+### 10. Deploy Job (`deploy`)
 
 **Purpose**: Automatic documentation deployment to GitHub Pages.
 

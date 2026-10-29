@@ -564,7 +564,8 @@ class TestExtrasLaneContract:
             "(D-06: 04:00 UTC, queue-serialized after the 03:00/05:30 ci.yml "
             "lanes on the single dnallm-nightly runner)"
         )
-        assert "push" not in names and "pull_request" not in names
+        assert "push" not in names
+        assert "pull_request" not in names
 
     def test_permissions_runner_and_timeout(self) -> None:
         """contents:read, the self-hosted nightly runner, and a 360-minute bound."""
@@ -622,8 +623,7 @@ class TestExtrasLaneContract:
         )
         run = str(uv_steps[0].get("run", ""))
         assert 'export PATH="$HOME/.local/bin:$PATH"' in run, (
-            "the Install uv step must export $HOME/.local/bin first (the "
-            "runner-ops uv lives there)"
+            "the Install uv step must export $HOME/.local/bin first (the runner-ops uv lives there)"
         )
         assert run.index("command -v uv") < run.index("$GITHUB_PATH"), (
             "the `command -v uv` probe must precede the $GITHUB_PATH write"
@@ -637,9 +637,7 @@ class TestExtrasLaneContract:
             "box fails closed with a clear message instead of fetching an "
             "unpinned installer ahead of a 64-minute build"
         )
-        assert "exit 1" in run, (
-            "uv absence must fail the step (fail-closed posture)"
-        )
+        assert "exit 1" in run, "uv absence must fail the step (fail-closed posture)"
 
     def test_install_order_full_pip_deepspeed_installer_probe(self) -> None:
         """.[full] -> pip bootstrap -> .[deepspeed] -> pinned installer -> probe."""
@@ -729,7 +727,8 @@ class TestExtrasLaneContract:
             "the seed-prep must null the two entries' load evidence so "
             "apply_loads re-probes both models fresh every run"
         )
-        assert EXTRAS_BIGBIRD_REPO in probe and EXTRAS_CROSSDNA_REPO in probe
+        assert EXTRAS_BIGBIRD_REPO in probe
+        assert EXTRAS_CROSSDNA_REPO in probe
 
     def test_two_distinct_gates_green_then_verify(self) -> None:
         """Gate 1 (fresh evidence) and gate 2 (registry agreement) are separate steps, in order."""
@@ -745,8 +744,9 @@ class TestExtrasLaneContract:
         )
         gate1_run = str(steps[gate1].get("run", ""))
         gate2_run = str(steps[gate2].get("run", ""))
-        assert "extras-fresh.json" in gate1_run and "forward_ok" in gate1_run, (
-            "gate 1 must parse the fresh artifact's raw load fields itself"
+        assert "extras-fresh.json" in gate1_run, "gate 1 must parse the fresh artifact itself"
+        assert "forward_ok" in gate1_run, (
+            "gate 1 must read the raw load fields, not derived verdicts"
         )
         assert EXTRAS_VERIFY_LINE in gate2_run, (
             "gate 2 must run the committed census tool's fail-closed --verify "
@@ -766,8 +766,11 @@ class TestExtrasLaneContract:
     def test_gate1_asserts_the_ruling_a_expected_shape(self) -> None:
         """CrossDNA fully green; BigBird load-green with the structural forward-red named."""
         gate1_run = _extras_step_run(EXTRAS_GATE1_STEP_NAME)
-        assert EXTRAS_CROSSDNA_REPO in gate1_run and EXTRAS_BIGBIRD_REPO in gate1_run, (
-            "gate 1 must address both probe records individually"
+        assert EXTRAS_CROSSDNA_REPO in gate1_run, (
+            "gate 1 must address the CrossDNA probe record individually"
+        )
+        assert EXTRAS_BIGBIRD_REPO in gate1_run, (
+            "gate 1 must address the BigBird probe record individually"
         )
         assert "superblock" in gate1_run, (
             "gate 1 must pin BigBird's forward failure to the known structural "
@@ -775,11 +778,14 @@ class TestExtrasLaneContract:
             "failure at any OTHER cause -- including a length-32 divisibility "
             "error -- means the probe did not reach the real kernel verdict"
         )
-        assert 'forward_ok"] is False' in gate1_run and 'forward_ok"] is True' in gate1_run, (
+        assert 'forward_ok"] is True' in gate1_run, (
             "gate 1 must assert CrossDNA forward_ok=True (the flash-attn "
-            "extra delivers load+forward) AND BigBird forward_ok=False (the "
-            "ruling-A split: load works with the deepspeed extra, forward is "
-            "structurally red) -- never one blanket assertion over both"
+            "extra delivers load+forward)"
+        )
+        assert 'forward_ok"] is False' in gate1_run, (
+            "gate 1 must assert BigBird forward_ok=False (the ruling-A split: "
+            "load works with the deepspeed extra, forward is structurally "
+            "red) -- never one blanket assertion over both"
         )
 
     def test_no_masked_failure_or_continue_on_error(self) -> None:
@@ -795,7 +801,9 @@ class TestExtrasLaneContract:
         )
         doc = _load_extras_doc()
         job = doc["jobs"][EXTRAS_JOB_NAME]
-        assert "continue-on-error" not in job, "job-level continue-on-error would green a failing lane"
+        assert "continue-on-error" not in job, (
+            "job-level continue-on-error would green a failing lane"
+        )
         flagged = [
             s.get("name", s.get("uses")) for s in job.get("steps", []) if "continue-on-error" in s
         ]
@@ -818,12 +826,10 @@ class TestExtrasLaneContract:
         """The extras-fresh-evidence upload is unconditional and carries both files."""
         doc = _load_extras_doc()
         steps = doc["jobs"][EXTRAS_JOB_NAME]["steps"]
-        uploads = [
-            s
-            for s in steps
-            if str(s.get("uses", "")).startswith("actions/upload-artifact")
-        ]
-        assert len(uploads) == 1, f"expected exactly one artifact upload step (found {len(uploads)})"
+        uploads = [s for s in steps if str(s.get("uses", "")).startswith("actions/upload-artifact")]
+        assert len(uploads) == 1, (
+            f"expected exactly one artifact upload step (found {len(uploads)})"
+        )
         upload = uploads[0]
         assert upload.get("if") == "always()", (
             "the evidence upload must run on red and green alike -- a red run "
@@ -831,8 +837,7 @@ class TestExtrasLaneContract:
         )
         with_block = upload.get("with", {})
         assert with_block.get("name") == "extras-fresh-evidence", (
-            "the artifact name must be extras-fresh-evidence (the documented "
-            "operator surface)"
+            "the artifact name must be extras-fresh-evidence (the documented operator surface)"
         )
         path = str(with_block.get("path", ""))
         assert "census-artifacts/extras-fresh.json" in path, "the fresh evidence must upload"
@@ -878,7 +883,9 @@ class TestExtrasDispatchSelection:
         """The extras-compat job gate reads inputs.run_extras_compat, dispatch-only."""
         ci = yaml.safe_load(CI_WORKFLOW.read_text(encoding="utf-8"))
         job = ci["jobs"]["extras-compat"]
-        assert job["if"] == "github.event_name == 'workflow_dispatch' && inputs.run_extras_compat", (
+        assert (
+            job["if"] == "github.event_name == 'workflow_dispatch' && inputs.run_extras_compat"
+        ), (
             "the reusable call must be gated on the dispatch event ANDed with the "
             "inputs-context boolean (never github.event.inputs string comparison)"
         )

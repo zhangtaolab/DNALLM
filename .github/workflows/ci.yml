@@ -62,6 +62,10 @@ on:
         description: "Run the test-mamba lane (mamba kernel build + census) on this dispatch"
         type: boolean
         default: true
+      run_extras_compat:
+        description: "Run the extras-compat lane (deepspeed + flash-attn probes) on this dispatch"
+        type: boolean
+        default: true
   schedule:
     # D-19: BOTH entries below trigger the whole workflow — GitHub offers no
     # per-cron routing, so each nightly job carries its own cron-string gate
@@ -70,9 +74,13 @@ on:
     # entry fires example-nightly (D-06 stagger, queue-serialized on the
     # single dnallm-nightly runner). Cron schedules fire only from the
     # default branch.
-    # Manual dispatch selects lanes via the three workflow_dispatch boolean
+    # Manual dispatch selects lanes via the four workflow_dispatch boolean
     # inputs (default true) — each nightly job's gate ANDs its dispatch arm
-    # with its own input; see the workflow_dispatch block above.
+    # with its own input; see the workflow_dispatch block above. The fourth
+    # selector (run_extras_compat, Phase 28 D-06) routes the dispatch through
+    # a reusable-workflow call into extras_compat.yml — that workflow owns
+    # the extras lane's own 04:00 UTC cron, so this file adds NO schedule
+    # entry for it and nightly coverage still occurs exactly once.
     - cron: "0 3 * * *"
     - cron: "30 5 * * *"
 
@@ -1170,6 +1178,19 @@ jobs:
             exit 1
           fi
           echo "OK: every recorded stage item exited 0"
+
+  extras-compat:
+    # D-06 (Phase 28): manual-dispatch reusable call into the extras lane.
+    # extras_compat.yml OWNS the 04:00 UTC nightly cron — this caller has NO
+    # schedule arm, so the nightly run and a no-flags manual dispatch each
+    # execute the lane exactly once. workflow_call is not an independent
+    # public trigger, and the only caller is this dispatch-gated job, so
+    # PR-authored code (including forks) can never reach the self-hosted GPU
+    # box through it (T-28-09). No secrets: the lane needs none.
+    if: github.event_name == 'workflow_dispatch' && inputs.run_extras_compat
+    permissions:
+      contents: read
+    uses: ./.github/workflows/extras_compat.yml
 
   deploy:
     # test-mamba removed from needs: it is event-gated to schedule/dispatch, so
