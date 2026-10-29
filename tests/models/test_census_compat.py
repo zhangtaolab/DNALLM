@@ -362,7 +362,7 @@ class TestCensusConfigDirResolution:
         nested = tmp_path / "checkpoint"
         nested.mkdir()
         (nested / "config.json").write_text(json.dumps({"model_type": "bert"}), encoding="utf-8")
-        with pytest.raises(ValueError, match="cannot read fetched config.json"):
+        with pytest.raises(ValueError, match=r"cannot read fetched config\.json"):
             census.read_config(str(tmp_path))
 
 
@@ -545,8 +545,7 @@ class TestLoadProgram:
             "chengCCC/CrossDNA_pretrain", "hf", ["CrossDNAForMaskedLM"], "cd118dc"
         )
         assert (
-            "from dnallm.models.special.crossdna import _resolve_crossdna_checkpoint_dir"
-            in program
+            "from dnallm.models.special.crossdna import _resolve_crossdna_checkpoint_dir" in program
         )
         assert "endpoint='https://hf-mirror.com'" in program
         assert "revision=revision" in program

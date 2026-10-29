@@ -20,7 +20,17 @@ DEFAULT_ARTIFACT = "tests/models/compat_census.json"
 
 # Code-only fetch patterns: remote python, config, and tokenizer metadata.
 # Weights are NEVER fetched here (the import census stays KB-scale per repo).
-CODE_PATTERNS = ("*.py", "config.json", "tokenizer.json", "tokenizer_config.json", "*.model")
+# The nested **/config.json pattern (D-12, 27.2-03) also fetches checkpoint
+# configs stored in size-named subdirectories (CrossDNA-style layouts), so
+# the resolver below can read what the handler would load.
+CODE_PATTERNS = (
+    "*.py",
+    "config.json",
+    "**/config.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "*.model",
+)
 
 # The single census repo whose load program additionally arms the
 # DNABERT-2 special-handler shims (D-05 census visibility, 27.2-02): the
@@ -29,6 +39,14 @@ CODE_PATTERNS = ("*.py", "config.json", "tokenizer.json", "tokenizer_config.json
 # call to the SAME installer the product path uses -- after source
 # acquisition, before AutoConfig resolves the remote classes.
 DNABERT2_LOAD_HOOK_REPO = "zhihan1996/DNABERT-2-117M"
+
+# The single census repo whose load program navigates checkpoint
+# subdirectories through the CrossDNA special handler's resolver (D-12,
+# 27.2-03): the repository root ships no config.json (checkpoints live
+# under 8.1M/28.6M/71.6M/519M), so a plain repo-id load is unmeasurable;
+# build_load_program obtains a local full snapshot on both hubs and assigns
+# the SAME resolved checkpoint directory the product loader uses.
+CROSSDNA_LOAD_HOOK_REPO = "chengCCC/CrossDNA_pretrain"
 
 # Pre-disposition evidence vocabulary (asserted by record validation).
 STATUSES = frozenset({"arch-ok", "import-ok", "import-fail", "census-blocked"})
@@ -414,8 +432,44 @@ def fetch_code_only(repo: str) -> tuple[str, str, str] | None:
         return None
 
 
+def _resolve_census_config_dir(snapshot_dir: str) -> str:
+    """Return the directory whose ``config.json`` the census reads.
+
+    The root ``config.json`` stays the first route (every ordinary repo).
+    When it is absent, the CrossDNA special handler's own resolver navigates
+    the snapshot exactly the way ``load_model_and_tokenizer`` does -- root,
+    preferred checkpoint subdirectory, then a unique valid child -- so the
+    census measures CrossDNA through DNALLM's real checkpoint route instead
+    of recording a layout-shaped census-blocked verdict (D-12). The
+    handler's CrossDNA config validation is the gate: a snapshot that is
+    not CrossDNA-shaped resolves to None and keeps the original root-config
+    error path, while multiple valid children raise the handler's existing
+    ValueError (fail loudly, never silently pick a model size).
+
+    Args:
+        snapshot_dir: The fetched code-only snapshot directory.
+
+    Returns:
+        The resolved directory (the snapshot root itself when no CrossDNA
+        child resolves).
+    """
+    if (Path(snapshot_dir) / "config.json").is_file():
+        return str(snapshot_dir)
+    # Lazy import: keeps torch (pulled by the special handler module) off
+    # the script's import path for every repo that ships a root config.
+    from dnallm.models.special.crossdna import _resolve_crossdna_checkpoint_dir
+
+    return _resolve_crossdna_checkpoint_dir(snapshot_dir) or str(snapshot_dir)
+
+
 def read_config(snapshot_dir: str) -> dict:
     """Read a fetched ``config.json`` mapping.
+
+    The directory is resolved through :func:`_resolve_census_config_dir`
+    first (idempotent for an already-resolved checkpoint directory), so a
+    CrossDNA-style snapshot whose checkpoints live in size-named
+    subdirectories is read at the same directory the special handler would
+    load from (D-12).
 
     Args:
         snapshot_dir: The code-only snapshot directory.
@@ -424,9 +478,12 @@ def read_config(snapshot_dir: str) -> dict:
         The parsed JSON object.
 
     Raises:
-        ValueError: When the file is absent, unparseable, or not a JSON object.
+        ValueError: When no usable ``config.json`` resolves (absent,
+            unparseable, or not a JSON object), including the handler
+            resolver's ambiguity ValueError for multiple valid CrossDNA
+            children.
     """
-    path = Path(snapshot_dir) / "config.json"
+    path = Path(_resolve_census_config_dir(snapshot_dir)) / "config.json"
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
@@ -830,7 +887,11 @@ def census_entry(entry) -> dict:
         )
     snapshot_dir, hub, revision = fetched
     try:
-        config = read_config(snapshot_dir)
+        # D-12: resolve before reading so a CrossDNA-style snapshot is
+        # measured at its real checkpoint directory, and the import probe's
+        # auto_map jobs resolve against the same directory's .py files.
+        config_dir = _resolve_census_config_dir(snapshot_dir)
+        config = read_config(config_dir)
     except ValueError as error:
         return build_record(
             entry,
@@ -845,7 +906,7 @@ def census_entry(entry) -> dict:
     family = family_key(entry.model, config)
     if code_class == "native":
         return _native_record(entry, hub, revision, config, family, fetched_at)
-    return _remote_record(entry, hub, revision, config, family, snapshot_dir, fetched_at)
+    return _remote_record(entry, hub, revision, config, family, config_dir, fetched_at)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -922,6 +983,26 @@ def build_load_program(repo: str, hub: str, architectures: list, revision: str) 
             "    from dnallm.models.special.dnabert2 import _install_dnabert2_tf5_shims",
             "    _install_dnabert2_tf5_shims()",
         ]
+    # D-12 census-route alignment (27.2-03): the exact CrossDNA repo's root
+    # ships no config.json, so both hub routes obtain a local FULL snapshot
+    # and the SAME handler resolver that load_model_and_tokenizer uses
+    # selects the checkpoint directory; a None resolution fails loudly
+    # rather than loading from an unusable root.
+    crossdna_hook: list[str] = []
+    if repo == CROSSDNA_LOAD_HOOK_REPO:
+        crossdna_hook = [
+            "    from dnallm.models.special.crossdna import _resolve_crossdna_checkpoint_dir",
+            "    if hub != 'ms':",
+            "        from huggingface_hub import snapshot_download as hf_full_snapshot_download",
+            "        full_snapshot = hf_full_snapshot_download(",
+            "            repo_id=repo, revision=revision, endpoint=" + repr(HF_MIRROR) + ")",
+            "    else:",
+            "        full_snapshot = source",
+            "    source = _resolve_crossdna_checkpoint_dir(str(full_snapshot))",
+            "    if source is None:",
+            "        raise RuntimeError(",
+            "            'CrossDNA checkpoint directory not found under ' + str(full_snapshot))",
+        ]
     return "\n".join([
         "import os",
         f"os.environ['HF_ENDPOINT'] = {HF_MIRROR!r}",
@@ -953,6 +1034,7 @@ def build_load_program(repo: str, hub: str, architectures: list, revision: str) 
         "    else:",
         "        source = repo",
         *dnabert2_hook,
+        *crossdna_hook,
         "    config = AutoConfig.from_pretrained(source, trust_remote_code=True)",
         "    model_class = getattr(transformers, model_class_name)",
         # torch_dtype (not dtype): 4.x-era remote code defines its own
