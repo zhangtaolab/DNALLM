@@ -592,23 +592,29 @@
       "fetched_at": "2026-10-27T08:39:41Z"
     },
     {
-      "repo": "GenerTeam/GENERanno-eukaryote-1.2b-base",
+      "repo": "lgq12697/GENERanno-eukaryote-0.5b-base",
       "name": "GENERanno",
-      "class": null,
+      "class": "remote",
       "hub": "ms",
-      "revision": "unpinned@2026-10-27T08:39:46Z",
+      "revision": "0ae1f40ffaef2d905c20629a2fa509f4e1bf187b",
       "transformers": "5.17.0",
-      "status": "census-blocked",
-      "failing_import": "unreachable on both hubs (ModelScope then https://hf-mirror.com)",
+      "status": "import-ok",
+      "failing_import": null,
       "traceback_tail": null,
-      "family": "GenerTeam",
+      "family": "GenerannoForMaskedLM",
       "is_family_rep": true,
-      "load": null,
-      "disposition": {
-        "skip": "repo id exists on neither ModelScope nor hf-mirror (direct 404; nearest published siblings are 0.5b-base variants) - registry-data correction belongs to the 27-03 write-back"
+      "load": {
+        "ok": false,
+        "error": "retrained_model_name_or_path, *model_args, config=config, **hub_kwargs, **kwargs\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/transformers/modeling_utils.py\", line 4267, in from_pretrained\n    model = cls(config, *model_args, **model_kwargs)\n  File \"/home/forrest/.cache/huggingface/modules/transformers_modules/GENERanno_hyphen_eukaryote_hyphen_0___5b_hyphen_base/ebf9afdb2ac2e598/modeling_generanno.py\", line 927, in __init__\n    self.model = GenerannoModel(config)\n                 ~~~~~~~~~~~~~~^^^^^^^^\n  File \"/home/forrest/.cache/huggingface/modules/transformers_modules/GENERanno_hyphen_eukaryote_hyphen_0___5b_hyphen_base/ebf9afdb2ac2e598/modeling_generanno.py\", line 795, in __init__\n    GenerannoEncoderLayer(config, layer_idx)\n    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/.cache/huggingface/modules/transformers_modules/GENERanno_hyphen_eukaryote_hyphen_0___5b_hyphen_base/ebf9afdb2ac2e598/modeling_generanno.py\", line 689, in __init__\n    self.self_attn = GENERANNO_ATTENTION_CLASSES[config._attn_implementation](\n                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^\n        config=config, layer_idx=layer_idx\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/home/forrest/.cache/huggingface/modules/transformers_modules/GENERanno_hyphen_eukaryote_hyphen_0___5b_hyphen_base/ebf9afdb2ac2e598/modeling_generanno.py\", line 360, in __init__\n    self.rotary_emb = GenerannoRotaryEmbedding(config=self.config)\n                      ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/.cache/huggingface/modules/transformers_modules/GENERanno_hyphen_eukaryote_hyphen_0___5b_hyphen_base/ebf9afdb2ac2e598/modeling_generanno.py\", line 126, in __init__\n    self.rope_init_fn = ROPE_INIT_FUNCTIONS[self.rope_type]\n                        ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^\nKeyError: 'default'\n",
+        "forward_ok": false,
+        "output_shape": null,
+        "device": "cuda",
+        "duration_s": 1.423
       },
-      "fetched_at": "2026-10-27T08:39:46Z",
-      "load_note": "census-blocked: no load evidence (see failing_import)"
+      "fetched_at": "2026-10-29T01:09:11Z",
+      "disposition": {
+        "skip": "default rotary embedding initializer not found in transformers 5.17.0 (KeyError: 'default' during model construction)"
+      }
     },
     {
       "repo": "pGenomeOcean/GenomeOcean-100M",
