@@ -35,6 +35,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -454,4 +455,387 @@ class TestCensusLaneInstallSequence:
             "the census job must keep its 240-minute timeout (49 fetches "
             "plus family-representative loads; UAT G-27-1's kernel install "
             "adds build time but stays inside this budget)"
+        )
+
+
+# --- Extras-lane contracts (Phase 28, D-05..D-08/D-12; owner ruling A) ---
+
+EXTRAS_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "extras_compat.yml"
+EXTRAS_JOB_NAME = "extras-compat"
+EXTRAS_NIGHTLY_CRON = "0 4 * * *"
+
+EXTRAS_BIGBIRD_REPO = "AIRI-Institute/gena-lm-bigbird-base-sparse"
+EXTRAS_CROSSDNA_REPO = "chengCCC/CrossDNA_pretrain"
+EXTRAS_ENTRIES_VALUE = f"{EXTRAS_BIGBIRD_REPO},{EXTRAS_CROSSDNA_REPO}"
+
+# The exact executed lines the extras lane must carry (install order is
+# load-bearing: the pinned installer needs pip bootstrapped AND torch from
+# the .[full] install ahead of it).
+EXTRAS_FULL_INSTALL = 'uv pip install -e ".[full]"'
+EXTRAS_PIP_BOOTSTRAP = "uv pip install --python .venv/bin/python pip"
+EXTRAS_DEEPSPEED_INSTALL = 'uv pip install -e ".[deepspeed]"'
+EXTRAS_FLASH_ATTN_INSTALLER = (
+    "bash scripts/install_flash_attn.sh "
+    "--python .venv/bin/python --index-url https://pypi.tuna.tsinghua.edu.cn/simple"
+)
+
+# D-07 length fact (28-01 measured): sparse BigBird requires
+# seq_len % block_size(64) == 0, so the committed tool's
+# LOAD_SEQUENCE_LENGTH=32 can only ever forward-red on divisibility and mask
+# the real kernel verdict. The lane probes through a one-line copy with the
+# constant at 64; the committed tool itself is never invoked with --run here.
+EXTRAS_LEN64_SED = "s/^LOAD_SEQUENCE_LENGTH = 32$/LOAD_SEQUENCE_LENGTH = 64/"
+EXTRAS_LEN64_PROBE = ".lane-tools/census_compat_len64.py --run --with-loads"
+EXTRAS_SEED_COPY = "cp tests/models/compat_census.json census-artifacts/extras-fresh.json"
+EXTRAS_VERIFY_LINE = (
+    "python scripts/census_compat.py --verify --artifact census-artifacts/extras-fresh.json"
+)
+
+# Bare package-index flash-attn installs: forbidden shapes (D-12 -- the
+# sha256-pinned installer script is the ONLY CI flash-attn route; the
+# pyproject extra stays the end-user route).
+EXTRAS_FORBIDDEN_FLASH_ATTN_INSTALLS = (
+    "pip install flash-attn",
+    "pip install flash_attn",
+    "uv pip install flash-attn",
+    "uv pip install flash_attn",
+    'uv pip install -e ".[flash-attn]"',
+)
+
+EXTRAS_PROBE_STEP_NAME = "Seed and probe the two extras entries"
+EXTRAS_GATE1_STEP_NAME = "Gate 1: fresh probe evidence matches the ruling-A expected shape"
+EXTRAS_GATE2_STEP_NAME = "Gate 2: fresh verdicts match the committed registry"
+
+
+def _load_extras_workflow_text() -> str:
+    """Return the committed extras lane workflow text (the auditable source)."""
+    if not EXTRAS_WORKFLOW.exists():
+        pytest.fail(
+            f"{EXTRAS_WORKFLOW.relative_to(REPO_ROOT)} is missing: the Phase 28 "
+            "extras lane (D-05) must exist as a dedicated workflow file"
+        )
+    return EXTRAS_WORKFLOW.read_text(encoding="utf-8")
+
+
+def _load_extras_doc() -> dict:
+    """Return the parsed extras lane workflow document."""
+    return yaml.safe_load(_load_extras_workflow_text())
+
+
+def _extras_step_run(step_name_prefix: str) -> str:
+    """Return the concatenated run body of the first step named with the prefix."""
+    steps = _load_extras_doc()["jobs"][EXTRAS_JOB_NAME]["steps"]
+    for step in steps:
+        if str(step.get("name", "")).startswith(step_name_prefix):
+            return str(step.get("run", ""))
+    pytest.fail(f"extras_compat.yml carries no step named {step_name_prefix!r}*")
+
+
+class TestExtrasLaneContract:
+    """Extras-lane structural pins (Phase 28, D-05..D-08/D-12; ruling A).
+
+    The dedicated extras lane answers a DIFFERENT question than the default
+    census (D-02): census_compat.yml keeps measuring the default install and
+    its missing-extra failures, while extras_compat.yml proves the same two
+    models still load and forward when their curated packages are installed.
+    These pins hold that split: the lane's secure self-hosted posture, the
+    D-12 install order (pinned flash-attn installer only), the D-07 length-64
+    probe route, and the TWO independent pass gates -- an editorial revert of
+    any of them re-creates either a PR-reachable GPU lane or a lane whose
+    green could ride a stale seeded verdict instead of tonight's probe.
+    """
+
+    def test_triggers_are_schedule_dispatch_and_call_only(self) -> None:
+        """schedule/workflow_dispatch/workflow_call only -- never push or pull_request."""
+        doc = _load_extras_doc()
+        # pyyaml gotcha: a bare `on:` key parses as boolean True (the same
+        # normalization TestCensusLaneInstallSequence applies).
+        triggers = doc.get(True) or doc.get("on")
+        assert triggers is not None, "extras_compat.yml carries no trigger block"
+        names = {triggers} if isinstance(triggers, str) else set(triggers)
+        assert names == {"schedule", "workflow_dispatch", "workflow_call"}, (
+            "extras_compat.yml triggers must be exactly schedule/workflow_dispatch/"
+            f"workflow_call (found {sorted(names)}): push/pull_request would let "
+            "PR-authored code run on the self-hosted GPU box, and workflow_call "
+            "is not an independent public trigger (T-28-09)"
+        )
+        assert triggers["schedule"] == [{"cron": EXTRAS_NIGHTLY_CRON}], (
+            "the extras lane must own exactly one nightly cron, 0 4 * * * "
+            "(D-06: 04:00 UTC, queue-serialized after the 03:00/05:30 ci.yml "
+            "lanes on the single dnallm-nightly runner)"
+        )
+        assert "push" not in names and "pull_request" not in names
+
+    def test_permissions_runner_and_timeout(self) -> None:
+        """contents:read, the self-hosted nightly runner, and a 360-minute bound."""
+        doc = _load_extras_doc()
+        assert doc.get("permissions") == {"contents": "read"}, (
+            "extras_compat.yml must stay at contents: read (least privilege on "
+            "the self-hosted runner; no secrets are ever needed)"
+        )
+        job = doc["jobs"][EXTRAS_JOB_NAME]
+        assert job.get("runs-on") == ["self-hosted", "dnallm-nightly"], (
+            "the extras job must run on [self-hosted, dnallm-nightly] -- the box "
+            "the measured extras evidence was produced on"
+        )
+        assert job.get("timeout-minutes") == 360, (
+            "the extras job must carry a 360-minute timeout: the uncached "
+            "flash-attn source build measured ~64 min at MAX_JOBS=8 (28-01), "
+            "and self-hosted jobs have no platform cap, so this is the only "
+            "whole-job bound against a hung build monopolizing the single runner"
+        )
+
+    def test_event_gate_admits_only_sanctioned_shapes(self) -> None:
+        """The job gate ANDs schedule with its exact cron string; dispatch and call pass."""
+        gate = _load_extras_doc()["jobs"][EXTRAS_JOB_NAME].get("if", "")
+        assert (
+            f"github.event_name == 'schedule' && github.event.schedule == '{EXTRAS_NIGHTLY_CRON}'"
+            in gate
+        ), (
+            "the schedule arm must be ANDed with its exact cron string (D-06 "
+            "cron-string gate discipline): a second cron entry added later must "
+            "fail closed instead of silently reaching the runner"
+        )
+        assert "github.event_name == 'workflow_dispatch'" in gate, (
+            "standalone manual dispatch must stay admitted (reproduction + the "
+            "post-merge first live run)"
+        )
+        assert "github.event_name == 'workflow_call'" in gate, (
+            "the internal reusable call from ci.yml's dispatch-gated job must "
+            "stay admitted (D-06 fourth selector wiring)"
+        )
+
+    def test_uv_step_fails_closed_without_installer_fallback(self) -> None:
+        """Install uv requires the runner-provisioned binary and never curls.
+
+        Unlike the census lane (whose curl installer stays as the wiped-box
+        fallback, T-27.1-06), the extras lane fails closed when uv is absent:
+        its long flash-attn build must never start from an unpinned fetched
+        installer, and the box this lane is pinned to carries a runner-ops
+        mirror-configured uv under $HOME/.local/bin.
+        """
+        doc = _load_extras_doc()
+        steps = doc["jobs"][EXTRAS_JOB_NAME]["steps"]
+        uv_steps = [s for s in steps if s.get("name") == "Install uv"]
+        assert len(uv_steps) == 1, (
+            f"extras_compat.yml must carry exactly one Install uv step (found {len(uv_steps)})"
+        )
+        run = str(uv_steps[0].get("run", ""))
+        assert 'export PATH="$HOME/.local/bin:$PATH"' in run, (
+            "the Install uv step must export $HOME/.local/bin first (the "
+            "runner-ops uv lives there)"
+        )
+        assert run.index("command -v uv") < run.index("$GITHUB_PATH"), (
+            "the `command -v uv` probe must precede the $GITHUB_PATH write"
+        )
+        assert 'echo "$HOME/.local/bin" >> "$GITHUB_PATH"' in run, (
+            "the provisioned-uv branch must persist $HOME/.local/bin to "
+            "$GITHUB_PATH so later steps' bare `uv` resolves (CR-01 precedent)"
+        )
+        assert "curl" not in run, (
+            "the extras lane must carry NO curl installer fallback: a wiped "
+            "box fails closed with a clear message instead of fetching an "
+            "unpinned installer ahead of a 64-minute build"
+        )
+        assert "exit 1" in run, (
+            "uv absence must fail the step (fail-closed posture)"
+        )
+
+    def test_install_order_full_pip_deepspeed_installer_probe(self) -> None:
+        """.[full] -> pip bootstrap -> .[deepspeed] -> pinned installer -> probe."""
+        text = _load_extras_workflow_text()
+        full = text.index(EXTRAS_FULL_INSTALL)
+        bootstrap = text.index(EXTRAS_PIP_BOOTSTRAP)
+        deepspeed = text.index(EXTRAS_DEEPSPEED_INSTALL)
+        installer = text.index(EXTRAS_FLASH_ATTN_INSTALLER)
+        probe = text.index(EXTRAS_LEN64_PROBE)
+        assert full < bootstrap < deepspeed < installer < probe, (
+            "extras_compat.yml install order is load-bearing (D-12): the "
+            "installer script needs pip bootstrapped and torch resolved ahead "
+            "of it (the sdist's setup.py imports torch with --no-build-"
+            "isolation), and the deepspeed extra must be installed before the "
+            "probes run -- any reordering redds the lane deterministically"
+        )
+
+    def test_flash_attn_installs_only_through_the_pinned_script(self) -> None:
+        """The exact pinned installer invocation; no bare package-index flash-attn install."""
+        text = _load_extras_workflow_text()
+        assert EXTRAS_FLASH_ATTN_INSTALLER in text, (
+            "extras_compat.yml must invoke the sha256-pinned installer exactly "
+            f"as `{EXTRAS_FLASH_ATTN_INSTALLER}` (D-12: the only CI flash-attn "
+            "route -- no aarch64/cu130/torch-2.14 wheel exists, and the sdist "
+            "needs the sm_121 gencode + c++20 patches the script applies)"
+        )
+        for shape in EXTRAS_FORBIDDEN_FLASH_ATTN_INSTALLS:
+            assert shape not in text, (
+                f"forbidden flash-attn install shape {shape!r}: D-12 forbids "
+                "every bare package-index route in CI (the plain extra install "
+                "cannot patch setup.py, so it either fails or builds wrong "
+                "architectures on this box)"
+            )
+
+    def test_probe_selects_both_repos_in_single_entry_mode(self) -> None:
+        """The --entries value names exactly BigBird and CrossDNA, comma-joined."""
+        probe = _extras_step_run(EXTRAS_PROBE_STEP_NAME)
+        assert f"--entries {EXTRAS_ENTRIES_VALUE}" in probe, (
+            "the probe step must run census single-entry mode over exactly "
+            f"{EXTRAS_ENTRIES_VALUE} (D-07): the two external-package models "
+            "the curated extras exist for"
+        )
+
+    def test_probe_runs_bigbird_at_a_64_multiple(self) -> None:
+        """The probe goes through the diff-proven length-64 tool copy, never the committed --run."""
+        text = _load_extras_workflow_text()
+        probe = _extras_step_run(EXTRAS_PROBE_STEP_NAME)
+        assert "grep -c '^LOAD_SEQUENCE_LENGTH = 32$' scripts/census_compat.py" in probe, (
+            "the length-64 copy must be occurrence-asserted before the sed "
+            "swap: a renamed constant must fail loudly instead of silently "
+            "probing at 32 (the divisibility red that masks the kernel verdict)"
+        )
+        assert EXTRAS_LEN64_SED in probe, (
+            "the copy must be produced by the exact one-line sed swap "
+            f"`{EXTRAS_LEN64_SED}` -- BigBird requires seq_len % 64 == 0 "
+            "(28-01 measured; D-07)"
+        )
+        assert "diff scripts/census_compat.py .lane-tools/census_compat_len64.py" in probe, (
+            "the copy must be diff-proven to differ from the committed tool "
+            "(the 28-01 scratch-copy discipline, now lane-resident)"
+        )
+        assert EXTRAS_LEN64_PROBE in probe, (
+            "the two-entry probe must execute through the length-64 copy"
+        )
+        assert "scripts/census_compat.py --run" not in text, (
+            "the committed census tool must never be invoked with --run by the "
+            "extras lane: its LOAD_SEQUENCE_LENGTH=32 is the default lane's "
+            "contract and structurally cannot forward sparse BigBird"
+        )
+
+    def test_fresh_probes_are_forced_not_carried(self) -> None:
+        """The seeded load evidence is stripped so both entries re-measure tonight.
+
+        apply_loads keeps a prior load that already passed (it carries the old
+        evidence instead of re-fetching), and the committed seed carries
+        CrossDNA's Plan-01 measured green load. Without this strip the lane
+        would assert LAST cycle's (or the committed artifact's) green instead
+        of tonight's -- a green that cannot catch a broken extras env.
+        """
+        probe = _extras_step_run(EXTRAS_PROBE_STEP_NAME)
+        assert EXTRAS_SEED_COPY in probe, (
+            "the fresh artifact must be seeded from the committed census "
+            "(D-02/D-08: the 49-record roster and the hand-authored "
+            "dispositions live there; gate 2 diffs against all of them)"
+        )
+        assert 'record["load"] = None' in probe, (
+            "the seed-prep must null the two entries' load evidence so "
+            "apply_loads re-probes both models fresh every run"
+        )
+        assert EXTRAS_BIGBIRD_REPO in probe and EXTRAS_CROSSDNA_REPO in probe
+
+    def test_two_distinct_gates_green_then_verify(self) -> None:
+        """Gate 1 (fresh evidence) and gate 2 (registry agreement) are separate steps, in order."""
+        doc = _load_extras_doc()
+        steps = doc["jobs"][EXTRAS_JOB_NAME]["steps"]
+        names = [str(s.get("name", "")) for s in steps]
+        gate1 = next(i for i, n in enumerate(names) if n.startswith("Gate 1"))
+        gate2 = next(i for i, n in enumerate(names) if n.startswith("Gate 2"))
+        assert gate1 < gate2, (
+            "gate 1 (independent fresh-evidence assertion) must precede gate 2 "
+            "(the --verify registry diff): a --verify-only lane could green on "
+            "a carried seeded verdict (D-08)"
+        )
+        gate1_run = str(steps[gate1].get("run", ""))
+        gate2_run = str(steps[gate2].get("run", ""))
+        assert "extras-fresh.json" in gate1_run and "forward_ok" in gate1_run, (
+            "gate 1 must parse the fresh artifact's raw load fields itself"
+        )
+        assert EXTRAS_VERIFY_LINE in gate2_run, (
+            "gate 2 must run the committed census tool's fail-closed --verify "
+            f"drift gate as `{EXTRAS_VERIFY_LINE}`"
+        )
+
+    def test_gate1_reads_raw_load_evidence_not_dispositions(self) -> None:
+        """Gate 1 asserts load.ok/forward_ok booleans; the extra disposition can never satisfy it."""
+        gate1_run = _extras_step_run(EXTRAS_GATE1_STEP_NAME)
+        for banned in ("compat_verdict", "extra-required-tf5", "disposition"):
+            assert banned not in gate1_run, (
+                f"gate 1 must not consult {banned!r}: the extra disposition "
+                "alone can never satisfy gate 1 on a failed forward -- the "
+                "gate exists to require tonight's real load+forward outcome"
+            )
+
+    def test_gate1_asserts_the_ruling_a_expected_shape(self) -> None:
+        """CrossDNA fully green; BigBird load-green with the structural forward-red named."""
+        gate1_run = _extras_step_run(EXTRAS_GATE1_STEP_NAME)
+        assert EXTRAS_CROSSDNA_REPO in gate1_run and EXTRAS_BIGBIRD_REPO in gate1_run, (
+            "gate 1 must address both probe records individually"
+        )
+        assert "superblock" in gate1_run, (
+            "gate 1 must pin BigBird's forward failure to the known structural "
+            "cause (triton libtriton.superblock absence, owner ruling A): a "
+            "failure at any OTHER cause -- including a length-32 divisibility "
+            "error -- means the probe did not reach the real kernel verdict"
+        )
+        assert 'forward_ok"] is False' in gate1_run and 'forward_ok"] is True' in gate1_run, (
+            "gate 1 must assert CrossDNA forward_ok=True (the flash-attn "
+            "extra delivers load+forward) AND BigBird forward_ok=False (the "
+            "ruling-A split: load works with the deepspeed extra, forward is "
+            "structurally red) -- never one blanket assertion over both"
+        )
+
+    def test_no_masked_failure_or_continue_on_error(self) -> None:
+        """No ``|| true`` on executed lines; no continue-on-error at any level."""
+        text = _load_extras_workflow_text()
+        executed = "\n".join(
+            line for line in text.splitlines() if not line.lstrip().startswith("#")
+        )
+        assert "|| true" not in executed, (
+            "extras_compat.yml must never mask a failed step with '|| true' "
+            "(T-28-10): a masked install or probe failure would green the lane "
+            "over missing evidence"
+        )
+        doc = _load_extras_doc()
+        job = doc["jobs"][EXTRAS_JOB_NAME]
+        assert "continue-on-error" not in job, "job-level continue-on-error would green a failing lane"
+        flagged = [
+            s.get("name", s.get("uses")) for s in job.get("steps", []) if "continue-on-error" in s
+        ]
+        assert not flagged, f"steps carrying continue-on-error: {flagged}"
+
+    def test_gpu_absence_fails_closed_with_marker(self) -> None:
+        """GPU absence writes the marker artifact and exits nonzero (T-28-10 fail-closed)."""
+        doc = _load_extras_doc()
+        steps = doc["jobs"][EXTRAS_JOB_NAME]["steps"]
+        gpu_steps = [s for s in steps if s.get("name") == "Check for GPU"]
+        assert len(gpu_steps) == 1, "exactly one Check for GPU step"
+        run = str(gpu_steps[0].get("run", ""))
+        assert "census-artifacts/gpu_absent.marker" in run, (
+            "GPU absence must write census-artifacts/gpu_absent.marker so the "
+            "always-upload still delivers the diagnosis"
+        )
+        assert "exit 1" in run, "GPU absence must fail the lane (zero-evidence green forbidden)"
+
+    def test_evidence_upload_always_runs(self) -> None:
+        """The extras-fresh-evidence upload is unconditional and carries both files."""
+        doc = _load_extras_doc()
+        steps = doc["jobs"][EXTRAS_JOB_NAME]["steps"]
+        uploads = [
+            s
+            for s in steps
+            if str(s.get("uses", "")).startswith("actions/upload-artifact")
+        ]
+        assert len(uploads) == 1, f"expected exactly one artifact upload step (found {len(uploads)})"
+        upload = uploads[0]
+        assert upload.get("if") == "always()", (
+            "the evidence upload must run on red and green alike -- a red run "
+            "with evidence beats a green run without it"
+        )
+        with_block = upload.get("with", {})
+        assert with_block.get("name") == "extras-fresh-evidence", (
+            "the artifact name must be extras-fresh-evidence (the documented "
+            "operator surface)"
+        )
+        path = str(with_block.get("path", ""))
+        assert "census-artifacts/extras-fresh.json" in path, "the fresh evidence must upload"
+        assert "census-artifacts/gpu_absent.marker" in path, (
+            "the GPU-absence marker must ride the same upload"
         )
