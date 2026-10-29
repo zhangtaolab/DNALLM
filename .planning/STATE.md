@@ -4,11 +4,11 @@ milestone: v1.4
 current_phase: "27.2"
 current_phase_name: "Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED)"
 status: executing
-stopped_at: Completed 27.2-03-PLAN.md
-last_updated: "2026-10-29T04:55:59.641Z"
+stopped_at: Completed 27.2-04-PLAN.md
+last_updated: "2026-10-29T05:15:01.360Z"
 last_activity: 2026-10-29
 last_activity_desc: Phase 27.2 execution started
-state_head: bddd75f91751734329f44e3703ec097991855f53
+state_head: b4cf7a963fa825eadb2c55629f7bf1d7a2e5d9f2
 progress:
   total_phases: 2
   completed_phases: 5
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-28)
 ## Current Position
 
 Phase: 27.2 (Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED)) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-10-29 — Phase 27.2 execution started
 
@@ -69,6 +69,7 @@ Last activity: 2026-10-29 — Phase 27.2 execution started
 | Phase 27.2 P01 | 34 min | 2 tasks | 10 files |
 | Phase 27.2 P02 | 21 min | 2 tasks | 7 files |
 | Phase 27.2 P03 | 21 min | 3 tasks | 10 files |
+| Phase 27.2 P04 | 15 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -153,6 +154,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 27.2]: 27.2-03: CrossDNA lands as a MEASURED remote-code-broken row (authored external-package skip), not green: the FULL snapshot ships 8.1M/config.json so the handler resolver selects the preferred 8.1M checkpoint (the research reading came from a code-only snapshot fetched without nested configs), and 8.1M's remote modeling_crossdna.py constructs fla.layers.attn.Attention, which demands the separately compiled flash-attn package dnallm does not install — the census verdict flipped census-blocked -> import-ok with the real load failure recorded.
 - [Phase 27.2]: 27.2-03: the census import probe's auto_map jobs resolve against the RESOLVED config directory, not the repo root — resolving only read_config left CrossDNA census-blocked (auto_map values do not resolve to fetched .py files); census_entry now threads the resolved dir into _remote_record.
 - [Phase 27.2]: 27.2-03: the final distribution is 19 verified / 21 import-verified / 5 shim-required (PlantCaduceus + GENERanno + GENA-LM + MutBERT + DNABERT-2) / 4 remote-code-broken (GPN, Omni-DNA, GENA-LM-BigBird unchanged + CrossDNA measured) / 0 census-blocked; --verify reports 49 matched, the page re-emits byte-identically, and disposition pins now agree with the green-drop rule (a green load+forward supersedes historical previous_status failure signals).
+- [Phase 27.2]: 27.2-04: the census generator reads shared DOCS_STATUS_CELLS through a lazy _docs_status_cells() helper, not a module-level import - census_compat must stay stdlib-only at module load so loading the tool can never import hub clients while the mirror endpoint env var is set (WR-02 loader guard)
+- [Phase 27.2]: 27.2-04: yaml.safe_load cannot parse mkdocs.yml (pre-existing !!python/name: emoji tags, lines 281-282) - the parse leg of the docs verify runs with yaml.UnsafeLoader, the loader mkdocs config files require; strict mkdocs build is the independent structural check
+- [Phase 27.2]: 27.2-04: dnallm/models/support.py is the single shared support-word source (five exact status words, three repo overrides, registry.resolve base inheritance with cycle-safe untested fallback, 100% coverage); the static guide's section order (families before the compact table) keeps the plan's GENA-LM span probes unambiguous
 
 ### Pending Todos
 
@@ -209,8 +213,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-29T04:55:59.572Z
-Stopped at: Completed 27.2-03-PLAN.md
+Last session: 2026-10-29T05:15:01.294Z
+Stopped at: Completed 27.2-04-PLAN.md
 Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)
