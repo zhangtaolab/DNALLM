@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 7
+open_count: 10
 waived_count: 3
 fixed_count: 19
-total_count: 29
-last_updated: 2026-10-28T12:09:18.962Z
+total_count: 32
+last_updated: 2026-10-29T04:56:47.741Z
 ---
 
 # Broken Windows Ledger
@@ -44,6 +44,9 @@ last_updated: 2026-10-28T12:09:18.962Z
 | 27 | 18 | unrun-verify | pyproject.toml |  | 18-03 Windows fla KDA re-verification deferred by owner (稍后再做, coordinator-relayed 2026-10-14 ~14:5xZ) — WPAR-07 acceptance half + T-18-SC SUS retirement + WINDOWS #18 closure all gate on real-hardware execution (RTX 5080); full checklist in 18-03-SUMMARY.md Task 1 Record; resume on the Windows box from origin/v1.3 (>=399f9f1, the surgery commit): (1) pip install -e ".[fla]" in a fresh venv or the dnallm-cuda env — NO manual triton-windows step, the marker must pull it; (2) pip show triton-windows -> Version: 3.7.1.post27; (3) python -c "import torch; print(torch.__version__, torch.version.cuda)" and record both; (4) python -c "from fla.ops.kda.chunk import chunk_kda; print(callable(chunk_kda))" -> True (equivalent: pytest tests/models/test_plant_helixseek_fla_kernels.py — test_chunk_kda_importable_when_fla_installed gates this import); (5) compile + execute a KDA chunk kernel under the resolved torch (WINDOWS #18 remedy precedent, RTX 5080 sm_120) and record the output; (6) capture env/venv, triton-windows version, torch version + cuda build, import result, kernel evidence, date — then re-run /gsd-execute-phase 18 (18-03 Task 2 closes WINDOWS #18, retires the SUS flag on the evidence, marks WPAR-07) | open |  | 2026-10-14T15:49:25.972Z |  |
 | 28 | post-v1.3 | deviation | example/notebooks/plant_helixseek_cre/plant_helixseek_cre.ipynb |  | First Windows GPU full-suite census (2026-10-19, dnallm-cuda env, RTX 5080, 2498P/120F/32S) surfaced the last unguarded bedtools-ecosystem surface: CRE notebook cell 16's presentation-only zoom figure invokes the pgt CLI (pygenometracks), which pyproject gates platform_system != 'Windows' (line 56, matplotlib-cap rationale) — compute path (cell 11 jaccard numpy dispatch) was already platform-split by 16-01. Disposition: sys.platform == 'win32' seam at the render call only (POSIX branch byte-preserved, data-file writes unguarded, committed outputs kept as the Linux-execution record), docs mirror synced byte-identical. census residue taxonomy: ~92 failures were VRAM-exhaustion cascade (monolithic full-suite run on 16GB vs CI's D-07 staged-serial discipline — not a code defect; affected files re-ran green on the freed GPU), 25 were scikit-allel missing from the owner env (installed per pyproject constraint scikit-allel>=1.3.13,<2; test_vep 56P/5S green), this 1 was the real surface gap. Follow-up: 6 residual failures re-run exclusive-GPU fresh-process — 5 were CUDA-context poisoning from the first real OOM (4 re-verified green standalone: ia3 roundtrip, with_config_file, both TestUnload; mcp_functionality excluded from Windows scope per owner directive 2026-10-19 — MCP not tested on this box, same convention family as the ollama disposition); the one genuine >16GB task is test_ia3_training_mamba (mambapy pscan pure-torch scan, modeling_mamba.py:306 slow_forward → pscan.py:169) — dispositioned as a Windows-GPU-only typed skip at test head (sys.platform=='win32' and cuda available → pytest.skip environment-unavailable, 0.37s verified 2026-10-19); Linux nightly (GB10) and Windows CPU runs still execute it unchanged. Also noted: check_docs_sync gives a false DIFFER on Windows autocrlf=true checkouts (git blobs identical; normalize EOL before trusting a local red). | fixed |  | 2026-10-19T09:40:00.000Z |  |
 | 29 | 27.1 | deviation | docs/user_guide/preset_loading.md |  | Pre-existing repo-wide ruff format failure (untouched by 27.1-01); plan-level format gate not green, touched files clean; logged in phase deferred-items.md | open |  | 2026-10-28T12:09:18.962Z |  |
+| 30 | 27.2 | deviation | scripts/census_compat.py |  | 27.2-03 Rule 1: census_entry now threads the resolved config dir into _remote_record so CrossDNA's auto_map jobs resolve against the checkpoint subdirectory (root-only resolution left the record census-blocked). | open |  | 2026-10-29T04:56:47.578Z |  |
+| 31 | 27.2 | deviation | tests/models/test_census_compat.py |  | 27.2-03 Rule 1: disposition pins (_is_failure_record, _needs_disposition) treat a green load+forward as superseding historical previous_status failure stamps, matching the merge_records green-drop rule. | open |  | 2026-10-29T04:56:47.650Z |  |
+| 32 | 27.2 | deviation | tests/models/test_compat_docs_consistency.py |  | 27.2-03 Rule 1: blocked-map docs pin no longer requires a non-empty census-blocked roster (the campaign measured it to zero); per-row fail-closed mapping stays armed. | open |  | 2026-10-29T04:56:47.741Z |  |
 
 ````json
 [
@@ -421,6 +424,45 @@ last_updated: 2026-10-28T12:09:18.962Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-10-28T12:09:18.962Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
+  },
+  {
+    "id": 30,
+    "kind": "deviation",
+    "phase": "27.2",
+    "file": "scripts/census_compat.py",
+    "line": null,
+    "description": "27.2-03 Rule 1: census_entry now threads the resolved config dir into _remote_record so CrossDNA's auto_map jobs resolve against the checkpoint subdirectory (root-only resolution left the record census-blocked).",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-29T04:56:47.578Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
+  },
+  {
+    "id": 31,
+    "kind": "deviation",
+    "phase": "27.2",
+    "file": "tests/models/test_census_compat.py",
+    "line": null,
+    "description": "27.2-03 Rule 1: disposition pins (_is_failure_record, _needs_disposition) treat a green load+forward as superseding historical previous_status failure stamps, matching the merge_records green-drop rule.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-29T04:56:47.650Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
+  },
+  {
+    "id": 32,
+    "kind": "deviation",
+    "phase": "27.2",
+    "file": "tests/models/test_compat_docs_consistency.py",
+    "line": null,
+    "description": "27.2-03 Rule 1: blocked-map docs pin no longer requires a non-empty census-blocked roster (the campaign measured it to zero); per-row fail-closed mapping stays armed.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-29T04:56:47.741Z",
     "resolved_at": null,
     "milestone": "v1.4"
   }
