@@ -551,3 +551,148 @@ class TestBlockedRowPlainLanguage:
                 f"{detail!r} -- the generator's fail-closed ValueError would also fire here; "
                 "add the mapping in lockstep (generator + gate)"
             )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Static optional-dependency guide content pin (27.2-04-T2, D-11/D-14).
+# During execution this page was verified only with ad-hoc python -I probes;
+# the tests below pin that verified truth so any regression of the guide,
+# the mkdocs navigation, or the README support statement fails CI.
+# ──────────────────────────────────────────────────────────────────────────────
+
+GUIDE_PAGE = (
+    Path(__file__).resolve().parents[2] / "docs" / "user_guide" / "optional_dependencies.md"
+)
+README_PAGE = Path(__file__).resolve().parents[2] / "README.md"
+MKDOCS_PAGE = Path(__file__).resolve().parents[2] / "mkdocs.yml"
+
+# The eight campaign presets the guide must cover, each with its own section.
+GUIDE_SECTION_HEADINGS = (
+    "GENERanno",
+    "DNABERT-2",
+    "GENA-LM",
+    "MutBERT",
+    "GPN",
+    "Omni-DNA",
+    "GENA-LM-BigBird",
+    "CrossDNA",
+)
+
+
+def _read_guide() -> str:
+    """Read the committed static guide, failing closed when it is absent."""
+    if not GUIDE_PAGE.is_file():
+        pytest.fail(f"committed optional-dependency guide is missing: {GUIDE_PAGE}")
+    return GUIDE_PAGE.read_text(encoding="utf-8")
+
+
+def _guide_section(heading: str) -> str:
+    """Return the guide text from a section heading up to the next heading.
+
+    Fails closed when the heading is absent. The GENA-LM lookup must anchor
+    on the full ``## GENA-LM`` line so the GENA-LM-BigBird section is never
+    mistaken for it (and vice versa the BigBird section still contains the
+    GENA-LM token, which is why the lookup is line-anchored).
+    """
+    guide = _read_guide()
+    pattern = rf"^#+\s+{re.escape(heading)}\s*$"
+    match = re.search(pattern, guide, flags=re.MULTILINE)
+    if match is None:
+        pytest.fail(f"guide section heading {heading!r} missing from {GUIDE_PAGE}")
+    next_heading = re.search(r"^#+\s", guide[match.end() :], flags=re.MULTILINE)
+    end = match.end() + next_heading.start() if next_heading else len(guide)
+    return guide[match.start() : end]
+
+
+class TestGuideContent:
+    """Pins the static optional-dependency guide's verified content (D-11/D-14)."""
+
+    @pytest.mark.parametrize(
+        "required",
+        [
+            "pip install gpn",
+            "pip install ai2-olmo",
+            "deepspeed",
+            "works with built-in fixes",
+            "block-sparse attention",
+            "transformers==5.15.0",
+            "numpy<2",
+        ],
+    )
+    def test_guide_carries_required_substring(self, required: str):
+        """Every verified install command, caveat, and support word stays present."""
+        assert required in _read_guide(), (
+            f"the optional-dependency guide lost the required substring {required!r}"
+        )
+
+    def test_gena_lm_section_pins_the_repair_story(self):
+        """GENA-LM: zeros + non-persistent buffer reset, never damaged files."""
+        section = _guide_section("GENA-LM")
+        assert "zeros" in section, "GENA-LM section no longer explains the reset-to-zeros repair"
+        assert "non-persistent" in section, (
+            "GENA-LM section no longer names the non-persistent buffer as the cause"
+        )
+        assert "damaged published" not in section, (
+            "GENA-LM section regressed to the superseded damaged-files claim"
+        )
+
+    def test_bigbird_section_pins_the_non_stubbing_reason(self):
+        """BigBird: block-sparse attention + a stand-in computing wrong results."""
+        section = _guide_section("GENA-LM-BigBird")
+        assert "block-sparse attention" in section, (
+            "the BigBird section lost the block-sparse-attention explanation"
+        )
+        # Verbatim guide wording: a stand-in must never be described as safe.
+        assert "would silently compute the wrong" in section, (
+            "the BigBird section lost the statement that a stand-in would "
+            "silently compute the wrong block-sparse attention"
+        )
+
+    @pytest.mark.parametrize("heading", GUIDE_SECTION_HEADINGS)
+    def test_guide_has_all_eight_preset_sections(self, heading: str):
+        """All eight campaign presets keep their own section heading."""
+        _guide_section(heading)  # fails closed when the heading is absent
+
+
+class TestGuideDiscovery:
+    """Pins the navigation and README surfaces that make the guide findable."""
+
+    def test_mkdocs_nav_lists_the_guide(self):
+        """mkdocs.yml nav carries the optional-dependency guide entry.
+
+        mkdocs.yml uses ``!!python/name:`` tags, so yaml.safe_load fails;
+        the nav is pinned as text (the same approach the plan's own
+        verified probe used).
+        """
+        nav = MKDOCS_PAGE.read_text(encoding="utf-8")
+        assert "user_guide/optional_dependencies.md" in nav, (
+            "mkdocs.yml navigation no longer links the optional-dependency guide"
+        )
+
+    def test_mkdocs_nav_entry_follows_model_compatibility(self):
+        """The guide nav entry sits immediately after Model Compatibility."""
+        nav = MKDOCS_PAGE.read_text(encoding="utf-8").splitlines()
+        compat = [i for i, line in enumerate(nav) if "user_guide/model_compatibility.md" in line]
+        guide = [i for i, line in enumerate(nav) if "user_guide/optional_dependencies.md" in line]
+        assert compat, "the Model Compatibility nav entry is missing"
+        assert guide, "the Optional Dependencies and Support nav entry is missing"
+        assert guide[0] == compat[0] + 1, (
+            "the Optional Dependencies and Support nav entry must sit immediately "
+            "after Model Compatibility"
+        )
+
+    def test_readme_links_both_guides_and_states_support_varies(self):
+        """README carries both guide links plus the support-varies statement."""
+        readme = README_PAGE.read_text(encoding="utf-8")
+        assert "docs/user_guide/model_compatibility.md" in readme, (
+            "README no longer links the model-compatibility table"
+        )
+        assert "docs/user_guide/optional_dependencies.md" in readme, (
+            "README no longer links the optional-dependency guide"
+        )
+        # The verified support statement (truth #18): support varies by model
+        # and transformers version.
+        assert "depends on the model and on your transformers" in readme, (
+            "README lost the supported-models statement that support varies by "
+            "model and transformers version"
+        )
