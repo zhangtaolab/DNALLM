@@ -69,7 +69,7 @@ Plans:
 **Goal:** Restore transformers-5 usability for every fixable preset and set the support story in docs. Land the four measured rung fixes (GENERanno ROPE 'default' init alias; DNABERT-2 meta-device ALiBi construction; GENA-LM token_type_ids buffer reset and MutBERT input_shape forward wrap — the latter two are owner-approved author-defect repairs, 2026-10-29), upgrade GPN/Omni-DNA error messages to exact pip-install guidance, document GENA-LM-BigBird's deepspeed requirement (deliberately not a dependency; not stubbable) and CrossDNA's special-handler-vs-census-reporting alignment, and ship the docs/support surface: regenerated model_compatibility.md, a plain-language optional-dependency section, a README supported-models statement, and TUI/MCP listing support flags. Census discipline holds: a disposition flips only on a measured green probe (replica-grade until the census lane is live post-merge), and repaired models are always worded "works with DNALLM's built-in compatibility fixes", never "as-is".
 **Requirements**: source pending todo 2026-10-29-transformers-5-compatibility-remediation-campaign-all-8 (severity major, scope ALL 8)
 **Depends on:** Phase 27
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans executed
 
 Plans:
 **Wave 1**
@@ -85,4 +85,4 @@ Plans:
 - [x] 27.2-04-PLAN.md — Shared support vocabulary, static optional-dependency guide, README statement, and generator cross-link
 
 **Wave 5** *(blocked on Wave 4 completion)*
-- [ ] 27.2-05-PLAN.md — Additive plain-language support status in TUI and MCP model listings
+- [x] 27.2-05-PLAN.md — Additive plain-language support status in TUI and MCP model listings
