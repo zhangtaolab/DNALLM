@@ -839,3 +839,86 @@ class TestExtrasLaneContract:
         assert "census-artifacts/gpu_absent.marker" in path, (
             "the GPU-absence marker must ride the same upload"
         )
+
+
+class TestExtrasDispatchSelection:
+    """ci.yml's fourth nightly-lane selector and reusable extras-lane call (D-06).
+
+    ``run_extras_compat`` follows the 261026-b34 per-lane dispatch pattern:
+    a boolean defaulting true beside the existing three selectors, consumed
+    through the ``inputs`` context (booleans stay booleans there, while
+    ``github.event.inputs`` renders them as strings). The caller reaches
+    the lane only through the dispatch-gated reusable call -- extras_compat.yml
+    owns the nightly cron, so nightly and manual dispatch each run the lane
+    exactly once.
+    """
+
+    def test_fourth_selector_declared_after_run_test_mamba(self) -> None:
+        """run_extras_compat is the fourth boolean, exact shape, default true."""
+        ci = yaml.safe_load(CI_WORKFLOW.read_text(encoding="utf-8"))
+        inputs = ci[True]["workflow_dispatch"]["inputs"]
+        assert list(inputs) == [
+            "run_coverage_nightly",
+            "run_example_nightly",
+            "run_test_mamba",
+            "run_extras_compat",
+        ], (
+            "the dispatch-selection block must declare exactly four booleans with "
+            "run_extras_compat immediately after run_test_mamba (D-06)"
+        )
+        assert inputs["run_extras_compat"] == {
+            "description": (
+                "Run the extras-compat lane (deepspeed + flash-attn probes) on this dispatch"
+            ),
+            "type": "boolean",
+            "default": True,
+        }
+
+    def test_reusable_call_gate_uses_inputs_boolean(self) -> None:
+        """The extras-compat job gate reads inputs.run_extras_compat, dispatch-only."""
+        ci = yaml.safe_load(CI_WORKFLOW.read_text(encoding="utf-8"))
+        job = ci["jobs"]["extras-compat"]
+        assert job["if"] == "github.event_name == 'workflow_dispatch' && inputs.run_extras_compat", (
+            "the reusable call must be gated on the dispatch event ANDed with the "
+            "inputs-context boolean (never github.event.inputs string comparison)"
+        )
+        assert job["uses"] == "./.github/workflows/extras_compat.yml", (
+            "the caller must reach the lane through the local reusable workflow path"
+        )
+
+    def test_reusable_call_passes_no_secrets_or_environment(self) -> None:
+        """The call passes no secrets, no environment, and contents:read only."""
+        ci = yaml.safe_load(CI_WORKFLOW.read_text(encoding="utf-8"))
+        job = ci["jobs"]["extras-compat"]
+        assert "secrets" not in job, "the extras lane needs no secrets (T-28-09)"
+        assert "environment" not in job, "the extras lane declares no environment"
+        assert job.get("permissions") == {"contents": "read"}, (
+            "the caller must pass least-privilege permissions to the reusable lane"
+        )
+
+    def test_caller_keeps_no_extras_schedule_arm(self) -> None:
+        """ci.yml's schedule block is unchanged; extras_compat.yml owns the 04:00 cron."""
+        ci_text = CI_WORKFLOW.read_text(encoding="utf-8")
+        ci = yaml.safe_load(ci_text)
+        assert ci[True]["schedule"] == [{"cron": "0 3 * * *"}, {"cron": "30 5 * * *"}], (
+            "ci.yml must keep exactly its two committed cron entries -- adding the "
+            "extras cron here would double-run the lane nightly"
+        )
+        assert EXTRAS_NIGHTLY_CRON not in ci_text, (
+            "the 04:00 UTC extras cron must live ONLY on extras_compat.yml (D-06: "
+            "nightly coverage occurs exactly once)"
+        )
+        extras = yaml.safe_load(EXTRAS_WORKFLOW.read_text(encoding="utf-8"))
+        assert extras[True]["schedule"] == [{"cron": EXTRAS_NIGHTLY_CRON}], (
+            "extras_compat.yml retains sole ownership of the nightly extras cron"
+        )
+
+    def test_caller_gate_has_no_schedule_arm(self) -> None:
+        """The reusable-call job's gate admits dispatch only -- no nightly duplication."""
+        ci = yaml.safe_load(CI_WORKFLOW.read_text(encoding="utf-8"))
+        gate = ci["jobs"]["extras-compat"]["if"]
+        assert "github.event_name == 'schedule'" not in gate, (
+            "the ci.yml caller must have no schedule arm: the nightly run comes "
+            "from extras_compat.yml's own cron, so a schedule arm here would "
+            "queue the lane twice a night on the single dnallm-nightly runner"
+        )
