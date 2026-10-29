@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 10
+open_count: 12
 waived_count: 3
 fixed_count: 19
-total_count: 32
-last_updated: 2026-10-29T04:56:47.741Z
+total_count: 34
+last_updated: 2026-10-29T05:15:45.126Z
 ---
 
 # Broken Windows Ledger
@@ -47,6 +47,8 @@ last_updated: 2026-10-29T04:56:47.741Z
 | 30 | 27.2 | deviation | scripts/census_compat.py |  | 27.2-03 Rule 1: census_entry now threads the resolved config dir into _remote_record so CrossDNA's auto_map jobs resolve against the checkpoint subdirectory (root-only resolution left the record census-blocked). | open |  | 2026-10-29T04:56:47.578Z |  |
 | 31 | 27.2 | deviation | tests/models/test_census_compat.py |  | 27.2-03 Rule 1: disposition pins (_is_failure_record, _needs_disposition) treat a green load+forward as superseding historical previous_status failure stamps, matching the merge_records green-drop rule. | open |  | 2026-10-29T04:56:47.650Z |  |
 | 32 | 27.2 | deviation | tests/models/test_compat_docs_consistency.py |  | 27.2-03 Rule 1: blocked-map docs pin no longer requires a non-empty census-blocked roster (the campaign measured it to zero); per-row fail-closed mapping stays armed. | open |  | 2026-10-29T04:56:47.741Z |  |
+| 33 | 27.2 | deviation | docs/user_guide/optional_dependencies.md |  | 27.2-04 Rule 3: the plan's verify command yaml.safe_load(nav) cannot parse mkdocs.yml's pre-existing !!python/name: emoji tags - the parse leg runs with yaml.UnsafeLoader (the loader mkdocs config requires); mkdocs build --strict is the independent structural check. | open |  | 2026-10-29T05:15:45.029Z |  |
+| 34 | 27.2 | deviation | docs/user_guide/optional_dependencies.md |  | 27.2-04 Rule 1: GENERanno guide section's meta-sentence ('you never claim the model works as-is') replaced with direct plain-language wording per the 2026-10-21 biologist-readable directive. | open |  | 2026-10-29T05:15:45.126Z |  |
 
 ````json
 [
@@ -463,6 +465,32 @@ last_updated: 2026-10-29T04:56:47.741Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-10-29T04:56:47.741Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
+  },
+  {
+    "id": 33,
+    "kind": "deviation",
+    "phase": "27.2",
+    "file": "docs/user_guide/optional_dependencies.md",
+    "line": null,
+    "description": "27.2-04 Rule 3: the plan's verify command yaml.safe_load(nav) cannot parse mkdocs.yml's pre-existing !!python/name: emoji tags - the parse leg runs with yaml.UnsafeLoader (the loader mkdocs config requires); mkdocs build --strict is the independent structural check.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-29T05:15:45.029Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
+  },
+  {
+    "id": 34,
+    "kind": "deviation",
+    "phase": "27.2",
+    "file": "docs/user_guide/optional_dependencies.md",
+    "line": null,
+    "description": "27.2-04 Rule 1: GENERanno guide section's meta-sentence ('you never claim the model works as-is') replaced with direct plain-language wording per the 2026-10-21 biologist-readable directive.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-29T05:15:45.126Z",
     "resolved_at": null,
     "milestone": "v1.4"
   }
