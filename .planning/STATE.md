@@ -5,10 +5,10 @@ current_phase: "27.2"
 current_phase_name: "Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED)"
 status: verifying
 stopped_at: Completed 27.2-05-PLAN.md
-last_updated: "2026-10-29T05:26:49.295Z"
+last_updated: "2026-10-29T08:14:22.232Z"
 last_activity: 2026-10-29
 last_activity_desc: Phase 27.2 execution started
-state_head: 77a398b0fddc33f4bfcf8007e0f0b7e222e31a40
+state_head: f28699a9d3729c7b5740ee8308ed5cbef017a1ff
 progress:
   total_phases: 2
   completed_phases: 5
@@ -80,6 +80,7 @@ Last activity: 2026-10-29 — Phase 27.2 execution started
 - Phase 27 added: Transformers 4/5 Model Compatibility Census (owner-directed 2026-10-27; v1.4 line reopened post-archive for this phase — 238-model registry × transformers 4/5 import-level matrix, shim-or-typed-skip disposition)
 - Phase 27.1 inserted after Phase 27: Address tech debt: IN-01..IN-06 + census lane live dispatch (URGENT)
 - Phase 27.2 inserted after Phase 27: Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs — owner ruling 2026-10-29: execute ALL fixes inside v1.4 (merge delayed by design), severity major, scope includes the two author-defect repairs (GENA-LM buffer reset, MutBERT forward wrap); measured-green-probe discipline holds (replica-grade until census lane is live post-merge) (URGENT)
+- Phase 28 added: Owner chose option 1 (2026-10-29): curated optional extras for deepspeed (GENA-LM-BigBird) and flash-attn (CrossDNA) following the mamba-extra precedent; measured census flips on green only
 
 ### Decisions
 

@@ -86,3 +86,13 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 - [x] 27.2-05-PLAN.md — Additive plain-language support status in TUI and MCP model listings
+
+### Phase 28: Optional extras: deepspeed & flash-attn model support
+
+**Goal:** Make the two fixable external-package models installable via curated optional extras, following the mamba-extra precedent: `.[deepspeed]` for GENA-LM-BigBird and a flash-attn extra for CrossDNA (uv index pinning / sha256-pinned installer as needed), with CI lanes covering the extras. Dispositions flip only on a measured green probe in an extras-equipped environment (census discipline); GPN/Omni-DNA stay version-locked guidance cases. Support words, docs (optional_dependencies.md, model_compatibility.md), and handler error messages update to name the extras.
+**Requirements**: TBD (owner decision 2026-10-29: option 1 chosen — extras over isolated-venv recipe or status quo)
+**Depends on:** Phase 27.2
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-discuss-phase 28 then /gsd-plan-phase 28 to break down)
