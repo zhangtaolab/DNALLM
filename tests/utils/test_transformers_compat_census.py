@@ -978,6 +978,28 @@ class TestMutbertForwardRepair:
 
         assert repair(_FakeBookkeepingModel()) is False
 
+    def test_module_class_without_forward_is_not_defective(self):
+        """A module class exposing no callable forward at all (absent, or a
+        non-callable attribute shadowing nn.Module's own) reads as no-defect."""
+        repair = _rung("_repair_mutbert_forward")
+        forwardless = type("_NoForward", (torch.nn.Module,), {})
+        null_forward = type("_NullForward", (torch.nn.Module,), {"forward": None})
+
+        assert repair(_MutbertContainer(forwardless())) is False
+        assert repair(_MutbertContainer(null_forward())) is False
+
+    def test_shadowed_non_callable_forward_is_skipped(self):
+        """A marker-positive class whose instance shadows forward with a
+        non-callable is skipped (the wrapper never captures an uncallable
+        original), and no sentinel is left behind."""
+        repair = _rung("_repair_mutbert_forward")
+        inner = _MarkerRoPEBertModel()
+        inner.forward = None  # instance shadow over a marker-positive class
+        model = _MutbertContainer(inner)
+
+        assert repair(model) is False
+        assert getattr(inner, "_dnallm_mutbert_forward_guard", False) is False
+
 
 class TestMutbertForwardOnLoad:
     """Contract: the MutBERT repair runs at the ``_finalize_model_loading``

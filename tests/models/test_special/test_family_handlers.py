@@ -700,6 +700,26 @@ class TestDnabert2Tf5Shims:
         db2._install_dnabert2_tf5_shims()
         assert len(armed) == 1
 
+    def test_unparseable_version_never_arms(self):
+        """A version string that does not parse reads as major 0 (below 5):
+        the gate fails closed, never arms on an unknown shape."""
+        import dnallm.models.special.dnabert2 as db2
+
+        assert db2._transformers_major_version("5.17.0") == 5
+        assert db2._transformers_major_version("4.49.0") == 4
+        assert db2._transformers_major_version("not-a-version") == 0
+        assert db2._transformers_major_version("") == 0
+        assert db2._transformers_major_version(None) == 0  # type: ignore[arg-type]
+
+    def test_arm_skips_when_the_lookup_symbol_is_absent(self):
+        """A dynamic_module_utils without get_class_in_module is left alone."""
+        import dnallm.models.special.dnabert2 as db2
+
+        fake_dmu = types.ModuleType("fake_dynamic_module_utils")
+
+        assert db2._arm_dnabert2_dynamic_class_shims(fake_dmu) is False
+        assert not hasattr(fake_dmu, "_dnallm_dnabert2_shim_patch")
+
     def test_resolver_wraps_encoder_before_construction(self, tmp_path, monkeypatch):
         """A DNABERT-2-shaped remote module resolved through the wrapped
         lookup has its BertEncoder wrapped BEFORE any constructor runs."""
