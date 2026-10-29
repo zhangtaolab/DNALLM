@@ -834,7 +834,7 @@ class _MarkerRoPEBertModel(torch.nn.Module):
     def forward(self, input_ids=None, attention_mask=None, token_type_ids=None, inputs_embeds=None):
         if input_ids is not None:
             input_shape = input_ids.size()[:-1]  # modified (the authors' defect)
-            batch_size, seq_length = input_shape  # ValueError on 2-D input
+            _batch_size, _seq_length = input_shape  # ValueError on 2-D input
             inputs_embeds = self.embeddings.word_embeddings(input_ids)
         hidden = inputs_embeds * 2.0
         return {"hidden": hidden, "attention_mask": attention_mask}
@@ -952,7 +952,7 @@ class TestMutbertForwardRepair:
         raises OSError) reads as no-defect: never repair blind (Pitfall 5)."""
         repair = _rung("_repair_mutbert_forward")
         namespace: dict = {}
-        exec(  # noqa: S102 - deliberate source-less function for the OSError arm
+        exec(  # ruff: ignore[exec-builtin] - deliberate source-less function for the OSError arm
             "def forward(self, input_ids=None):\n    return input_ids\n", namespace
         )
         exec_cls = type("_ExecDefined", (torch.nn.Module,), {"forward": namespace["forward"]})
@@ -1010,9 +1010,7 @@ class TestMutbertForwardOnLoad:
         assert result == "delegated"
         input_ids = torch.tensor([[1, 2, 3]])
         output = model.bert(input_ids)
-        assert torch.equal(
-            output["hidden"], model.bert.embeddings.word_embeddings(input_ids) * 2.0
-        )
+        assert torch.equal(output["hidden"], model.bert.embeddings.word_embeddings(input_ids) * 2.0)
 
     def test_healthy_receiver_passes_through_unmodified(self, monkeypatch):
         """A receiver without any marker-positive module delegates unchanged."""
@@ -1041,9 +1039,12 @@ class TestMutbertForwardOnLoad:
         assert PreTrainedModel.__dict__["_finalize_model_loading"] is wrapper_before
         assert transformers_compat._remote_defects_original_finalize is original_before
         assert transformers_compat._REMOTE_DEFECT_REPAIRS == repairs_before
-        assert transformers_compat._REMOTE_DEFECT_REPAIRS.count(
-            transformers_compat._repair_mutbert_forward
-        ) == 1
+        assert (
+            transformers_compat._REMOTE_DEFECT_REPAIRS.count(
+                transformers_compat._repair_mutbert_forward
+            )
+            == 1
+        )
 
     def test_noop_when_finalize_model_loading_absent(self, monkeypatch):
         """A transformers without ``_finalize_model_loading`` (4.x shape) is

@@ -553,11 +553,17 @@ class TestDnabert2Tf5Shims:
         "        self.encoder = BertEncoder()\n"
     )
     REMOTE_SOURCE_WITH_FLASH = REMOTE_SOURCE + (
-        "\n" "flash_attn_qkvpacked_func = lambda *args, **kwargs: None\n"
+        "\nflash_attn_qkvpacked_func = lambda *args, **kwargs: None\n"
     )
 
-    def _resolve_remote(self, tmp_path, monkeypatch, sub: str, class_name: str = "BertModel",
-                        source: str | None = None):
+    def _resolve_remote(
+        self,
+        tmp_path,
+        monkeypatch,
+        sub: str,
+        class_name: str = "BertModel",
+        source: str | None = None,
+    ):
         """Resolve a class from a synthetic remote module under a fake modules cache."""
         import dnallm.models.special.dnabert2 as db2
         import transformers.dynamic_module_utils as dmu
@@ -760,9 +766,7 @@ class TestDnabert2Tf5Shims:
         import dnallm.models.special.dnabert2 as db2
 
         calls = []
-        monkeypatch.setattr(
-            db2, "_install_dnabert2_tf5_shims", lambda: calls.append("install")
-        )
+        monkeypatch.setattr(db2, "_install_dnabert2_tf5_shims", lambda: calls.append("install"))
         model_dir = tmp_path / "dnabert-2"
         model_dir.mkdir()
         load_args = ["mask", str(model_dir), 0, {}, {}, {"AutoTokenizer": Mock()}]

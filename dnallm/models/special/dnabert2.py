@@ -70,7 +70,9 @@ def _wrap_rebuild_alibi_tensor(encoder_cls: type) -> bool:
     original = encoder_cls.__dict__.get("rebuild_alibi_tensor")
     if original is None:
         return False
-    original_fn = original.__func__ if isinstance(original, (classmethod, staticmethod)) else original
+    original_fn = (
+        original.__func__ if isinstance(original, (classmethod, staticmethod)) else original
+    )
 
     def rebuild_alibi_tensor(self, size, device=None):
         if device is None:
