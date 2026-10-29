@@ -4,11 +4,11 @@ milestone: v1.4
 current_phase: 28
 current_phase_name: "Optional extras: deepspeed & flash-attn model support"
 status: executing
-stopped_at: Phase 28 context gathered
-last_updated: "2026-10-29T13:14:38.161Z"
+stopped_at: "Completed 28-01-PLAN.md (halted at A2 designed stop: BigBird forward owner ruling pending)"
+last_updated: "2026-10-29T15:32:33.366Z"
 last_activity: 2026-10-29
-last_activity_desc: Phase 27.2 complete
-state_head: ca9e7d4031e89f1ac22afd917f05f71756404414
+last_activity_desc: Phase 28 execution started
+state_head: 39bc4834299e9a24c75746158a5c6c919d5d52f3
 progress:
   total_phases: 2
   completed_phases: 5
@@ -26,14 +26,14 @@ Total Phases: 2
 See: .planning/PROJECT.md (updated 2026-10-29)
 
 **Core value:** One terminal flow takes a user from their own data to a validated, model-compatible config, with the model registry as the runtime single source of truth (Track A first) — suite, coverage gate, and CI honest-green throughout.
-**Current focus:** Phase 28 — Optional extras: deepspeed & flash-attn model support (owner option-1 decision 2026-10-29)
+**Current focus:** Phase 28 — Optional extras: deepspeed & flash-attn model support
 
 ## Current Position
 
-Phase: 28 (Optional extras: deepspeed & flash-attn model support) — READY TO EXECUTE
-Plan: Not started
+Phase: 28 (Optional extras: deepspeed & flash-attn model support) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-10-29 — Phase 27.2 complete
+Last activity: 2026-10-29 — Phase 28 execution started
 
 ## Performance Metrics
 
@@ -71,6 +71,7 @@ Last activity: 2026-10-29 — Phase 27.2 complete
 | Phase 27.2 P03 | 21 min | 3 tasks | 10 files |
 | Phase 27.2 P04 | 15 min | 3 tasks | 9 files |
 | Phase 27.2 P05 | 7 min | 3 tasks | 8 files |
+| Phase 28 P01 | 92min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -163,6 +164,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 27.2]: 27.2-05: the TUI Support column is appended LAST so _AVAILABILITY_COLUMN stays 4 - refresh, on-demand, and probe writers keep writing only the availability cell.
 - [Phase 27.2]: 27.2-05: the MCP text line appends support as a fifth pipe segment after the unchanged callability ladder; row keys, envelope, counts, and client signatures stay additive-only.
 - [Phase 27.2]: 27.2-05: pinned ruff 0.17.1 caught a trailing-newline rule the repo hook's ruff 0.16.10 does not; fixed in a style commit, repo-wide check clean.
+- [Phase 28]: 28-01: fla promoted to base (D-09) — PlantHelixSeek out-of-the-box; fla extra deleted, all slims, CI rewired atomically; curated extras deepspeed >=0.19.6,<0.19.7 and flash-attn >=2.8.3.post2,<2.9 (no markers, no meta-extras)
+- [Phase 28]: 28-01: flash-attn installer carries TWO occurrence-counted patches — sm_121 gencode branch AND four -std=c++17->c++20 flips (torch>=2.13 ATen C++20 floor, measured under lane torch 2.14.1+cu130); 64-min build at MAX_JOBS=8, kernel smoke green on GB10
+- [Phase 28]: 28-01 MEASURED BLOCKER: BigBird forward structurally impossible — deepspeed 0.19.6 sparse LUT needs triton libtriton.superblock (absent in triton 3.6.0 AND 3.8.0; torch>=2.4 implies triton 3.x); extra greens the LOAD (old ModuleNotFoundError fixed); Plan 02 BigBird flip awaits owner ruling (options A crossDNA-only / B new semantics / C drop); CrossDNA fully green (load+forward (1,64,5) cuda) and NOT blocked
+- [Phase 28]: 28-01: sparse BigBird needs probe seq_len % 64 == 0 — committed census LOAD_SEQUENCE_LENGTH=32 can never forward it; extras evidence measured at length 64 via one-line scratch tool copy (committed tool untouched); future extras lane must probe BigBird at a 64-multiple or the divisibility error masks the kernel verdict
 
 ### Pending Todos
 
@@ -178,6 +183,7 @@ Legacy carried ledger (owner-scoped, outside active requirements, not todo-syste
 
 Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/v1.1-MILESTONE-AUDIT.md`. v1.3 known gaps carried in the WINDOWS ledger: #25 PyPI trusted-publisher registration, #27 Windows KDA smoke, #26 pip-side alias resolve.
 - Phase 27.1 plan 27.1-03 Task 2 HALTED: direct push of the owner-approved option-a registration commit to main was rejected by branch protection (GH006). main requires PRs (1 approving review) + 2 required status checks (coverage-gate (py3.12, fast leg), docs-validation); enforce_admins=true blocks even the owner from direct push. The byte-identical single-file commit d661998 (only .github/workflows/census_compat.yml == origin/v1.4) is preserved: local branch wip/27.1-03-census-registration (nothing pushed); the temp worktree was removed during close-out (branch alone anchors the commit). **RESOLVED 2026-10-28 by owner defer-dispatch:** DISP-01 is deferred to the post-v1.4→main-merge operator step (the Phase 27 deferred operational act above); plan 27.1-03 summarized as halted; no main mutation and no dispatch occurred.
+- Phase 28 (28-01): BigBird (GENA-LM-BigBird) forward measured structurally impossible in any dnallm env — deepspeed 0.19.6 sparse kernel requires triton libtriton.superblock (removed before triton 3.x; verified absent in 3.6.0 + 3.8.0). deepspeed extra greens the load; forward stays red. Plan 02's BigBird disposition flip blocked on owner ruling (A: CrossDNA-only flip / B: new status semantics / C: drop BigBird). CrossDNA flip NOT blocked.
 
 ### Quick Tasks Completed
 
@@ -219,9 +225,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-29T11:47:22.745Z
-Stopped at: Phase 28 context gathered
-Resume file: .planning/phases/28-optional-extras-for-the-two-external-package-models-deepspee/28-CONTEXT.md
+Last session: 2026-10-29T15:32:33.296Z
+Stopped at: Completed 28-01-PLAN.md (halted at A2 designed stop: BigBird forward owner ruling pending)
+Resume file: .planning/phases/28-optional-extras-for-the-two-external-package-models-deepspee/28-01-SUMMARY.md
 
 ### Prior session record (2026-10-24, Mac side — retained)
 

@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 12
+open_count: 13
 waived_count: 3
 fixed_count: 19
-total_count: 34
-last_updated: 2026-10-29T05:15:45.126Z
+total_count: 35
+last_updated: 2026-10-29T15:31:50.260Z
 ---
 
 # Broken Windows Ledger
@@ -49,6 +49,7 @@ last_updated: 2026-10-29T05:15:45.126Z
 | 32 | 27.2 | deviation | tests/models/test_compat_docs_consistency.py |  | 27.2-03 Rule 1: blocked-map docs pin no longer requires a non-empty census-blocked roster (the campaign measured it to zero); per-row fail-closed mapping stays armed. | open |  | 2026-10-29T04:56:47.741Z |  |
 | 33 | 27.2 | deviation | docs/user_guide/optional_dependencies.md |  | 27.2-04 Rule 3: the plan's verify command yaml.safe_load(nav) cannot parse mkdocs.yml's pre-existing !!python/name: emoji tags - the parse leg runs with yaml.UnsafeLoader (the loader mkdocs config requires); mkdocs build --strict is the independent structural check. | open |  | 2026-10-29T05:15:45.029Z |  |
 | 34 | 27.2 | deviation | docs/user_guide/optional_dependencies.md |  | 27.2-04 Rule 1: GENERanno guide section's meta-sentence ('you never claim the model works as-is') replaced with direct plain-language wording per the 2026-10-21 biologist-readable directive. | open |  | 2026-10-29T05:15:45.126Z |  |
+| 35 | 28 | unmet-truth | .scratch/p28-extras/compat.json |  | BigBird forward_ok=true unmet (28-01): deepspeed 0.19.6 sparse kernel needs triton libtriton.superblock (removed before triton 3.x; absent in 3.6.0 and 3.8.0) — load greens with the extra, forward structurally blocked; owner ruling pending for Plan 02 | open |  | 2026-10-29T15:31:50.260Z |  |
 
 ````json
 [
@@ -491,6 +492,19 @@ last_updated: 2026-10-29T05:15:45.126Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-10-29T05:15:45.126Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
+  },
+  {
+    "id": 35,
+    "kind": "unmet-truth",
+    "phase": "28",
+    "file": ".scratch/p28-extras/compat.json",
+    "line": null,
+    "description": "BigBird forward_ok=true unmet (28-01): deepspeed 0.19.6 sparse kernel needs triton libtriton.superblock (removed before triton 3.x; absent in 3.6.0 and 3.8.0) — load greens with the extra, forward structurally blocked; owner ruling pending for Plan 02",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-29T15:31:50.260Z",
     "resolved_at": null,
     "milestone": "v1.4"
   }
