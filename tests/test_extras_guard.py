@@ -391,12 +391,15 @@ class TestExtrasSurgeryResidueGates:
     # Sanctioned: exactly the three flash-linear-attention UPSTREAM-vocabulary
     # lines (Pitfall 4: fla's own [cuda]/[rocm] backend extras, never dnallm's
     # retired rocm extra) -- README:255, docs/faq/models_troubleshooting.md:13,
-    # and the pyproject fla comment kept verbatim per the same rule.
+    # and the pyproject comment kept verbatim per the same rule. The pyproject
+    # line moved with the D-09 (28-01) fla promotion from the retired extra
+    # block (column 0) into the indented base [project] dependencies list, so
+    # its sanctioned form carries the list's 4-space indentation.
     CUDA121_ROCM_PATTERN = r"cuda121|torch-rocm|\[rocm\]"
     SANCTIONED_CUDA121_ROCM_RESIDUE = frozenset({
         (
             "pyproject.toml",
-            "# ([cuda]/[rocm]), they pin their own torch and would downgrade this environment.",
+            "    # ([cuda]/[rocm]), they pin their own torch and would downgrade this environment.",
         ),
         (
             "README.md",

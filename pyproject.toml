@@ -31,6 +31,13 @@ dependencies = [
     "datasets<=5.1.0",
     "einops>=0.7.0",
     "evaluate>=0.4.3",
+    # KDA kernels for PlantHelixSeek remote code (HelixSeekDelta layers). Bare
+    # install: rides the already-installed torch/triton — do NOT use fla's own
+    # backend extras
+    # ([cuda]/[rocm]), they pin their own torch and would downgrade this environment.
+    # D-09 (28-01): promoted from the retired fla extra to a base dependency —
+    # PlantHelixSeek works out-of-the-box on a default install.
+    "flash-linear-attention>=0.5.2,<0.6",
     "huggingface-hub>=0.29.0",
     "ipykernel>=6.29.5",
     "ipywidgets>=8",
@@ -65,6 +72,12 @@ dependencies = [
     "torch>=2.4.0,<2.15",
     "tqdm>=4.67.1",
     "transformers>=4.49.0,<6",
+    # WPAR-07 (18-01): torch Windows wheels declare no triton, but fla's
+    # fla.ops.* kernels need it -- declare the triton-lang-org fork wheel,
+    # Windows-only, exact band (no floating). Linux resolvers see the marker
+    # evaluate false and never pull it. D-09 (28-01): moved verbatim from the
+    # retired fla extra into the base dependency set.
+    "triton-windows>=3.7.1.post27,<3.8; platform_system == 'Windows'",
     "umap-learn>=0.5.7",
     "uvicorn>=0.24.0",
     "wandb>=0.19.8",
@@ -155,7 +168,7 @@ full = [
     "isort>=6.0.1",
 ]
 all = [
-    "dnallm[full,dev,test,notebook,docs,ui,mcp,fla,tui]",
+    "dnallm[full,dev,test,notebook,docs,ui,mcp,tui]",
 ]
 cpu = [
     "torch>=2.4.0,<2.15",
@@ -183,17 +196,22 @@ mamba = [
     "mamba-ssm==2.3.2.post1",
     "torch>=2.6.0,<2.15",
 ]
-# KDA kernels for PlantHelixSeek remote code (HelixSeekDelta layers). Bare install:
-# rides the already-installed torch/triton — do NOT use fla's own backend extras
-# ([cuda]/[rocm]), they pin their own torch and would downgrade this environment.
-fla = [
-    "flash-linear-attention>=0.5.2,<0.6",
-    # WPAR-07 (18-01): torch Windows wheels declare no triton, but fla's
-    # fla.ops.* kernels need it -- declare the triton-lang-org fork wheel,
-    # Windows-only, exact band (no floating). Linux resolvers see the marker
-    # evaluate false and never pull it.
-    "triton-windows>=3.7.1.post27,<3.8; platform_system == 'Windows'",
-]
+# deepspeed.ops.sparse_attention was REMOVED upstream in v0.19.7 (2026-09-16);
+# GENA-LM-BigBird's remote code imports it, so the band cap is mandatory — an
+# unpinned resolve installs a deepspeed whose module no longer exists and the
+# model stays broken despite the extra. Linux + CUDA compile package: no
+# platform marker by design (D-11) — pip fails loudly where the build cannot
+# run rather than silently installing an empty extra. Never a member of
+# all/full (D-13).
+deepspeed = ["deepspeed>=0.19.6,<0.19.7"]
+# flash-attn's sdist imports torch in setup.py and ships no pyproject.toml, so
+# an isolated PEP 517 build dies with ModuleNotFoundError: torch — end-user
+# source installs must carry --no-build-isolation (documented in
+# optional_dependencies.md). CI builds it exclusively through
+# scripts/install_flash_attn.sh (sha256-pinned sdist + explicit sm_121 gencode
+# patch); this extra is the end-user dependency contract. Linux + CUDA only,
+# no platform marker (D-11), never a member of all/full (D-13).
+flash-attn = ["flash-attn>=2.8.3.post2,<2.9"]
 
 #mamba = [
 #    "mamba-ssm>=2.2",
