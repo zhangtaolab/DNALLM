@@ -558,6 +558,221 @@ class TestRopeDefaultInit:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Rung 4 (27.2-01 Task 2, D-06/D-08/D-09): GENA-LM token_type_ids repair
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class _GenaShapedModel(torch.nn.Module):
+    """Receiver shaped like gena-lm-bert-base's ``BertForPreTraining``.
+
+    Carries ``bert.embeddings`` with the remote code's two non-persistent
+    buffers -- ``position_ids`` (the shape reference) and ``token_type_ids``
+    (defaulted to the garbage transformers 5's meta-device materialization
+    leaves behind, e.g. 3901475131392 measured 2026-10-27) -- plus a
+    ``config.type_vocab_size``.
+    """
+
+    def __init__(self, token_type_values=None, seq_len: int = 4, type_vocab_size: int = 2):
+        super().__init__()
+        self.config = types.SimpleNamespace(type_vocab_size=type_vocab_size)
+        self.bert = torch.nn.Module()
+        self.bert.embeddings = torch.nn.Module()
+        embeddings = self.bert.embeddings
+        embeddings.register_buffer(
+            "position_ids",
+            torch.arange(seq_len, dtype=torch.long).unsqueeze(0),
+            persistent=False,
+        )
+        if token_type_values is None:
+            token_type_values = torch.full((1, seq_len), 3901475131392, dtype=torch.long)
+        embeddings.register_buffer("token_type_ids", token_type_values, persistent=False)
+
+
+class TestGenaTokenTypeIdsRepair:
+    """Contract: the defective non-persistent token_type_ids buffer is reset
+    to constructor zeros at the load boundary; healthy and absent receivers
+    are never touched (defect detection, D-08)."""
+
+    def test_defective_buffer_is_repaired_to_constructor_zeros(self):
+        """An out-of-range buffer becomes torch.zeros(position_ids.size())
+        with dtype long on the buffer's existing device."""
+        repair = _rung("_repair_gena_token_type_ids")
+        model = _GenaShapedModel()
+
+        repaired = repair(model)
+
+        assert repaired is True
+        buffer = model.bert.embeddings.token_type_ids
+        assert torch.equal(buffer, torch.zeros((1, 4), dtype=torch.long))
+        assert buffer.shape == model.bert.embeddings.position_ids.size()
+        assert buffer.dtype == torch.long
+        assert buffer.device == model.bert.embeddings.position_ids.device
+
+    def test_partial_out_of_range_value_still_repairs(self):
+        """Defect detection is ANY value outside [0, type_vocab_size)."""
+        repair = _rung("_repair_gena_token_type_ids")
+        values = torch.tensor([[0, 1, 2, 0]], dtype=torch.long)  # 2 == type_vocab_size
+        model = _GenaShapedModel(token_type_values=values)
+
+        assert repair(model) is True
+        assert torch.equal(model.bert.embeddings.token_type_ids, torch.zeros((1, 4), dtype=torch.long))
+
+    def test_healthy_buffer_is_untouched(self):
+        """An in-range buffer keeps its exact object (no repair, no copy)."""
+        repair = _rung("_repair_gena_token_type_ids")
+        values = torch.zeros((1, 4), dtype=torch.long)
+        model = _GenaShapedModel(token_type_values=values)
+        original = model.bert.embeddings.token_type_ids
+
+        assert repair(model) is False
+        assert model.bert.embeddings.token_type_ids is original
+
+    def test_receiver_without_bert_is_untouched(self):
+        """No bert/embeddings pair: the repair is a no-op, never a raise."""
+        repair = _rung("_repair_gena_token_type_ids")
+        model = torch.nn.Module()
+
+        assert repair(model) is False
+
+    def test_missing_position_ids_is_untouched(self):
+        """A receiver without the position_ids shape reference never repairs
+        blind (the zeros shape would be unanswerable)."""
+        repair = _rung("_repair_gena_token_type_ids")
+        model = _GenaShapedModel()
+        del model.bert.embeddings.position_ids
+
+        assert repair(model) is False
+        assert model.bert.embeddings.token_type_ids.max().item() == 3901475131392
+
+    def test_missing_type_vocab_size_is_untouched(self):
+        """Without config.type_vocab_size the valid range is unanswerable."""
+        repair = _rung("_repair_gena_token_type_ids")
+        model = _GenaShapedModel()
+        del model.config.type_vocab_size
+
+        assert repair(model) is False
+
+    def test_second_repair_call_is_a_no_op(self):
+        """After the first repair the buffer is healthy: a repeat call (e.g.
+        a second load through the same process) changes nothing."""
+        repair = _rung("_repair_gena_token_type_ids")
+        model = _GenaShapedModel()
+        assert repair(model) is True
+        healed = model.bert.embeddings.token_type_ids
+
+        assert repair(model) is False
+        assert model.bert.embeddings.token_type_ids is healed
+
+
+class TestGenaTokenTypeIdsOnLoad:
+    """Contract: the repair runs at the ``_finalize_model_loading`` boundary
+    through the shared remote-defects wrapper, which resolves receivers and
+    delegates exactly like the tied-bookkeeping rung."""
+
+    def test_rung_is_installed_on_the_live_class(self):
+        """apply_patches installed the shared wrapper and registered the repair."""
+        assert getattr(PreTrainedModel, "_dnallm_remote_defects_patch", False) is True
+        assert PreTrainedModel.__dict__.get("_dnallm_remote_defects_patch") is True
+        assert transformers_compat._repair_gena_token_type_ids in (
+            transformers_compat._REMOTE_DEFECT_REPAIRS
+        )
+
+    def test_wrapped_finalize_repairs_then_delegates(self, monkeypatch):
+        """A defective receiver passing the load boundary is repaired before
+        the original finalize sees it (transformers 5.17 ships a static
+        method: the model is the first argument)."""
+        _rung("_patch_gena_token_type_ids_on_load")
+
+        recorded = {}
+
+        def fake_original(model, load_config, loading_info):
+            recorded["model"] = model
+            recorded["repaired_at_finalize"] = bool(
+                torch.equal(
+                    model.bert.embeddings.token_type_ids,
+                    torch.zeros_like(model.bert.embeddings.position_ids),
+                )
+            )
+            return "delegated"
+
+        monkeypatch.setattr(
+            transformers_compat, "_remote_defects_original_finalize", fake_original
+        )
+
+        model = _GenaShapedModel()
+        result = PreTrainedModel._finalize_model_loading(model, "load-config", "loading-info")
+
+        assert result == "delegated"
+        assert recorded["model"] is model
+        assert recorded["repaired_at_finalize"] is True
+
+    def test_healthy_receiver_passes_through_unmodified(self, monkeypatch):
+        """A receiver without the GENA-LM shape is delegated unchanged (the
+        repair's absence gate, via the wrapper)."""
+        _rung("_patch_gena_token_type_ids_on_load")
+
+        def fake_original(*args, **kwargs):
+            return "delegated"
+
+        monkeypatch.setattr(
+            transformers_compat, "_remote_defects_original_finalize", fake_original
+        )
+        probe = _FakeBookkeepingModel()
+
+        assert PreTrainedModel._finalize_model_loading(probe, None, None) == "delegated"
+
+    def test_kwargs_only_receiver_is_repaired(self, monkeypatch):
+        """A kwargs-only call resolves the supplied model (IN-04 shape)."""
+        _rung("_patch_gena_token_type_ids_on_load")
+
+        monkeypatch.setattr(
+            transformers_compat,
+            "_remote_defects_original_finalize",
+            lambda *a, **k: "delegated",
+        )
+        model = _GenaShapedModel()
+
+        assert (
+            PreTrainedModel._finalize_model_loading(
+                model=model, load_config=None, loading_info=None
+            )
+            == "delegated"
+        )
+        assert torch.equal(
+            model.bert.embeddings.token_type_ids, torch.zeros((1, 4), dtype=torch.long)
+        )
+
+    def test_repeat_installer_preserves_the_wrapper_and_original(self):
+        """A second rung call neither re-wraps the class nor re-captures the
+        original finalize (sentinel idempotency, no double-wrap)."""
+        patch = _rung("_patch_gena_token_type_ids_on_load")
+
+        wrapper_before = PreTrainedModel.__dict__["_finalize_model_loading"]
+        original_before = transformers_compat._remote_defects_original_finalize
+        repairs_before = list(transformers_compat._REMOTE_DEFECT_REPAIRS)
+
+        patch()
+
+        assert PreTrainedModel.__dict__["_finalize_model_loading"] is wrapper_before
+        assert transformers_compat._remote_defects_original_finalize is original_before
+        assert transformers_compat._REMOTE_DEFECT_REPAIRS == repairs_before
+
+    def test_noop_when_finalize_model_loading_absent(self, monkeypatch):
+        """A transformers without ``_finalize_model_loading`` (4.x shape) is
+        left untouched."""
+        patch = _rung("_patch_gena_token_type_ids_on_load")
+
+        class _BareClass:
+            pass
+
+        monkeypatch.setattr(transformers.modeling_utils, "PreTrainedModel", _BareClass)
+
+        patch()
+
+        assert getattr(_BareClass, "_dnallm_remote_defects_patch", False) is False
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Closed-map discipline (prohibition T-27-04)
 # ─────────────────────────────────────────────────────────────────────────────
 

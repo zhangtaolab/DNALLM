@@ -1358,6 +1358,8 @@ EXPECTED_PATCH_INSTALLERS = frozenset({
     "_patch_tied_weights_bookkeeping_on_load",
     # 27.2-01 census-measured rung: GENERanno ROPE 'default' table entry
     "_patch_rope_default_init",
+    # 27.2-01 Task 2 author-defect repair: GENA-LM token_type_ids buffer
+    "_patch_gena_token_type_ids_on_load",
 })
 
 

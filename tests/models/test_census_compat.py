@@ -1189,6 +1189,16 @@ class TestCompatVerdictMapping:
         assert status == "shim-required-tf5"
         assert "_patch_rope_default_init" in evidence
 
+    def test_gena_green_load_maps_to_shim_required_naming_buffer_rung(self) -> None:
+        # 27.2-01 Task 2: the mapping lands ahead of the committed flip -- the
+        # interim /tmp re-probe maps green through the repair, and plan 27.2-03
+        # flips the committed artifact/registry. Without the entry a future
+        # green gena record would publish a false verified-tf5 claim (D-03).
+        record = _verdict_record({"repo": "AIRI-Institute/gena-lm-bert-base"})
+        status, evidence = census.compat_verdict(record, self.REPS)
+        assert status == "shim-required-tf5"
+        assert "_patch_gena_token_type_ids_on_load" in evidence
+
     def test_census_blocked_maps_to_census_blocked_with_reason(self) -> None:
         record = _verdict_record({
             "status": "census-blocked",
