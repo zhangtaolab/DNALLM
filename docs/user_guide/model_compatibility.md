@@ -5,7 +5,7 @@
 
 DNALLM depends on a widely used AI library called *transformers*, which is the software that loads and runs the models. That library has released a new major version (version 5), and the team tested every preset model that ships with DNALLM against it.
 
-Of the 49 preset models, the team found 19 working as-is, 21 with their program code loading verified (the full run is expected to match a tested close relative in the same model family), 1 working through DNALLM's built-in compatibility fixes, 7 not working with the new version, and 1 that could not be checked.
+Of the 49 preset models, the team found 19 working as-is, 21 with their program code loading verified (the full run is expected to match a tested close relative in the same model family), 2 working through DNALLM's built-in compatibility fixes, 6 not working with the new version, and 1 that could not be checked.
 
 | Model | What we found | Details |
 | --- | --- | --- |
@@ -38,9 +38,9 @@ Of the 49 preset models, the team found 19 working as-is, 21 with their program 
 | CrossDNA | Could not be checked (its repository does not provide a usable configuration file at the top level) | `chengCCC/CrossDNA_pretrain` |
 | DNABERT | Tested loading its code; full run inferred from the family model | `zhihan1996/DNA_bert_6` (full run tested on `zhangtaolab/plant-dnabert-BPE`) |
 | DNABERT-2 | Not usable with the current transformers - the new library version removed or changed something its code depends on, so it cannot be loaded until the model authors update it (technical: remote bert_layers.py builds its ALiBi tensor eagerly in __init__…) | `zhihan1996/DNABERT-2-117M` |
-| GENA-LM | Not usable with the current transformers - the published model files themselves are damaged, so this model fails on every version of the library (technical: checkpoint data defect: the persisted bert.embeddings.token_type_ids buffer starts with…) | `AIRI-Institute/gena-lm-bert-base` |
+| GENA-LM | Not usable with the current transformers - the new library version removed or changed something its code depends on, so it cannot be loaded until the model authors update it (technical: transformers 5 constructs the model on a meta device and materializes the non-persistent…) | `AIRI-Institute/gena-lm-bert-base` |
 | GENA-LM-BigBird | Not usable with the current transformers - its code needs an extra software package that DNALLM does not install, so it cannot be loaded as published (technical: remote modeling_bert.py (bigbird block-sparse attention) imports the external deepspeed package…) | `AIRI-Institute/gena-lm-bigbird-base-sparse` |
-| GENERanno | Not usable with the current transformers - the new library version removed or changed something its code depends on, so it cannot be loaded until the model authors update it (technical: default rotary embedding initializer not found in transformers 5.17.0…) | `lgq12697/GENERanno-eukaryote-0.5b-base` |
+| GENERanno | Works with DNALLM's built-in compatibility fixes (tested) | `lgq12697/GENERanno-eukaryote-0.5b-base` |
 | GENERator | Tested working | `GenerTeam/GENERator-eukaryote-1.2b-base` |
 | GPN | Not usable with the current transformers - the new library version removed or changed something its code depends on, so it cannot be loaded until the model authors update it (technical: ConvNetForMaskedLM not found in transformers 5.17.0) | `songlab/gpn-brassicales` |
 | GROVER | Tested loading its code; full run inferred from the family model | `PoetschLab/GROVER` (full run tested on `zhangtaolab/plant-dnabert-BPE`) |

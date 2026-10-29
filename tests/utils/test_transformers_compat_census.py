@@ -524,9 +524,7 @@ class TestRopeDefaultInit:
         )
         inv_freq, attention_factor = initializer(config, device="cpu")
 
-        expected = 1.0 / (
-            10000.0 ** (torch.arange(0, 8, 2, dtype=torch.int64).to(torch.float) / 8)
-        )
+        expected = 1.0 / (10000.0 ** (torch.arange(0, 8, 2, dtype=torch.int64).to(torch.float) / 8))
         assert torch.equal(inv_freq, expected)
         assert inv_freq.device.type == "cpu"
         assert attention_factor == 1.0
@@ -536,9 +534,7 @@ class TestRopeDefaultInit:
         ``hidden_size // num_attention_heads`` (the 4.49 fallback)."""
         initializer = _rung("_compute_default_rope_parameters")
 
-        config = types.SimpleNamespace(
-            rope_theta=500.0, hidden_size=16, num_attention_heads=2
-        )
+        config = types.SimpleNamespace(rope_theta=500.0, hidden_size=16, num_attention_heads=2)
         inv_freq, attention_factor = initializer(config, device=None)
 
         # head_dim = 16 // 2 = 8 -> arange(0, 8, 2) -> 4 frequency entries
@@ -552,16 +548,12 @@ class TestRopeDefaultInit:
         it from the config when present, defaulting to 1.0)."""
         initializer = _rung("_compute_default_rope_parameters")
 
-        config = types.SimpleNamespace(
-            rope_theta=10000.0, head_dim=8, partial_rotary_factor=0.5
-        )
+        config = types.SimpleNamespace(rope_theta=10000.0, head_dim=8, partial_rotary_factor=0.5)
         inv_freq, _ = initializer(config, device=None)
 
         # dim = int(8 * 0.5) = 4 -> arange(0, 4, 2) -> 2 frequency entries
         assert inv_freq.shape == (2,)
-        expected = 1.0 / (
-            10000.0 ** (torch.arange(0, 4, 2, dtype=torch.int64).to(torch.float) / 4)
-        )
+        expected = 1.0 / (10000.0 ** (torch.arange(0, 4, 2, dtype=torch.int64).to(torch.float) / 4))
         assert torch.equal(inv_freq, expected)
 
 

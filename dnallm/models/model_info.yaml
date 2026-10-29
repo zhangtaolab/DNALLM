@@ -283,7 +283,7 @@ pretrained:
     tokenizer_type: "PreTrainedTokenizerFast"
     max_length: 512
     tf_compat_status: remote-code-broken
-    tf_compat_evidence: "hf AIRI-Institute/gena-lm-bert-base@416f055300346a5830ca49438daf5f4e136ed9a8; checkpoint data defect: the persisted bert.embeddings.token_type_ids buffer starts with 3901475131392 while type_vocab_size=2, so the token_type_ids=None buffer-default forward crashes (IndexError on cpu, device-side assert on cuda) on any transformers version; the import itself was restored by the _patch_apply_chunking_to_forward rung (see previous_status)"
+    tf_compat_evidence: "hf AIRI-Institute/gena-lm-bert-base@416f055300346a5830ca49438daf5f4e136ed9a8; transformers 5 constructs the model on a meta device and materializes the non-persistent token_type_ids buffer with uninitialized values outside the type_vocab_size=2 range (observed 3901475131392, 6001647030272 and 6489494917120 across three loads), so the token_type_ids=None buffer-default forward crashes (IndexError on cpu, device-side assert on cuda); the checkpoint state dict carries no token_type_ids key (209 keys enumerated), so no published file is damaged; the import itself was restored by the _patch_apply_chunking_to_forward rung (see previous_status)"
     tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
@@ -311,8 +311,8 @@ pretrained:
   - name: "GENERanno"
     model: "lgq12697/GENERanno-eukaryote-0.5b-base"
     max_length: 8192
-    tf_compat_status: remote-code-broken
-    tf_compat_evidence: "ms lgq12697/GENERanno-eukaryote-0.5b-base@0ae1f40ffaef2d905c20629a2fa509f4e1bf187b; default rotary embedding initializer not found in transformers 5.17.0 (KeyError: 'default' during model construction)"
+    tf_compat_status: shim-required-tf5
+    tf_compat_evidence: "ms lgq12697/GENERanno-eukaryote-0.5b-base@0ae1f40ffaef2d905c20629a2fa509f4e1bf187b; load+forward verified via rung _patch_rope_default_init"
     tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."

@@ -1688,6 +1688,93 @@ def _patch_tied_weights_bookkeeping_on_load():
     )
 
 
+# transformers 5.x dropped the ``'default'`` entry from
+# ``transformers.modeling_rope_utils.ROPE_INIT_FUNCTIONS`` (verified live on
+# 5.17: the table carries only the scaling variants -- dynamic, linear,
+# llama3, longrope, proportional, yarn -- and ``_compute_default_rope_parameters``
+# is gone from the module entirely), while 4.x-era trust_remote_code
+# checkpoints still index the table under ``"default"``: the remote
+# ``GenerannoRotaryEmbedding.__init__`` of lgq12697/GENERanno-eukaryote-0.5b-base
+# (modeling_generanno.py line 126, ms commit 0ae1f40f) sets
+# ``self.rope_type = "default"`` when ``config.rope_scaling`` is None and then
+# runs ``ROPE_INIT_FUNCTIONS[self.rope_type]`` -- the first MEASURED instance
+# of the ROPE failure class the Phase 27 research predicted (27.2-01, D-04).
+# Stock 5.x models never index the table for ``"default"`` (the canonical 5.x
+# shape assigns a per-model staticmethod and only consults the table when
+# ``rope_type != "default"``, e.g. transformers/models/gemma/modeling_gemma.py
+# lines 110-113), so re-adding the key is inert for them. The initializer
+# below is vendored with semantics and docstring kept verbatim from the
+# upstream transformers reference implementation: tag v4.49.0, file
+# src/transformers/modeling_rope_utils.py
+# (_compute_default_rope_parameters). The only adaptations are import
+# locality into this module and modern builtin-generic annotations; behavior
+# is unchanged.
+
+
+def _compute_default_rope_parameters(
+    config, device: torch.device | None = None, seq_len: int | None = None, **kwargs
+) -> tuple[torch.Tensor, float]:
+    """
+    Computes the inverse frequencies according to the original RoPE implementation
+    Args:
+        config ([`~transformers.PretrainedConfig`]):
+            The model configuration.
+        device (`torch.device`):
+            The device to use for initialization of the inverse frequencies.
+        seq_len (`int`, *optional*):
+            The current sequence length. Unused for this RoPE version.
+        kwargs (`Dict`, *optional*):
+            Unused for this RoPE version.
+    Returns:
+        Tuple of (`inv_freq`, `attention_factor`). The attention factor is set to 1.0 for most RoPE variants.
+    """
+    base = config.rope_theta
+    partial_rotary_factor = (
+        config.partial_rotary_factor if hasattr(config, "partial_rotary_factor") else 1.0
+    )
+    head_dim = getattr(config, "head_dim", None)
+    if head_dim is None:
+        head_dim = config.hidden_size // config.num_attention_heads
+
+    attention_factor = 1.0  # Unused in this type of RoPE
+
+    inv_freq = 1.0 / (
+        base
+        ** (
+            torch.arange(0, int(head_dim * partial_rotary_factor), 2, dtype=torch.int64).to(
+                device=device, dtype=torch.float
+            )
+            / int(head_dim * partial_rotary_factor)
+        )
+    )
+    return inv_freq, attention_factor
+
+
+def _patch_rope_default_init():
+    """Restore the 4.x ``'default'`` ROPE initializer table entry removed by 5.x.
+
+    transformers 5.x removed the ``'default'`` key from
+    ``transformers.modeling_rope_utils.ROPE_INIT_FUNCTIONS``, but 4.x-era
+    trust_remote_code checkpoints index the table under that key (the remote
+    ``GenerannoRotaryEmbedding`` of lgq12697/GENERanno-eukaryote-0.5b-base,
+    measured 2026-10-29 as ``KeyError: 'default'`` during construction). The
+    patch registers the vendored v4.49.0 default initializer under its
+    upstream key by MUTATING THE LIVE DICT IN PLACE (``setdefault``): the
+    remote code holds a bound reference to the same dict object, so a
+    reassignment would leave it seeing the old table. Dict membership doubles
+    as the absence gate and the idempotency sentinel -- transformers 4.x,
+    which ships the key natively, is never touched.
+    """
+    try:
+        import transformers.modeling_rope_utils
+    except Exception:  # pragma: no cover - transformers not installed / module renamed
+        return
+    rope_table = transformers.modeling_rope_utils.ROPE_INIT_FUNCTIONS
+    if "default" in rope_table:  # 4.x native, or already patched
+        return
+    rope_table.setdefault("default", _compute_default_rope_parameters)
+
+
 def apply_patches():
     """Apply all compatibility patches. Safe to call multiple times.
 
@@ -1710,6 +1797,7 @@ def apply_patches():
     _patch_numpy_fromstring()
     _patch_apply_chunking_to_forward()
     _patch_tied_weights_bookkeeping_on_load()
+    _patch_rope_default_init()
 
 
 # Apply patches on module import so they are active before any

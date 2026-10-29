@@ -1164,7 +1164,11 @@ def merge_records(existing: list[dict], fresh: list[dict], roster_order: list[st
     describes the same verdict, so a re-run against the default artifact
     path must not destroy it; a verdict *change* drops the stale disposition
     (the judgment no longer describes the record) and stamps the immediate
-    prior status instead.
+    prior status instead. One exception (27.2-01 D-02): a *skip* disposition
+    on an unchanged verdict is dropped when the fresh record itself measured
+    a green load+forward — the re-probe just proved the skip wrong, and
+    ``compat_verdict`` consults the skip before the green load, so carrying
+    it would keep publishing remote-code-broken over measured green evidence.
 
     Args:
         existing: Records read from the existing artifact.
@@ -1189,11 +1193,25 @@ def merge_records(existing: list[dict], fresh: list[dict], roster_order: list[st
             record["previous_status"] = previous["status"]
         if isinstance(previous, dict) and previous.get("status") == record.get("status"):
             # Unchanged verdict: the disposition and its evidence trail
-            # still describe this record. Carried independently of the load
-            # carry below — a re-probed failed load replaces the load
-            # evidence while the skip/fix judgment itself still holds.
-            if "disposition" not in record and "disposition" in previous:
-                record["disposition"] = previous["disposition"]
+            # still describe this record -- EXCEPT a skip disposition whose
+            # fresh record just measured a green load+forward (27.2-01 D-02):
+            # compat_verdict checks the skip before the green load, so a
+            # carried stale skip would keep publishing remote-code-broken over
+            # measured green evidence. A fix disposition still describes a
+            # green load (it names the rung the green needed) and carries.
+            fresh_load = record.get("load")
+            fresh_green = (
+                isinstance(fresh_load, dict)
+                and fresh_load.get("ok") is True
+                and fresh_load.get("forward_ok") is True
+            )
+            prior_disposition = previous.get("disposition")
+            prior_is_skip = isinstance(prior_disposition, dict) and bool(
+                prior_disposition.get("skip")
+            )
+            if not (fresh_green and prior_is_skip) and "disposition" not in record:
+                if "disposition" in previous:
+                    record["disposition"] = previous["disposition"]
             if "previous_status" not in record and "previous_status" in previous:
                 record["previous_status"] = previous["previous_status"]
             if record.get("load") is None and previous.get("load") is not None:
@@ -1308,12 +1326,17 @@ TF_COMPAT_STATUSES = frozenset({
 # backbone's remote __init__ skips post_init entirely, and rung 13
 # (_patch_tied_weights_bookkeeping_on_load) materializes the tied-weights
 # bookkeeping at the from_pretrained boundary (verified live in 27-02 and
-# pinned by tests/utils/test_transformers_compat_census.py). Entries whose
-# import a rung restored but whose load/forward still fails carry skip
-# dispositions in the artifact and map to remote-code-broken — the D-03
-# verdict (load + one real forward) is what the registry consumes.
+# pinned by tests/utils/test_transformers_compat_census.py). 27.2-01: the
+# remote GenerannoRotaryEmbedding of lgq12697/GENERanno-eukaryote-0.5b-base
+# indexes ROPE_INIT_FUNCTIONS under 'default' (a key transformers 5.x
+# removed), and _patch_rope_default_init restores it (measured green
+# load+forward 2026-10-29). Entries whose import a rung restored but whose
+# load/forward still fails carry skip dispositions in the artifact and map to
+# remote-code-broken — the D-03 verdict (load + one real forward) is what the
+# registry consumes.
 SHIM_RESTORED_LOADS: dict[str, str] = {
     "kuleshov-group/PlantCaduceus_l32": "_patch_tied_weights_bookkeeping_on_load",
+    "lgq12697/GENERanno-eukaryote-0.5b-base": "_patch_rope_default_init",
 }
 
 # First line of the write-back provenance block; the block is appended at end
@@ -1408,14 +1431,27 @@ def _ends_entry_block(line: str) -> bool:
     )
 
 
+_COMPAT_FIELD_PREFIXES: tuple[str, ...] = (
+    "    tf_compat_status:",
+    "    tf_compat_evidence:",
+    "    tf_compat_tested:",
+)
+
+
 def plan_compat_insertions(records: list[dict], yaml_text: str, roster: list[str]) -> dict:
-    """Plan the anchored tf_compat_* insertions for the pretrained roster.
+    """Plan the anchored tf_compat_* insertions/replacements for the pretrained roster.
 
     Each roster entry is located by its exact ``    model: "<repo>"`` line
-    (repo ids are unique across sections, so base_model lines never match);
-    the three field lines are planned immediately after that block's
-    ``max_length`` line. An entry already carrying a ``tf_compat_status`` line
-    is reported as already written, never duplicated.
+    (repo ids are unique across sections, so base_model lines never match).
+    An entry with NO existing ``tf_compat_status`` line gets the three field
+    lines planned immediately after that block's ``max_length`` line
+    (insertion). An entry already carrying the writer's canonical contiguous
+    triple is either reported as already written (an identical triple --
+    byte-identical, never duplicated) or planned as an in-place REPLACEMENT
+    of the three existing lines at their own anchor (27.2-01): a changed
+    verdict updates the committed fields without any YAML round-trip, and a
+    non-canonical partial/disordered layout fails closed rather than being
+    guessed at.
 
     Args:
         records: Census evidence records (the committed artifact).
@@ -1425,11 +1461,17 @@ def plan_compat_insertions(records: list[dict], yaml_text: str, roster: list[str
     Returns:
         ``{"plans": [...], "already": [...]}`` where every plan carries
         ``repo``, ``name``, ``status``, ``evidence``, ``tested``, ``anchor``
-        (0-based index of the block's max_length line) and ``lines``.
+        (0-based line index the plan acts at: the block's max_length line for
+        an insertion, the first existing tf_compat_* line for a replacement),
+        ``position`` (0-based line index where removal starts and the new
+        lines land: ``anchor + 1`` for an insertion, ``anchor`` for a
+        replacement), ``remove`` (0 for insertion, 3 for replacement) and
+        ``lines``.
 
     Raises:
         ValueError: Fail-closed on roster/artifact disagreement, an unlocatable
-            entry block, a missing max_length anchor, or an unmappable verdict.
+            entry block, a missing max_length anchor, an unmappable verdict,
+            or a non-canonical existing tf_compat_* layout.
     """
     by_repo = {r.get("repo"): r for r in records if isinstance(r, dict)}
     missing = [repo for repo in roster if repo not in by_repo]
@@ -1459,21 +1501,57 @@ def plan_compat_insertions(records: list[dict], yaml_text: str, roster: list[str
         while end < len(stripped) and not _ends_entry_block(stripped[end]):
             end += 1
         block = stripped[start:end]
-        if any("tf_compat_status:" in line for line in block):
-            already.append({"repo": repo, "name": record.get("name")})
+        status, evidence = compat_verdict(record, family_reps)
+        desired_lines = _compat_field_lines(status, evidence, record.get("transformers"))
+        compat_offsets = [i for i, line in enumerate(block) if line.startswith("    tf_compat_")]
+        if compat_offsets:
+            # The writer's canonical shape: exactly the three fields,
+            # contiguous, in writer order, directly after max_length.
+            layout_ok = (
+                len(compat_offsets) == 3
+                and compat_offsets == list(range(compat_offsets[0], compat_offsets[0] + 3))
+                and all(
+                    block[offset].startswith(prefix)
+                    for offset, prefix in zip(compat_offsets, _COMPAT_FIELD_PREFIXES, strict=True)
+                )
+            )
+            if not layout_ok:
+                raise ValueError(
+                    f"entry block for {repo} carries a non-canonical tf_compat_* layout "
+                    f"(partial, disordered, or extra fields): "
+                    f"{[block[i] for i in compat_offsets]!r}"
+                )
+            existing_lines = [block[i] for i in compat_offsets]
+            if existing_lines == [line.rstrip("\n") for line in desired_lines]:
+                already.append({"repo": repo, "name": record.get("name")})
+                continue
+            anchor = start + compat_offsets[0]
+            plans.append({
+                "repo": repo,
+                "name": record.get("name"),
+                "status": status,
+                "evidence": evidence,
+                "tested": record.get("transformers"),
+                "anchor": anchor,
+                "position": anchor,
+                "remove": 3,
+                "lines": desired_lines,
+            })
             continue
         anchor_offsets = [i for i, line in enumerate(block) if line.startswith("    max_length:")]
         if not anchor_offsets:
             raise ValueError(f"entry block for {repo} carries no max_length anchor line")
-        status, evidence = compat_verdict(record, family_reps)
+        anchor = start + anchor_offsets[0]
         plans.append({
             "repo": repo,
             "name": record.get("name"),
             "status": status,
             "evidence": evidence,
             "tested": record.get("transformers"),
-            "anchor": start + anchor_offsets[0],
-            "lines": _compat_field_lines(status, evidence, record.get("transformers")),
+            "anchor": anchor,
+            "position": anchor + 1,
+            "remove": 0,
+            "lines": desired_lines,
         })
     return {"plans": plans, "already": already}
 
@@ -1503,12 +1581,17 @@ def write_registry(
     apply: bool = False,
     roster: list[str] | None = None,
 ) -> int:
-    """Write the census verdicts into the registry yaml (anchored insertion only).
+    """Write the census verdicts into the registry yaml (anchored text edits only).
 
     Dry-run by default: without ``apply`` the planned lines are printed and
-    nothing is written. Fail-closed: an absent/unparseable artifact, a
-    roster/artifact disagreement, or an unmappable verdict exits 1 without
-    touching the file — never a partial silent write.
+    nothing is written. Plans apply in REVERSE position order so earlier line
+    indices stay valid across edits: an insertion lands after its block's
+    ``max_length`` line (removing nothing), a replacement overwrites the three
+    existing ``tf_compat_*`` lines in place at their own anchor (27.2-01),
+    never duplicating a field. Fail-closed: an absent/unparseable artifact, a
+    roster/artifact disagreement, an unmappable verdict, or a non-canonical
+    existing tf_compat_* layout exits 1 without touching the file — never a
+    partial silent write, never a YAML round-trip.
 
     Args:
         artifact_path: The frozen census evidence artifact.
@@ -1543,26 +1626,32 @@ def write_registry(
         print(f"already written: {plan['repo']} (skipped, idempotent)")
     if not apply:
         for plan in plans:
-            print(f"planned {plan['repo']} ({plan['name']}) -> {plan['status']}")
+            kind = "replacement" if plan["remove"] else "insertion"
+            print(f"planned {kind} {plan['repo']} ({plan['name']}) -> {plan['status']}")
             for line in plan["lines"]:
                 print(f"  + {line.rstrip()}")
         print(
-            f"{len(plans)} planned insertion(s), {len(planned['already'])} already "
-            "written (dry-run; pass --apply to write)"
+            f"{len(plans)} planned insertion(s)/replacement(s), {len(planned['already'])} "
+            "already written (dry-run; pass --apply to write)"
         )
         return 0
     if not plans:
         print("nothing to write: every roster entry already carries its tf_compat_* fields")
         return 0
     lines = yaml_text.splitlines(keepends=True)
-    for plan in sorted(plans, key=lambda item: item["anchor"], reverse=True):
-        lines[plan["anchor"] + 1 : plan["anchor"] + 1] = plan["lines"]
+    for plan in sorted(plans, key=lambda item: item["position"], reverse=True):
+        position = plan["position"]
+        lines[position : position + plan["remove"]] = plan["lines"]
     new_text = "".join(lines)
     appended_provenance = COMPAT_PROVENANCE_SENTINEL not in new_text
     if appended_provenance:
         new_text += compat_provenance_block()
     yaml_path.write_text(new_text, encoding="utf-8")
-    print(f"wrote {len(plans)} tf_compat_* insertion(s) into {yaml_path}")
+    replacements = sum(1 for plan in plans if plan["remove"])
+    print(
+        f"wrote {len(plans) - replacements} tf_compat_* insertion(s) and "
+        f"{replacements} replacement(s) into {yaml_path}"
+    )
     if appended_provenance:
         print("provenance block appended at end of file")
     return 0
@@ -1635,8 +1724,13 @@ DOCS_BROKEN_LEADS: dict[str, str] = {
 # to lead classes. Keys are grounded in the six committed evidence strings;
 # an evidence matching no key is a fail-closed ValueError (the generator
 # refuses to guess a plain wording for an unknown failure shape - the
-# census lane's --verify catches any new broken entry independently).
+# census lane's --verify catches any new broken entry independently). The
+# non-persistent-buffer needle (27.2-01, GENA-LM's corrected measured cause:
+# a transformers-5 meta-device construction path, NOT damaged files) sits
+# most-specific-first so a detail naming both it and the superseded
+# damaged-files key resolves to library-change.
 DOCS_BROKEN_LEAD_CLASSES: tuple[tuple[str, str], ...] = (
+    ("non-persistent token_type_ids", "library-change"),
     ("checkpoint data defect", "damaged-files"),
     ("forward-contract", "own-defect"),
     ("outside dnallm's dependency set", "external-package"),
