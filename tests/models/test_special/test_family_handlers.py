@@ -39,9 +39,26 @@ class TestGpnHandler:
         assert _handle_gpn_models("bert-base") is None
 
     def test_matching_name_without_package_raises(self):
-        """A GPN name without the package raises the instructive ImportError."""
-        with pytest.raises(ImportError, match="gpn package is required"):
+        """A GPN name without the package raises the instructive ImportError.
+
+        D-10: the guidance is exact and measured -- the literal install
+        command, the inspected wheel's Python and transformers constraints,
+        the separate-environment recommendation, the honest warning that the
+        published wheel does not even provide the handler's gpn.model
+        import, and the optional-dependency guide link.
+        """
+        with pytest.raises(ImportError, match="gpn package is required") as excinfo:
             _handle_gpn_models("gpn-brassicales")
+        message = str(excinfo.value)
+        assert "pip install gpn" in message
+        assert "3.13" in message  # gpn 0.9.0 wheel: >=3.13,<3.14 only
+        assert "transformers==5.15.0" in message  # the wheel's hard pin
+        assert "separate environment" in message
+        assert "gpn.model" in message  # the published wheel lacks this module
+        assert (
+            "https://zhangtaolab.github.io/DNALLM/user_guide/optional_dependencies/" in message
+        )
+        assert excinfo.value.__cause__ is not None  # original ImportError preserved
 
     def test_matching_name_with_package_returns_match(self, monkeypatch):
         """With gpn importable the gate returns the matched registry name."""
@@ -72,9 +89,23 @@ class TestOmnidnaHandler:
         assert _handle_omnidna_models("bert-base") is None
 
     def test_matching_name_without_package_raises(self):
-        """An Omni-DNA name without ai2-olmo raises the instructive ImportError."""
-        with pytest.raises(ImportError, match="ai2-olmo package is required"):
+        """An Omni-DNA name without ai2-olmo raises the instructive ImportError.
+
+        D-10: the guidance names the literal install command, the measured
+        numpy<2 pin (which can downgrade a numpy 2 environment), the
+        separate-environment recommendation, and the guide link.
+        """
+        with pytest.raises(ImportError, match="ai2-olmo package is required") as excinfo:
             _handle_omnidna_models("Omni-DNA-60M")
+        message = str(excinfo.value)
+        assert "pip install ai2-olmo" in message
+        assert "numpy<2" in message  # ai2-olmo 0.6.0 pin
+        assert "downgrade" in message  # the hazard of installing into a numpy-2 env
+        assert "separate environment" in message
+        assert (
+            "https://zhangtaolab.github.io/DNALLM/user_guide/optional_dependencies/" in message
+        )
+        assert excinfo.value.__cause__ is not None  # original ImportError preserved
 
     def test_matching_name_with_package_returns_match(self, monkeypatch):
         """With olmo importable the gate returns the matched registry name."""
