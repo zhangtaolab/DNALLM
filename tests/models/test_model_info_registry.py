@@ -355,9 +355,9 @@ TF_COMPAT_VOCABULARY = {
 
 # Measured distribution of the committed write-back (49 rows): 19 verified
 # (green family-representative loads), 21 import-verified (siblings), 1
-# shim-required (PlantCaduceus_l32 via rung 13), 6 remote-code-broken (2
-# import-fail + 4 structurally failed load/forward), 2 census-blocked.
-EXPECTED_REMOTE_CODE_BROKEN = 6
+# shim-required (PlantCaduceus_l32 via rung 13), 7 remote-code-broken (2
+# import-fail + 5 structurally failed load/forward), 1 census-blocked.
+EXPECTED_REMOTE_CODE_BROKEN = 7
 EXPECTED_SHIM_REQUIRED = 1
 
 COMPAT_SHIM_SOURCE = Path(dnallm.__file__).parent / "utils" / "transformers_compat.py"
