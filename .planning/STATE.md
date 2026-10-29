@@ -142,7 +142,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 
 ### Pending Todos
 
-Carried open ledger items from the v1.1/v1.2 handoffs (owner-scoped, outside active requirements): delete unreferenced doc_mocks.py entries; README:345 + server.py:97 `config/` path pattern; quick_start "NER" task-type line; MCP client `_call_tool` naming mismatch.
+- [2026-10-29] [general] "Transformers-5 compatibility remediation campaign: all 8 unsupported presets + support story in docs" — [todo file](.planning/todos/pending/2026-10-29-transformers-5-compatibility-remediation-campaign-all-8.md)
+
+Legacy carried ledger (owner-scoped, outside active requirements, not todo-system items): delete unreferenced doc_mocks.py entries; README:345 + server.py:97 `config/` path pattern; quick_start "NER" task-type line; MCP client `_call_tool` naming mismatch.
 
 ### Blockers/Concerns
 - [Phase 27, owner-scoped] 3 Info code-review findings open by scope decision + cosmetic UI suggestions (27-REVIEW-DISPOSITION 6/10 open incl. carried rows; 27-UI-REVIEW) — no must-have violated
