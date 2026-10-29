@@ -1870,9 +1870,9 @@ def _repair_gena_token_type_ids(model) -> bool:
 # ``_finalize_model_loading`` time, AFTER weight materialization (the buffer
 # is real by then -- measured seam probe 2026-10-29: the garbage value at
 # finalize time equals the post-from_pretrained value). Repairs self-guard
-# (defect detection, D-08); the MutBERT forward wrap registers here in
-# 27.2-02.
-_REMOTE_DEFECT_REPAIRS: list[Callable[[object], None]] = []
+# (defect detection, D-08) and report ``bool`` (defect repaired or not); the
+# MutBERT forward wrap registers here in 27.2-02.
+_REMOTE_DEFECT_REPAIRS: list[Callable[[object], bool]] = []
 
 _remote_defects_original_finalize = None
 
