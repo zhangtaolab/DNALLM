@@ -189,7 +189,7 @@ uv pip install -e '.[all,cuda128]'
 
 | Group | Purpose | Includes |
 |-------|---------|----------|
-| `all` | Install everything | `full` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` + `tui` |
+| `all` | Install everything | `full` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `tui` |
 | `full` | Full dev environment | `dev` + `test` + `notebook` + `mcp` + extra tools |
 | `dev` | Development | `test` + `notebook` + linting tools |
 | `test` | Testing only | pytest and plugins |
@@ -197,8 +197,9 @@ uv pip install -e '.[all,cuda128]'
 | `docs` | Build documentation | mkdocs and plugins |
 | `ui` | Gradio web interface | Gradio |
 | `mcp` | MCP example-test clients | langchain / langchain-mcp-adapters / pydantic-ai stacks for the MCP example tests — the server runtime (`mcp`, `starlette`, `uvicorn`, `websockets`) is already in core |
-| `fla` | PlantHelixSeek KDA kernels | [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) (Triton-based, uses the installed torch — combinable with any hardware group) |
 | `tui` | Terminal pre-flight wizard (`dnallm preflight`) | Textual — optional; the rest of the toolkit works without it |
+
+**Built-in kernels:** [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) 0.5.x — PlantHelixSeek's KDA kernels — and its Windows Triton companion `triton-windows` (pulled automatically behind a `platform_system == 'Windows'` marker) are base dependencies: every DNALLM install includes them, no extra needed. The former `fla` extra has been retired.
 
 **Hardware groups (mutually exclusive, NOT included in `all`):**
 
@@ -252,15 +253,11 @@ Note that Plant DNAMamba, Caduceus, PlantCaduceus, PlantCAD2, Jamba-DNA, JanusDN
 
 ### Flash-Linear-Attention (KDA) Kernels for PlantHelixSeek
 
-PlantHelixSeek-CRE and PlantHelixSeek-Anno remote code imports `fla.ops.kda.chunk.chunk_kda` from [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) for their HelixSeekDelta (KDA) layers. Install the `fla` extra (already included in `all`):
-
-```bash
-uv pip install -e '.[fla]'
-```
+PlantHelixSeek-CRE and PlantHelixSeek-Anno remote code imports `fla.ops.kda.chunk.chunk_kda` from [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) for their HelixSeekDelta (KDA) layers. No extra is needed: a normal editable install (`uv pip install -e .` or any dependency group such as `.[full]`) ships built-in flash-linear-attention 0.5.x as a base dependency — the former `fla` extra has been retired, and upgrading installs the package automatically.
 
 > **Warning:** without `flash-linear-attention` the remote code **silently falls back to a pure-PyTorch path that is not KDA math** (wrong gate formula, scalar decay, no delta-rule correction). Models still load and run, but produce positionally-uninformative outputs — e.g. measured p(CRE) 0.007 inside real DHS sites vs 0.009 outside (dead), versus 0.77 vs 0.22 with the kernels installed. Do not interpret PlantHelixSeek predictions without this package.
 
-Three install notes: install the package **bare** (`flash-linear-attention`, not its `[cuda]`/`[rocm]` extras) — since v0.5 the backend extras pin their own torch and would downgrade your environment; keep the version within `0.5.x` (`>=0.5.2,<0.6`) — `chunk_kda` semantics are not guaranteed stable across minor versions; and on **Windows** the `fla` extra declares `triton-windows` behind a `platform_system == 'Windows'` marker, so the Triton kernels work there without a separate Triton install.
+Three dependency notes: the base dependency is the **bare** package (`flash-linear-attention`, not its `[cuda]`/`[rocm]` extras) — since v0.5 the backend extras pin their own torch and would downgrade your environment; the version is kept within `0.5.x` (`>=0.5.2,<0.6`) — `chunk_kda` semantics are not guaranteed stable across minor versions; and on **Windows** the base dependency set pulls `triton-windows` behind a `platform_system == 'Windows'` marker, so the Triton kernels work there without a separate Triton install.
 
 ### Install Dependencies for Special Models
 
@@ -272,8 +269,8 @@ These models are listed below:
 | -------- | ---------- | ------ | ------------ |
 | EVO-1    | CausalLM   | [Hugging Face](https://huggingface.co/collections/togethercomputer/stripedhyena-65d8e6e77540dd1da932dbe1) | [GitHub](https://github.com/evo-design/evo) |
 | EVO2     | CausalLM   | [Hugging Face](https://huggingface.co/collections/arcinstitute/evo-68e42c1bceeb21a456330fb4) | [GitHub](https://github.com/arcinstitute/evo2) |
-| PlantHelixSeek-CRE/-Anno | Token Classification / Binary | [ModelScope](https://modelscope.cn/zhangtaolab) / [Hugging Face](https://huggingface.co/zhangtaolab) | `fla` extra ([flash-linear-attention](https://github.com/fla-org/flash-linear-attention), see warning below) |
-| FungiHelixSeek | MaskedLM | [Hugging Face](https://huggingface.co/zhangtaolab) / [ModelScope](https://modelscope.cn/zhangtaolab) | `fla` extra ([flash-linear-attention](https://github.com/fla-org/flash-linear-attention)) |
+| PlantHelixSeek-CRE/-Anno | Token Classification / Binary | [ModelScope](https://modelscope.cn/zhangtaolab) / [Hugging Face](https://huggingface.co/zhangtaolab) | Built-in [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) (base dependency, see warning below) |
+| FungiHelixSeek | MaskedLM | [Hugging Face](https://huggingface.co/zhangtaolab) / [ModelScope](https://modelscope.cn/zhangtaolab) | Built-in [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) (base dependency) |
 | GPN      | MaskedLM   | [Hugging Face](https://huggingface.co/songlab) | [gpn package](docs/user_guide/optional_dependencies.md) — measured caveats (Python 3.13 only, pins `transformers==5.15.0`, use a separate environment) |
 | megaDNA  | CausalLM   | [Hugging Face](https://huggingface.co/lingxusb) | [GitHub](https://github.com/lingxusb/megaDNA) |
 | LucaOne  | CausalLM   | [Hugging Face](https://huggingface.co/collections/LucaGroup/lucaone-689c4c52fc6577441093f208) | [GitHub](https://github.com/LucaOne/LucaOne) |

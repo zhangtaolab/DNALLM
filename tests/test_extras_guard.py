@@ -390,11 +390,14 @@ class TestExtrasSurgeryResidueGates:
     # Pattern 2: cuda121 (any form), torch-rocm (uv index name), bracket-rocm.
     # Sanctioned: exactly the three flash-linear-attention UPSTREAM-vocabulary
     # lines (Pitfall 4: fla's own [cuda]/[rocm] backend extras, never dnallm's
-    # retired rocm extra) -- README:255, docs/faq/models_troubleshooting.md:13,
+    # retired rocm extra) -- README:260, docs/faq/models_troubleshooting.md:13,
     # and the pyproject comment kept verbatim per the same rule. The pyproject
     # line moved with the D-09 (28-01) fla promotion from the retired extra
     # block (column 0) into the indented base [project] dependencies list, so
-    # its sanctioned form carries the list's 4-space indentation.
+    # its sanctioned form carries the list's 4-space indentation; the README
+    # and troubleshooting lines were reworded by 28-05 (D-09) to name the base
+    # dependency set instead of the retired extra, keeping the upstream
+    # [cuda]/[rocm] vocabulary intact.
     CUDA121_ROCM_PATTERN = r"cuda121|torch-rocm|\[rocm\]"
     SANCTIONED_CUDA121_ROCM_RESIDUE = frozenset({
         (
@@ -403,15 +406,15 @@ class TestExtrasSurgeryResidueGates:
         ),
         (
             "README.md",
-            "Three install notes: install the package **bare** "
-            "(`flash-linear-attention`, not its `[cuda]`/`[rocm]` extras) — "
-            "since v0.5 the backend extras pin their own torch and would "
-            "downgrade your environment; keep the version within `0.5.x` "
-            "(`>=0.5.2,<0.6`) — `chunk_kda` semantics are not guaranteed "
-            "stable across minor versions; and on **Windows** the `fla` extra "
-            "declares `triton-windows` behind a `platform_system == 'Windows'` "
-            "marker, so the Triton kernels work there without a separate "
-            "Triton install.",
+            "Three dependency notes: the base dependency is the **bare** "
+            "package (`flash-linear-attention`, not its `[cuda]`/`[rocm]` "
+            "extras) — since v0.5 the backend extras pin their own torch and "
+            "would downgrade your environment; the version is kept within "
+            "`0.5.x` (`>=0.5.2,<0.6`) — `chunk_kda` semantics are not "
+            "guaranteed stable across minor versions; and on **Windows** the "
+            "base dependency set pulls `triton-windows` behind a "
+            "`platform_system == 'Windows'` marker, so the Triton kernels "
+            "work there without a separate Triton install.",
         ),
         (
             "docs/faq/models_troubleshooting.md",

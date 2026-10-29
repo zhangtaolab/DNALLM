@@ -239,7 +239,7 @@ lane matches your GPU generation, the [GPU Support Matrix](gpu_support.md).
 
 | Group | Purpose | Includes |
 |-------|---------|----------|
-| **all** | Install all optional dependencies | `full` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` + `tui` |
+| **all** | Install all optional dependencies | `full` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `tui` |
 | **full** | Full development environment | `dev` + `test` + `notebook` + `mcp` + extra tools (isort) |
 | **dev** | Complete development environment | `test` + `notebook` + linting/typing (ruff, pre-commit) + analysis tools (logomaker, pybedtools, pyfastx, seaborn) |
 | **test** | Testing environment only | pytest and plugins |
@@ -250,6 +250,8 @@ lane matches your GPU generation, the [GPU Support Matrix](gpu_support.md).
 | **tui** | Terminal pre-flight wizard (`dnallm preflight`) | Textual — optional; the rest of the toolkit works without it |
 
 > **Note:** The MCP server itself runs entirely on core dependencies (`mcp`, `starlette`, `uvicorn`, `websockets`), so server-only deployments need no extra install (see Scenario 8). The `mcp` extra adds the LLM-agent client libraries used by the bundled agent examples: `langchain`, `langchain-mcp-adapters`, `langchain-ollama`, `nest-asyncio`, and `pydantic-ai`.
+
+> **Note:** [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) — PlantHelixSeek's KDA kernels — is a **base dependency**: it installs with the core package on every lane, and its Windows companion `triton-windows` rides a `platform_system == 'Windows'` marker in the same base dependency set. The former `fla` optional group was retired when the dependency was promoted; `all` no longer lists it.
 
 ### Hardware-Specific Groups
 

@@ -344,7 +344,7 @@ DNALLM supports the following task types:
 ## Need More Details?
 
 - See [Installation Guide](installation.md) for complete dependency information, including:
-  - All available dependency groups (`all`, `base`, `dev`, `test`, `notebook`, `docs`, `ui`, `mcp`, `fla`)
+  - All available dependency groups (`all`, `base`, `dev`, `test`, `notebook`, `docs`, `ui`, `mcp`)
   - Hardware-specific groups (`cpu`, `cuda124`, `cuda126`, `cuda128`, `cuda130` — mutually exclusive; `mamba` combines with a CUDA group)
   - Installation scenarios for different use cases
   - Troubleshooting common issues
