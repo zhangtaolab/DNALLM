@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 16
+open_count: 17
 waived_count: 3
 fixed_count: 19
-total_count: 38
-last_updated: 2026-10-29T16:25:03.717Z
+total_count: 39
+last_updated: 2026-10-29T16:37:25.830Z
 ---
 
 # Broken Windows Ledger
@@ -53,6 +53,7 @@ last_updated: 2026-10-29T16:25:03.717Z
 | 36 | 28 | deviation | scripts/census_compat.py |  | Plan verify-3 command re-scoped under owner ruling A: BigBird asserts remote-code-broken with split evidence, not extra-required-tf5 (CrossDNA-only flip) | open |  | 2026-10-29T16:07:04.565Z |  |
 | 37 | 28 | deviation | dnallm/models/support.py |  | Plan-literal BigBird support word 'works with the deepspeed extra' withheld under owner ruling A: forward measured structurally dead, override stays 'needs deepspeed' | open |  | 2026-10-29T16:07:04.687Z |  |
 | 38 | 28 | deviation | docs/user_guide/optional_dependencies.md |  | 28-03 plan-literal BigBird summary cell 'works with the deepspeed extra' withheld under owner ruling A: guide keeps support word 'needs deepspeed'; the required phrase appears only inside the load-green/forward-red split sentence | open |  | 2026-10-29T16:25:03.717Z |  |
+| 39 | 28 | deviation | tests/test_extras_guard.py | 400 | 28-05 Rule-3 companion: sanctioned cuda121/rocm residue entries re-pinned to the reworded README:260 and models_troubleshooting lines (fla-extra retirement wording, D-09) | open |  | 2026-10-29T16:37:25.830Z |  |
 
 ````json
 [
@@ -547,6 +548,19 @@ last_updated: 2026-10-29T16:25:03.717Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-10-29T16:25:03.717Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
+  },
+  {
+    "id": 39,
+    "kind": "deviation",
+    "phase": "28",
+    "file": "tests/test_extras_guard.py",
+    "line": 400,
+    "description": "28-05 Rule-3 companion: sanctioned cuda121/rocm residue entries re-pinned to the reworded README:260 and models_troubleshooting lines (fla-extra retirement wording, D-09)",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-29T16:37:25.830Z",
     "resolved_at": null,
     "milestone": "v1.4"
   }
