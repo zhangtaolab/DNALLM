@@ -309,10 +309,10 @@ pretrained:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "GENERanno"
-    model: "GenerTeam/GENERanno-eukaryote-1.2b-base"
+    model: "lgq12697/GENERanno-eukaryote-0.5b-base"
     max_length: 8192
-    tf_compat_status: census-blocked
-    tf_compat_evidence: "ms GenerTeam/GENERanno-eukaryote-1.2b-base@unpinned@2026-10-27T08:39:46Z; unreachable on both hubs (ModelScope then https://hf-mirror.com)"
+    tf_compat_status: remote-code-broken
+    tf_compat_evidence: "ms lgq12697/GENERanno-eukaryote-0.5b-base@0ae1f40ffaef2d905c20629a2fa509f4e1bf187b; default rotary embedding initializer not found in transformers 5.17.0 (KeyError: 'default' during model construction)"
     tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."

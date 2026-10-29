@@ -1582,7 +1582,7 @@ GENERATED_HEADER = (
 # stamp would break the byte-identical regeneration gate (the same registry
 # must produce the same page on any later day). Bump this constant alongside a
 # census re-run + --write-registry --apply; the drift gate then re-pins it.
-DOCS_DATA_DATE = "2026-10-27"
+DOCS_DATA_DATE = "2026-10-29"
 
 # The transformers-4-side honesty wording (D-05): inference is labeled
 # inference. Pinned verbatim by the Task-2 gate (including the Chinese
