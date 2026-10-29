@@ -438,6 +438,7 @@ def _synthetic_report() -> CompatibilityReport:
                 availability=AvailabilityReport(
                     state=AvailabilityState.REMOTE_CONFIRMED, source_hub=Hub.HUGGINGFACE
                 ),
+                support="works",
             ),
             ListingEntry(
                 model="zhangtaolab/lab-b",
@@ -449,6 +450,7 @@ def _synthetic_report() -> CompatibilityReport:
                 availability=AvailabilityReport(
                     state=AvailabilityState.UNKNOWN, reason="RATE_LIMITED"
                 ),
+                support="works with built-in fixes",
             ),
             # A third-party family the shortlist never reached: no report at
             # all, which is the D-05 case — listed, unverified, choosable.
@@ -457,6 +459,7 @@ def _synthetic_report() -> CompatibilityReport:
                 entry_name="Third C",
                 is_lab=False,
                 task_type="mask",
+                support="needs pip install gpn",
             ),
         ],
     )
@@ -518,6 +521,101 @@ async def test_suitability_renders_the_core_listing_in_core_order(monkeypatch) -
     assert fake_core.calls[0]["prober"] is prober
     assert fake_core.calls[0]["probe_shortlist"] == 20
     assert fake_core.calls[0]["data"] is None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Suitability listing, support column (D-16, 27.2-05): one trailing text cell
+# derived by the core, with the availability column still at index 4.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+async def test_the_listing_table_declares_support_after_availability(monkeypatch) -> None:
+    """The sixth column is Support, immediately after Availability (D-16)."""
+    from dnallm.tui.screens.suitability import _AVAILABILITY_COLUMN
+
+    monkeypatch.setattr(
+        preflight_facade, "check_compatibility", FakeCompatibilityCore(_synthetic_report())
+    )
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        table = screen.query_one("#suitability-listing", DataTable)
+        headers = [str(column.label) for column in table.columns.values()]
+
+    assert headers == list(copy.SUITABILITY_LISTING_COLUMNS)
+    assert headers[-2:] == ["Availability", "Support"]
+    assert len(headers) == 6
+    # The refresh code keeps writing availability at index 4 (never the new cell).
+    assert _AVAILABILITY_COLUMN == 4
+
+
+async def test_each_listing_row_shows_the_support_word_verbatim(monkeypatch) -> None:
+    """Every row's last cell is exactly its entry's support word."""
+    report = _synthetic_report()
+    monkeypatch.setattr(preflight_facade, "check_compatibility", FakeCompatibilityCore(report))
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        rows = _table_rows(screen.query_one("#suitability-listing", DataTable))
+
+    assert [row[5] for row in rows] == [entry.support for entry in report.listing]
+    assert [row[5] for row in rows] == [
+        "works",
+        "works with built-in fixes",
+        "needs pip install gpn",
+    ]
+    # Availability still occupies its own index-4 cell.
+    assert copy.AVAILABILITY_REMOTE.format(hub="Hugging Face") == rows[0][4]
+
+
+async def test_availability_updates_leave_the_support_cell_untouched(monkeypatch) -> None:
+    """A refreshed or on-demand availability write changes only column 4."""
+    report = _synthetic_report()
+    monkeypatch.setattr(preflight_facade, "check_compatibility", FakeCompatibilityCore(report))
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+    late = AvailabilityReport(state=AvailabilityState.CACHED)
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        listing = screen.query_one("#suitability-listing", DataTable)
+        await screen.apply_availability_update(report.listing[1].model, late)
+        await pilot.pause()
+        after_on_demand = [str(cell) for cell in listing.get_row_at(1)]
+        screen._refresh_availability_cells()
+        after_refresh = [str(cell) for cell in listing.get_row_at(1)]
+
+    assert after_on_demand[4] == copy.AVAILABILITY_CACHED_LOCAL
+    assert after_refresh[4] == copy.AVAILABILITY_CACHED_LOCAL
+    assert after_on_demand[5] == "works with built-in fixes"
+    assert after_refresh[5] == "works with built-in fixes"
+
+
+async def test_a_finetuned_row_shows_its_inherited_base_support(monkeypatch) -> None:
+    """A finetuned entry's inherited base word reaches the rendered cell verbatim."""
+    from dnallm.models.registry import try_resolve
+    from dnallm.preflight.compatibility import _build_listing
+
+    rows_entries = _build_listing([try_resolve("zhangtaolab/dnabert2-promoter")])
+    report = CompatibilityReport(verdicts=[], listing=rows_entries)
+    monkeypatch.setattr(preflight_facade, "check_compatibility", FakeCompatibilityCore(report))
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        rows = _table_rows(screen.query_one("#suitability-listing", DataTable))
+
+    assert rows_entries[0].support == "works with built-in fixes"
+    assert rows[0][5] == "works with built-in fixes"
 
 
 def test_screen_intent_constants_match_the_core_vocabulary() -> None:
