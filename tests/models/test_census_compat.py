@@ -309,6 +309,74 @@ class TestConfigProblemDescription:
         assert census.describe_config_problem(str(tmp_path), ValueError("boom")) == "boom"
 
 
+def _write_crossdna_config(directory: Path) -> None:
+    """Write a minimal CrossDNA-shaped checkpoint config into *directory*."""
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "config.json").write_text(
+        json.dumps({
+            "model_type": "crossdna",
+            "architectures": ["CrossDNAForMaskedLM"],
+            "auto_map": {"AutoModelForMaskedLM": "modeling_crossdna.CrossDNAForMaskedLM"},
+        }),
+        encoding="utf-8",
+    )
+
+
+class TestCensusConfigDirResolution:
+    """D-12: the census reads CrossDNA-style snapshots through the handler's
+    own checkpoint resolver, so a repo whose root ships no config.json is
+    measured at the same directory ``load_model_and_tokenizer`` loads from
+    instead of being recorded census-blocked for its repository layout."""
+
+    def test_root_config_wins_over_children(self, tmp_path) -> None:
+        _write_crossdna_config(tmp_path)
+        _write_crossdna_config(tmp_path / "519M")
+        assert census._resolve_census_config_dir(str(tmp_path)) == str(tmp_path)
+
+    def test_preferred_child_with_config_wins_second(self, tmp_path) -> None:
+        _write_crossdna_config(tmp_path / "8.1M")
+        assert census._resolve_census_config_dir(str(tmp_path)) == str(tmp_path / "8.1M")
+
+    def test_real_layout_preference_does_not_win_without_config(self, tmp_path) -> None:
+        # The real repo: 8.1M is the handler's preferred dir but carries no
+        # config.json; the unique-valid-child rule selects 519M instead.
+        (tmp_path / "8.1M").mkdir()
+        _write_crossdna_config(tmp_path / "519M")
+        assert census._resolve_census_config_dir(str(tmp_path)) == str(tmp_path / "519M")
+
+    def test_multiple_unknown_valid_children_raise_the_handler_error(self, tmp_path) -> None:
+        _write_crossdna_config(tmp_path / "71.6M")
+        _write_crossdna_config(tmp_path / "519M")
+        with pytest.raises(ValueError, match="Multiple CrossDNA checkpoint directories"):
+            census._resolve_census_config_dir(str(tmp_path))
+
+    def test_read_config_reads_the_resolved_child(self, tmp_path) -> None:
+        _write_crossdna_config(tmp_path / "519M")
+        config = census.read_config(str(tmp_path))
+        assert config["model_type"] == "crossdna"
+
+    def test_non_crossdna_snapshot_keeps_the_root_config_error(self, tmp_path) -> None:
+        # A non-CrossDNA snapshot resolves to None and falls back to the
+        # original missing-root-config error path (D-12 changes nothing for
+        # repos the handler would not navigate).
+        nested = tmp_path / "checkpoint"
+        nested.mkdir()
+        (nested / "config.json").write_text(json.dumps({"model_type": "bert"}), encoding="utf-8")
+        with pytest.raises(ValueError, match="cannot read fetched config.json"):
+            census.read_config(str(tmp_path))
+
+
+def test_code_patterns_fetch_nested_checkpoint_configs() -> None:
+    """CODE_PATTERNS fetches nested config.json files as well as root configs.
+
+    A checkpoint living in a size-named subdirectory must arrive in the
+    code-only snapshot for the resolver to read it (D-12); the root pattern
+    stays so ordinary repos keep their exact-shape fetch.
+    """
+    assert "config.json" in census.CODE_PATTERNS
+    assert "**/config.json" in census.CODE_PATTERNS
+
+
 def _family_record(repo: str, status: str = "arch-ok", family: str = "EsmForMaskedLM") -> dict:
     """Return a synthetic record shaped for family-grouping tests."""
     return _record({
@@ -468,6 +536,41 @@ class TestLoadProgram:
         no other repo's load program carries it."""
         program = census.build_load_program("org/repo", "hf", [], "abc123")
         assert "_install_dnabert2_tf5_shims" not in program
+
+    def test_crossdna_repo_resolves_the_checkpoint_dir_on_the_hf_route(self) -> None:
+        """D-12: the CrossDNA program obtains a local FULL snapshot from the
+        mirror (pinned revision, mirror endpoint) and assigns the
+        handler-resolved checkpoint directory to source before AutoConfig."""
+        program = census.build_load_program(
+            "chengCCC/CrossDNA_pretrain", "hf", ["CrossDNAForMaskedLM"], "cd118dc"
+        )
+        assert (
+            "from dnallm.models.special.crossdna import _resolve_crossdna_checkpoint_dir"
+            in program
+        )
+        assert "endpoint='https://hf-mirror.com'" in program
+        assert "revision=revision" in program
+        resolve_call = "_resolve_crossdna_checkpoint_dir(str(full_snapshot))"
+        assert program.index(resolve_call) > program.index("source = repo")
+        assert program.index(resolve_call) < program.index("AutoConfig.from_pretrained")
+        assert "if source is None:" in program  # a None resolution fails loudly
+        assert "raise RuntimeError(" in program
+
+    def test_crossdna_hook_also_resolves_on_the_modelscope_route(self) -> None:
+        """The ms route already holds a local full snapshot in source; the
+        resolver runs on it after acquisition and before AutoConfig."""
+        program = census.build_load_program(
+            "chengCCC/CrossDNA_pretrain", "ms", ["CrossDNAForMaskedLM"], "unpinned@x"
+        )
+        resolve_call = "_resolve_crossdna_checkpoint_dir(str(full_snapshot))"
+        assert program.index(resolve_call) > program.index("snapshot_download(model_id=repo)")
+        assert program.index(resolve_call) < program.index("AutoConfig.from_pretrained")
+        assert "full_snapshot = source" in program
+
+    def test_other_repo_emits_no_crossdna_hook(self) -> None:
+        """The hook is narrowly scoped to the exact CrossDNA census repo."""
+        program = census.build_load_program("org/repo", "hf", [], "abc123")
+        assert "_resolve_crossdna_checkpoint_dir" not in program
 
 
 # ─────────────────────────────────────────────────────────────────────────────
