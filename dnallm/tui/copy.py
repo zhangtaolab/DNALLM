@@ -304,12 +304,15 @@ SUITABILITY_LISTING_HEADING = "Models that fit this route"
 # Column labels. Reason codes, task types and model names stay verbatim.
 SUITABILITY_VERDICT_COLUMNS = ("Model", "Check", "Result", "Reason code")
 
+# The support word trails Availability on purpose: the availability refresh
+# code writes column 4, so appending here never renumbers it (D-16).
 SUITABILITY_LISTING_COLUMNS = (
     "Model",
     "Who made it",
     "Task type",
     "Trained outputs",
     "Availability",
+    "Support",
 )
 
 # Shown while the core is working out the listing and its first probes.

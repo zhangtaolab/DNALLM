@@ -345,6 +345,9 @@ class SuitabilityScreen(Screen):
     def _listing_cells(self, entry: ListingEntry, position: int) -> list[Text]:
         """One listing row's cells, straight from the entry's fields.
 
+        The support word is appended LAST so the availability cell stays at
+        index 4 — the one column the refresh code rewrites (D-16).
+
         Args:
             entry: The frozen listing row.
             position: Its index in the core's order.
@@ -358,6 +361,7 @@ class SuitabilityScreen(Screen):
             _cell(entry.task_type or ""),
             _cell(copy.NO_HEAD_LABELS if entry.num_labels is None else str(entry.num_labels)),
             _cell(self._availability_text(entry, position)),
+            _cell(entry.support),
         ]
 
     def _availability_text(self, entry: ListingEntry, position: int) -> str:
