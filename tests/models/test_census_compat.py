@@ -1038,6 +1038,13 @@ class TestSeededFreshRunVerification:
     @staticmethod
     def _needs_disposition(record: dict) -> bool:
         load = record.get("load")
+        green = isinstance(load, dict) and load.get("ok") is True and load.get("forward_ok") is True
+        if green:
+            # 27.2-03: a green load+forward needs no frozen judgment --
+            # merge_records drops a stale skip over fresh green evidence
+            # (27.2-01 D-02), so a historical previous_status stamp (e.g.
+            # gena's) must not demand one either.
+            return False
         return bool(
             record["status"] in ("import-fail", "census-blocked")
             or record.get("previous_status") == "import-fail"
@@ -1192,6 +1199,13 @@ class TestDispositionCompleteness:
         status = record.get("status")
         previous = record.get("previous_status")
         load = record.get("load")
+        green = isinstance(load, dict) and load.get("ok") is True and load.get("forward_ok") is True
+        if green:
+            # 27.2-03: a measured green load+forward supersedes every failure
+            # signal. merge_records drops a stale skip over fresh green
+            # evidence (27.2-01 D-02), so a historical previous_status stamp
+            # must not demand a judgment the re-probe just disproved.
+            return False
         return bool(
             status in ("import-fail", "census-blocked")
             or previous == "import-fail"

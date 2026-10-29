@@ -491,12 +491,15 @@ class TestBlockedRowPlainLanguage:
 
         The generator raises on an unmapped blocking shape; this gate cannot
         execute the generator (checker independence), so it pins the same fact
-        from the registry side: the blocked roster is non-empty, and every
-        committed blocked evidence detail matches one of the two exact
-        mapping needles.
+        from the registry side: every committed blocked evidence detail
+        matches one of the two exact mapping needles. After the 27.2-03
+        campaign no committed row is census-blocked (CrossDNA was re-measured
+        to a real verdict through the handler checkpoint route), so the
+        roster is empty and the pin holds vacuously -- the moment a future
+        census records a blocked row again, its evidence must match a needle
+        or this gate (and the generator) fail.
         """
         rows = _blocked_rows()
-        assert rows, "the registry carries no census-blocked rows (nothing pins the blocked map)"
         for name, model in rows:
             entry = next(e for e in _pretrained() if e.model == model)
             detail = _evidence_detail(entry.tf_compat_evidence)

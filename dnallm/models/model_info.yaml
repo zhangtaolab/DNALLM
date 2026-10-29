@@ -272,8 +272,8 @@ pretrained:
     model: "zhihan1996/DNABERT-2-117M"
     tokenizer_type: "PreTrainedTokenizerFast"
     max_length: 512
-    tf_compat_status: remote-code-broken
-    tf_compat_evidence: "hf zhihan1996/DNABERT-2-117M@7bce263b15377fc15361f52cfab88f8b586abda0; remote bert_layers.py builds its ALiBi tensor eagerly in __init__ (rebuild_alibi_tensor line 399: torch.Tensor(list) stays on cpu while torch.arange lands on meta); transformers 5 constructs models on the meta device where 4.x built on cpu, so the meta x cpu multiply crashes before any weight loads - no removed transformers API is involved"
+    tf_compat_status: shim-required-tf5
+    tf_compat_evidence: "hf zhihan1996/DNABERT-2-117M@7bce263b15377fc15361f52cfab88f8b586abda0; load+forward verified via rung _install_dnabert2_tf5_shims"
     tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
@@ -282,8 +282,8 @@ pretrained:
     model: "AIRI-Institute/gena-lm-bert-base"
     tokenizer_type: "PreTrainedTokenizerFast"
     max_length: 512
-    tf_compat_status: remote-code-broken
-    tf_compat_evidence: "hf AIRI-Institute/gena-lm-bert-base@416f055300346a5830ca49438daf5f4e136ed9a8; transformers 5 constructs the model on a meta device and materializes the non-persistent token_type_ids buffer with uninitialized values outside the type_vocab_size=2 range (observed 3901475131392, 6001647030272 and 6489494917120 across three loads), so the token_type_ids=None buffer-default forward crashes (IndexError on cpu, device-side assert on cuda); the checkpoint state dict carries no token_type_ids key (209 keys enumerated), so no published file is damaged; the import itself was restored by the _patch_apply_chunking_to_forward rung (see previous_status)"
+    tf_compat_status: shim-required-tf5
+    tf_compat_evidence: "hf AIRI-Institute/gena-lm-bert-base@416f055300346a5830ca49438daf5f4e136ed9a8; load+forward verified via rung _patch_gena_token_type_ids_on_load"
     tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
@@ -401,8 +401,8 @@ pretrained:
     model: "JadenLong/MutBERT-Human-Ref"
     tokenizer_type: "PreTrainedTokenizerFast"
     max_length: 512
-    tf_compat_status: remote-code-broken
-    tf_compat_evidence: "hf JadenLong/MutBERT-Human-Ref@fe04deaf62e242c9d33f842ea20985513a8dd51a; remote modeling_mutbert.py line 808 computes input_shape = input_ids.size()[:-1] ('# modified' in the repo's own source), dropping the sequence dimension for every 2-D input - the model's own forward-contract bug fails identically on transformers 4.x"
+    tf_compat_status: shim-required-tf5
+    tf_compat_evidence: "hf JadenLong/MutBERT-Human-Ref@fe04deaf62e242c9d33f842ea20985513a8dd51a; load+forward verified via rung _patch_mutbert_forward_on_load"
     tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
@@ -481,8 +481,8 @@ pretrained:
     model: "chengCCC/CrossDNA_pretrain"
     tokenizer_type: "CrossDNATokenizer"
     max_length: 1024
-    tf_compat_status: census-blocked
-    tf_compat_evidence: "hf chengCCC/CrossDNA_pretrain@cd118dc45eaa0f2debb05f03ed0290fe56a78ab1; cannot read fetched config.json at /home/forrest/.cache/huggingface/hub/models--chengCCC--CrossDNA_pretrain/snapshots/cd118dc45eaa0f2debb05f03ed0290fe56a78ab1/config.json: [Errno 2] No such file or directory: '/home/forrest/.cache/huggingface/hub/models--chengCCC--CrossDNA_pretrain/snapshots/cd118dc45eaa0f2debb05f03ed0290fe56a78ab1/config.json'; snapshot top-level entries: ['28.6M', '519M', '71.6M', '8.1M']"
+    tf_compat_status: remote-code-broken
+    tf_compat_evidence: "hf chengCCC/CrossDNA_pretrain@cd118dc45eaa0f2debb05f03ed0290fe56a78ab1; remote modeling_crossdna.py (handler-preferred 8.1M checkpoint) builds its attention mixer through fla.layers.attn.Attention, which requires the separately compiled flash-attn package; flash-attn is an external package outside dnallm's dependency set, not a transformers API removal - installing it is left to the user environment"
     tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."

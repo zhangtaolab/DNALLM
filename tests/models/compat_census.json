@@ -505,17 +505,14 @@
       "family": "zhihan1996",
       "is_family_rep": true,
       "load": {
-        "ok": false,
-        "error": "val_frame.py\", line 1263, in _fn\n    return fn(*args, **kwargs)\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/_prims_common/wrappers.py\", line 152, in _fn\n    result = fn(**bound.arguments)\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/_refs/__init__.py\", line 1171, in _ref\n    output = prim(a, b)\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/_refs/__init__.py\", line 1790, in mul\n    return prims.mul(a, b)\n           ~~~~~~~~~^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/_ops.py\", line 865, in __call__\n    return self._op(*args, **kwargs)\n           ~~~~~~~~^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/_library/fake_impl.py\", line 111, in meta_kernel\n    return fake_impl_holder.kernel(*args, **kwargs)\n           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/_library/utils.py\", line 23, in __call__\n    return self.func(*args, **kwargs)\n           ~~~~~~~~~^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/library.py\", line 1496, in inner\n    return func(*args, **kwargs)\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/_library/custom_ops.py\", line 636, in fake_impl\n    return self._abstract_fn(*args, **kwargs)\n           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/_prims/__init__.py\", line 420, in _prim_elementwise_meta\n    utils.check_same_device(*args_, allow_cpu_scalar_tensors=True)\n    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/_prims_common/__init__.py\", line 917, in check_same_device\n    raise RuntimeError(msg)\nRuntimeError: Tensor on device meta is not on the expected device cpu!\n",
-        "forward_ok": false,
-        "output_shape": null,
+        "ok": true,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 768)",
         "device": "cuda",
-        "duration_s": 1.696
+        "duration_s": 5.35
       },
-      "disposition": {
-        "skip": "remote bert_layers.py builds its ALiBi tensor eagerly in __init__ (rebuild_alibi_tensor line 399: torch.Tensor(list) stays on cpu while torch.arange lands on meta); transformers 5 constructs models on the meta device where 4.x built on cpu, so the meta x cpu multiply crashes before any weight loads - no removed transformers API is involved"
-      },
-      "fetched_at": "2026-10-27T08:39:24Z"
+      "fetched_at": "2026-10-29T04:48:03Z"
     },
     {
       "repo": "AIRI-Institute/gena-lm-bert-base",
@@ -531,16 +528,13 @@
       "is_family_rep": true,
       "load": {
         "ok": true,
-        "error": "_call_impl(*args, **kwargs)\n           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py\", line 1790, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/home/forrest/.cache/huggingface/modules/transformers_modules/AIRI_hyphen_Institute/gena_hyphen_lm_hyphen_bert_hyphen_base/416f055300346a5830ca49438daf5f4e136ed9a8/modeling_bert.py\", line 234, in forward\n    embeddings = self.LayerNorm(embeddings)\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py\", line 1779, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py\", line 1790, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/nn/modules/normalization.py\", line 229, in forward\n    return F.layer_norm(\n           ~~~~~~~~~~~~^\n        input, self.normalized_shape, self.weight, self.bias, self.eps\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/nn/functional.py\", line 2935, in layer_norm\n    return torch.layer_norm(\n           ~~~~~~~~~~~~~~~~^\n        input, normalized_shape, weight, bias, eps, torch.backends.cudnn.enabled\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\ntorch.AcceleratorError: CUDA error: device-side assert triggered\nSearch for `cudaErrorAssert' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.\nCUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.\nFor debugging consider passing CUDA_LAUNCH_BLOCKING=1\nCompile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.\n\n",
-        "forward_ok": false,
-        "output_shape": null,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 32000)",
         "device": "cuda",
-        "duration_s": 42.271
+        "duration_s": 4.009
       },
-      "disposition": {
-        "skip": "transformers 5 constructs the model on a meta device and materializes the non-persistent token_type_ids buffer with uninitialized values outside the type_vocab_size=2 range (observed 3901475131392, 6001647030272 and 6489494917120 across three loads), so the token_type_ids=None buffer-default forward crashes (IndexError on cpu, device-side assert on cuda); the checkpoint state dict carries no token_type_ids key (209 keys enumerated), so no published file is damaged; the import itself was restored by the _patch_apply_chunking_to_forward rung (see previous_status)"
-      },
-      "fetched_at": "2026-10-27T08:39:32Z",
+      "fetched_at": "2026-10-29T04:48:10Z",
       "previous_status": "import-fail"
     },
     {
@@ -611,7 +605,7 @@
         "device": "cuda",
         "duration_s": 16.335
       },
-      "fetched_at": "2026-10-29T03:47:07Z"
+      "fetched_at": "2026-10-29T04:48:16Z"
     },
     {
       "repo": "pGenomeOcean/GenomeOcean-100M",
@@ -788,16 +782,13 @@
       "is_family_rep": true,
       "load": {
         "ok": true,
-        "error": "Traceback (most recent call last):\n  File \"<string>\", line 51, in <module>\n    output = model(input_ids)\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py\", line 1779, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py\", line 1790, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/home/forrest/.cache/huggingface/modules/transformers_modules/JadenLong/MutBERT_hyphen_Human_hyphen_Ref/fe04deaf62e242c9d33f842ea20985513a8dd51a/modeling_mutbert.py\", line 817, in forward\n    batch_size, seq_length = input_shape\n    ^^^^^^^^^^^^^^^^^^^^^^\nValueError: not enough values to unpack (expected 2, got 1)\n",
-        "forward_ok": false,
-        "output_shape": null,
+        "error": null,
+        "forward_ok": true,
+        "output_shape": "(1, 32, 768)",
         "device": "cuda",
-        "duration_s": 4.231
+        "duration_s": 4.762
       },
-      "disposition": {
-        "skip": "remote modeling_mutbert.py line 808 computes input_shape = input_ids.size()[:-1] ('# modified' in the repo's own source), dropping the sequence dimension for every 2-D input - the model's own forward-contract bug fails identically on transformers 4.x"
-      },
-      "fetched_at": "2026-10-27T08:40:17Z"
+      "fetched_at": "2026-10-29T04:48:23Z"
     },
     {
       "repo": "InstaDeepAI/nucleotide-transformer-v2-100m-multi-species",
@@ -941,21 +932,28 @@
     {
       "repo": "chengCCC/CrossDNA_pretrain",
       "name": "CrossDNA",
-      "class": null,
+      "class": "remote",
       "hub": "hf",
       "revision": "cd118dc45eaa0f2debb05f03ed0290fe56a78ab1",
       "transformers": "5.17.0",
-      "status": "census-blocked",
-      "failing_import": "cannot read fetched config.json at /home/forrest/.cache/huggingface/hub/models--chengCCC--CrossDNA_pretrain/snapshots/cd118dc45eaa0f2debb05f03ed0290fe56a78ab1/config.json: [Errno 2] No such file or directory: '/home/forrest/.cache/huggingface/hub/models--chengCCC--CrossDNA_pretrain/snapshots/cd118dc45eaa0f2debb05f03ed0290fe56a78ab1/config.json'; snapshot top-level entries: ['28.6M', '519M', '71.6M', '8.1M']",
+      "status": "import-ok",
+      "failing_import": null,
       "traceback_tail": null,
-      "family": "chengCCC",
+      "family": "CrossDNAForMaskedLM",
       "is_family_rep": true,
-      "load": null,
-      "disposition": {
-        "skip": "repo ships no root config.json - checkpoints live under 8.1M/28.6M/71.6M/519M size-named subdirectories, so the bare repo id is not loadable by AutoConfig/from_pretrained; the per-checkpoint load-path decision belongs to the 27-03 write-back"
+      "load": {
+        "ok": false,
+        "error": "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    ...<23 lines>...\n        bridge_dropout=0.0,\n        ^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/home/forrest/.cache/huggingface/modules/transformers_modules/_8_dot_1M/324837e8fac8641f/modeling_crossdna.py\", line 504, in __init__\n    self.branchA_core = DeepEnhancedBranch(\n                        ~~~~~~~~~~~~~~~~~~^\n        hidden_dim=d_model, comba_cfg=comba_cfg, transformer_cfg=transformer_cfg,\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        depth=depth, drop_path_rates=drop_path_rates\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/home/forrest/.cache/huggingface/modules/transformers_modules/_8_dot_1M/324837e8fac8641f/modeling_crossdna.py\", line 307, in __init__\n    self.layers.append(EnhancedHybridCore(hidden_dim, comba_cfg, layer_cfg, i, device, dtype))\n                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/.cache/huggingface/modules/transformers_modules/_8_dot_1M/324837e8fac8641f/modeling_crossdna.py\", line 270, in __init__\n    self.transformer = SlidingWindowAttention(config=transformer_cfg)\n                       ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/forrest/.cache/huggingface/modules/transformers_modules/_8_dot_1M/324837e8fac8641f/modeling_crossdna.py\", line 214, in __init__\n    self.mixer = Attention(\n                 ~~~~~~~~~^\n        hidden_size=c[\"hidden_size\"],\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    ...<5 lines>...\n        max_position_embeddings=c[\"max_position_embeddings\"]\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/fla/layers/attn.py\", line 71, in __init__\n    raise ImportError(\"Please install Flash Attention via `pip install flash-attn --no-build-isolation` first\")\nImportError: Please install Flash Attention via `pip install flash-attn --no-build-isolation` first\n",
+        "forward_ok": false,
+        "output_shape": null,
+        "device": "cuda",
+        "duration_s": 2.4
       },
-      "fetched_at": "2026-10-27T08:41:09Z",
-      "load_note": "census-blocked: no load evidence (see failing_import)"
+      "fetched_at": "2026-10-29T04:48:27Z",
+      "previous_status": "census-blocked",
+      "disposition": {
+        "skip": "remote modeling_crossdna.py (handler-preferred 8.1M checkpoint) builds its attention mixer through fla.layers.attn.Attention, which requires the separately compiled flash-attn package; flash-attn is an external package outside dnallm's dependency set, not a transformers API removal - installing it is left to the user environment"
+      }
     }
   ]
 }

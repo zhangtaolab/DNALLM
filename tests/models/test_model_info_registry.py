@@ -354,14 +354,21 @@ TF_COMPAT_VOCABULARY = {
 }
 
 # Measured distribution of the committed write-back (49 rows): 19 verified
-# (green family-representative loads), 21 import-verified (siblings), 2
+# (green family-representative loads), 21 import-verified (siblings), 5
 # shim-required (PlantCaduceus_l32 via rung 13; GENERanno via the 27.2-01 ROPE
-# 'default' rung), 6 remote-code-broken (2 import-fail + 4 structurally failed
-# load/forward), 1 census-blocked.
-EXPECTED_REMOTE_CODE_BROKEN = 6
-EXPECTED_SHIM_REQUIRED = 2
+# 'default' rung; GENA-LM and MutBERT via the 27.2-01/02 load-boundary
+# repairs; DNABERT-2 via the 27.2-02 pre-construction installer), 4
+# remote-code-broken (GPN and Omni-DNA external packages, GENA-LM-BigBird
+# deepspeed, CrossDNA's measured flash-attn requirement -- all authored
+# skips), 0 census-blocked (CrossDNA re-measured to a real verdict, 27.2-03).
+EXPECTED_REMOTE_CODE_BROKEN = 4
+EXPECTED_SHIM_REQUIRED = 5
 
 COMPAT_SHIM_SOURCE = Path(dnallm.__file__).parent / "utils" / "transformers_compat.py"
+# The one handler-owned repair (D-05 locks DNABERT-2's fix in the special
+# handler, not the rung layer): its evidence names the installer, whose
+# existence is confirmed in the handler file itself.
+COMPAT_HANDLER_SOURCE = Path(dnallm.__file__).parent / "models" / "special" / "dnabert2.py"
 
 
 def test_all_pretrained_entries_carry_compat_fields() -> None:
@@ -406,21 +413,35 @@ def test_remote_code_broken_evidence_names_failing_import() -> None:
 
 
 def test_shim_required_evidence_names_rung() -> None:
-    """Every shim-required evidence names a real _patch_* rung in transformers_compat.py.
+    """Every shim-required evidence names a real repair symbol in its source.
 
-    Reads the shim source in the test: the rung's existence is confirmed
-    independently of the census artifact's claim.
+    A ``_patch_*`` rung must exist in transformers_compat.py; the one
+    handler-owned repair (DNABERT-2, D-05 owner-locked file choice) names
+    its ``_install_dnabert2_tf5_shims`` installer, which must exist in
+    dnallm/models/special/dnabert2.py. Both sources are read in the test:
+    the symbol's existence is confirmed independently of the census
+    artifact's claim, and an evidence naming neither shape still fails.
     """
     shim_source = COMPAT_SHIM_SOURCE.read_text(encoding="utf-8")
+    handler_source = COMPAT_HANDLER_SOURCE.read_text(encoding="utf-8")
     shim_required = [e for e in _pretrained() if e.get("tf_compat_status") == "shim-required-tf5"]
     assert len(shim_required) == EXPECTED_SHIM_REQUIRED
     for entry in shim_required:
         repo = entry["model"]
-        rungs = re.findall(r"_patch_[a-z0-9_]+", entry["tf_compat_evidence"])
-        assert rungs, f"{repo}: shim-required evidence names no _patch_* rung"
+        evidence = entry["tf_compat_evidence"]
+        rungs = re.findall(r"_patch_[a-z0-9_]+", evidence)
+        installers = re.findall(r"_install_dnabert2_tf5_shims", evidence)
+        assert rungs or installers, (
+            f"{repo}: shim-required evidence names no _patch_* rung or handler installer"
+        )
         for rung in rungs:
             assert f"def {rung}(" in shim_source, (
                 f"{repo}: rung {rung} does not exist in transformers_compat.py"
+            )
+        for _ in installers:
+            assert "def _install_dnabert2_tf5_shims(" in handler_source, (
+                f"{repo}: handler installer _install_dnabert2_tf5_shims does not exist "
+                "in dnallm/models/special/dnabert2.py"
             )
 
 
@@ -443,13 +464,19 @@ def test_compat_field_values_present_never_degenerate() -> None:
 COMPAT_CENSUS_ARTIFACT = Path(__file__).parent / "compat_census.json"
 
 # The independent mirror of scripts/census_compat.py SHIM_RESTORED_LOADS: the
-# repos whose census-green load+forward passes ONLY through a compat rung
-# (the artifact records the load but not which rung it needed). 27-03:
+# repos whose census-green load+forward passes ONLY through a compat repair
+# (the artifact records the load but not which repair it needed). 27-03:
 # PlantCaduceus_l32 (rung 13, tied-weights bookkeeping). 27.2-01: GENERanno
-# (ROPE 'default' table entry, _patch_rope_default_init).
+# (ROPE 'default' table entry, _patch_rope_default_init). 27.2-03: the final
+# committed flips for GENA-LM (_patch_gena_token_type_ids_on_load), MutBERT
+# (_patch_mutbert_forward_on_load), and DNABERT-2 (the handler-owned
+# _install_dnabert2_tf5_shims installer, D-05 file choice).
 SHIM_RESTORED_MIRROR = {
     "kuleshov-group/PlantCaduceus_l32",
     "lgq12697/GENERanno-eukaryote-0.5b-base",
+    "AIRI-Institute/gena-lm-bert-base",
+    "JadenLong/MutBERT-Human-Ref",
+    "zhihan1996/DNABERT-2-117M",
 }
 
 
@@ -460,11 +487,11 @@ def test_compat_census_artifact_matches_registry() -> None:
     consistency-checker independence: the gate must not share the writer's
     mapping code in scripts/census_compat.py, so a writer bug cannot
     self-approve). Reads the frozen artifact and the TYPED registry — never a
-    second yaml parse. The one fact both sides must encode is the rung
-    dependency of PlantCaduceus_l32's green load (the artifact records the
-    load but not which rung it needed; 27-02 evidence). An absent or
-    unparseable artifact is a test failure, never a skip (audit_skips
-    posture).
+    second yaml parse. The fact both sides must encode is the repair
+    dependency of the five shim-restored green loads (the artifact records
+    the load but not which repair it needed; SHIM_RESTORED_MIRROR above).
+    An absent or unparseable artifact is a test failure, never a skip
+    (audit_skips posture).
     """
     from dnallm.models import registry
 
