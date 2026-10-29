@@ -5,10 +5,10 @@ current_phase: "27.2"
 current_phase_name: "Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED)"
 status: executing
 stopped_at: Phase 27.2 context gathered
-last_updated: "2026-10-29T01:57:33.036Z"
+last_updated: "2026-10-29T03:16:31.498Z"
 last_activity: 2026-10-29
 last_activity_desc: Completed quick task 261029-c95 (GENERanno retarget + measured census verdict)
-state_head: a9e5f0f86706cd479ddb1e224c2cd6c351786310
+state_head: dadd839db7da680da2919f55918187cae4e86e3f
 progress:
   total_phases: 2
   completed_phases: 5
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-28)
 
 ## Current Position
 
-Phase: 27.2 (Transformers-5 compatibility remediation) — INSERTED, not planned yet; v1.4 merge intentionally deferred until 27.2 lands (owner ruling 2026-10-29)
+Phase: 27.2 (Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED)) — READY TO EXECUTE
 Plan: 0 of 0 (awaiting /gsd-plan-phase 27.2)
 Status: Phase 27.2 inserted — plan next; 27.1-04 remains the post-merge act
 Last activity: 2026-10-29 — Completed quick task 261029-c95: GENERanno retarget to lgq12697 0.5b with measured remote-code-broken verdict
