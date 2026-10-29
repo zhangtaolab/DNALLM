@@ -4,11 +4,11 @@ milestone: v1.4
 current_phase: "27.2"
 current_phase_name: "Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED)"
 status: executing
-stopped_at: Halted 27.1-03 (DISP-01 deferred by owner to post-v1.4->main-merge operator step)
-last_updated: "2026-10-29T01:35:34.164Z"
+stopped_at: Phase 27.2 context gathered
+last_updated: "2026-10-29T01:57:33.036Z"
 last_activity: 2026-10-29
 last_activity_desc: Completed quick task 261029-c95 (GENERanno retarget + measured census verdict)
-state_head: a6e0d348cc81a27b5e959fac39826970f4a934eb
+state_head: a9e5f0f86706cd479ddb1e224c2cd6c351786310
 progress:
   total_phases: 2
   completed_phases: 5
@@ -198,9 +198,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-28T13:06:25.319Z
-Stopped at: Halted 27.1-03 (DISP-01 deferred by owner to post-v1.4->main-merge operator step)
-Resume file: None
+Last session: 2026-10-29T01:57:32.970Z
+Stopped at: Phase 27.2 context gathered
+Resume file: .planning/phases/27.2-transformers-5-compatibility-remediation-all-8-unsupported-p/27.2-CONTEXT.md
 
 ### Prior session record (2026-10-24, Mac side — retained)
 
