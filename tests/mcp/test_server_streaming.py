@@ -25,7 +25,8 @@ import pytest
 
 from dnallm.mcp.config_validators import ModelEntryConfig
 from dnallm.mcp.server import DNALLMMCPServer
-from dnallm.models.registry import all_entries, sort_key_lab_first
+from dnallm.models.registry import all_entries, sort_key_lab_first, try_resolve
+from dnallm.models.support import support_word
 
 
 @pytest.fixture
@@ -663,7 +664,7 @@ class TestBasicToolBodies:
             for line in result["content"][0]["text"].splitlines()
             if line.startswith("Plant DNABERT BPE promoter | ")
         )
-        assert line.endswith("| enabled")
+        assert line.endswith("| enabled | " + row["support"])
 
     @pytest.mark.asyncio
     async def test_get_all_available_models_exception_returns_error_dict(self, mock_server):
@@ -738,7 +739,7 @@ class TestGetAllAvailableModelsOverlay:
             for line in result["content"][0]["text"].splitlines()
             if line.startswith("Plant DNAMamba BPE H3K27me3 | ")
         )
-        assert line.endswith("| disabled")
+        assert line.endswith("| disabled | " + row["support"])
 
     @pytest.mark.asyncio
     async def test_entry_name_route_resolves_disabled_rows(self, mock_server):
@@ -808,7 +809,7 @@ class TestGetAllAvailableModelsOverlay:
             for line in result["content"][0]["text"].splitlines()
             if line.startswith("Plant DNABERT BPE promoter | ")
         )
-        assert line.endswith("| loaded")
+        assert line.endswith("| loaded | " + row["support"])
 
     @pytest.mark.asyncio
     async def test_empty_models_map_lists_all_unconfigured(self, mock_server):
@@ -826,10 +827,18 @@ class TestGetAllAvailableModelsOverlay:
         """Two entries differing only by case stay two distinct rows."""
         stub_entries = [
             SimpleNamespace(
-                name="Model X", model="z/model-x", task=SimpleNamespace(task_type="binary")
+                name="Model X",
+                model="z/model-x",
+                task=SimpleNamespace(task_type="binary"),
+                tf_compat_status=None,
+                base_model=None,
             ),
             SimpleNamespace(
-                name="model x", model="z/model-x-2", task=SimpleNamespace(task_type="binary")
+                name="model x",
+                model="z/model-x-2",
+                task=SimpleNamespace(task_type="binary"),
+                tf_compat_status=None,
+                base_model=None,
             ),
         ]
         _stub_listing_state(mock_server, {})
@@ -843,13 +852,25 @@ class TestGetAllAvailableModelsOverlay:
         """The text block is exactly one pipe-formatted line per entry, lab-first."""
         stub_entries = [
             SimpleNamespace(
-                name="Lab B", model="z/lab-b", task=SimpleNamespace(task_type="multiclass")
+                name="Lab B",
+                model="z/lab-b",
+                task=SimpleNamespace(task_type="multiclass"),
+                tf_compat_status=None,
+                base_model=None,
             ),
             SimpleNamespace(
-                name="Third C", model="org/third-c", task=SimpleNamespace(task_type="mask")
+                name="Third C",
+                model="org/third-c",
+                task=SimpleNamespace(task_type="mask"),
+                tf_compat_status=None,
+                base_model=None,
             ),
             SimpleNamespace(
-                name="Lab A", model="z/lab-a", task=SimpleNamespace(task_type="binary")
+                name="Lab A",
+                model="z/lab-a",
+                task=SimpleNamespace(task_type="binary"),
+                tf_compat_status=None,
+                base_model=None,
             ),
         ]
         _stub_listing_state(mock_server, {})
@@ -857,9 +878,9 @@ class TestGetAllAvailableModelsOverlay:
             result = await mock_server._get_all_available_models()
         lines = result["content"][0]["text"].splitlines()
         assert len(lines) == 3
-        assert all(len(line.split(" | ")) == 4 for line in lines)
+        assert all(len(line.split(" | ")) == 5 for line in lines)
         assert [line.split(" | ")[0] for line in lines] == ["Lab A", "Lab B", "Third C"]
-        assert lines[0] == "Lab A | z/lab-a | binary | available"
+        assert lines[0] == "Lab A | z/lab-a | binary | available | untested"
         assert list(result["models"]) == ["Lab A", "Lab B", "Third C"]
 
     def test_stale_comment_deleted_and_docstring_describes_listing(self):
@@ -872,3 +893,94 @@ class TestGetAllAvailableModelsOverlay:
         assert "This would integrate with model_info.yaml" not in source
         assert "For now, return configured models" not in source
         assert "registry listing" in source
+
+
+class TestGetAllAvailableModelsSupport:
+    """Every MCP listing row and text line carries the shared support word (D-16)."""
+
+    @pytest.mark.asyncio
+    async def test_every_row_and_text_line_carry_support(self, mock_server):
+        """All registry rows gain a support key; each line ends with that same word."""
+        _stub_listing_state(mock_server, {})
+        result = await mock_server._get_all_available_models()
+        entries = {entry.name: entry for entry in all_entries()}
+        assert set(result["models"]) == set(entries)
+        for name, row in result["models"].items():
+            assert row["support"] == support_word(entries[name]), name
+            assert row["support"]
+        lines = result["content"][0]["text"].splitlines()
+        assert len(lines) == len(entries)
+        for line in lines:
+            segments = line.split(" | ")
+            assert segments[-1] == result["models"][segments[0]]["support"], line
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("repo", "word"),
+        [
+            pytest.param("zhangtaolab/plant-dnabert-BPE", "works", id="native"),
+            pytest.param("zhihan1996/DNABERT-2-117M", "works with built-in fixes", id="shim"),
+            pytest.param("songlab/gpn-brassicales", "needs pip install gpn", id="gpn"),
+            pytest.param("zehui127/Omni-DNA-116M", "needs pip install ai2-olmo", id="omni-dna"),
+            pytest.param(
+                "AIRI-Institute/gena-lm-bigbird-base-sparse", "needs deepspeed", id="bigbird"
+            ),
+        ],
+    )
+    async def test_documented_categories_use_the_shared_words(self, mock_server, repo, word):
+        """The five documented categories render their exact shared word."""
+        _stub_listing_state(mock_server, {})
+        result = await mock_server._get_all_available_models()
+        name = try_resolve(repo).name
+        assert result["models"][name]["support"] == word
+        line = next(
+            line
+            for line in result["content"][0]["text"].splitlines()
+            if line.startswith(f"{name} | ")
+        )
+        assert line.split(" | ")[-1] == word
+
+    @pytest.mark.asyncio
+    async def test_finetuned_row_inherits_its_base_support(self, mock_server):
+        """A finetuned entry shows the word its base model's verdict produces."""
+        _stub_listing_state(mock_server, {})
+        result = await mock_server._get_all_available_models()
+        row = result["models"]["DNABERT-2 promoter"]
+        assert row["support"] == "works with built-in fixes"
+
+    @pytest.mark.asyncio
+    async def test_a_statusless_row_reports_untested(self, mock_server):
+        """A row with no census verdict says untested — the honest degradation."""
+        stub_entries = [
+            SimpleNamespace(
+                name="No Verdict",
+                model="org/no-verdict",
+                task=SimpleNamespace(task_type="mask"),
+                tf_compat_status=None,
+                base_model=None,
+            )
+        ]
+        _stub_listing_state(mock_server, {})
+        with patch("dnallm.mcp.server.all_entries", return_value=stub_entries):
+            result = await mock_server._get_all_available_models()
+        assert result["models"]["No Verdict"]["support"] == "untested"
+        assert result["content"][0]["text"] == (
+            "No Verdict | org/no-verdict | mask | available | untested"
+        )
+
+    @pytest.mark.asyncio
+    async def test_existing_row_keys_survive_additively(self, mock_server):
+        """The support key is additive: every prior key is still present."""
+        _stub_listing_state(mock_server, {})
+        result = await mock_server._get_all_available_models()
+        row = result["models"]["Plant DNABERT"]
+        assert set(row) >= {"repo_id", "task_type", "is_lab", "configured", "enabled", "loaded"}
+        assert row["repo_id"] == "zhangtaolab/plant-dnabert-BPE"
+        assert set(result) >= {
+            "content",
+            "total_models",
+            "models",
+            "configured_count",
+            "loaded_count",
+            "unmatched_configured",
+        }
