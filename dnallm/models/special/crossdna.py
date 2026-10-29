@@ -23,6 +23,60 @@ _SEQUENCE_TASKS = {"binary", "multiclass", "multilabel", "regression"}
 _PREFERRED_CHECKPOINT_DIRS = ("8.1M",)
 _CLASS_CACHE: dict[tuple[type, type], type] = {}
 
+# Marker attribute the generic load chain (dnallm/models/model.py) reads to
+# recognize this module's guidance ImportError and re-raise it unchanged
+# instead of wrapping it into an unactionable ValueError (D-17).
+_DNALLM_MISSING_EXTRA_GUIDANCE_ATTR = "_dnallm_missing_extra_guidance"
+
+# The verbatim marker inside fla's own raise: the only ImportError text this
+# module translates (everything else passes through untouched).
+_FLASH_ATTENTION_MARKER = "Flash Attention"
+
+_EXTRA_GUIDE_URL = "https://zhangtaolab.github.io/DNALLM/user_guide/optional_dependencies/"
+
+
+def _from_pretrained_with_flash_attn_guidance(
+    loader: Any,
+    checkpoint_dir: str,
+    kwargs: dict[str, Any],
+) -> Any:
+    """Call ``loader.from_pretrained(checkpoint_dir, **kwargs)`` with flash-attn guidance.
+
+    The CrossDNA remote code builds its attention mixer through
+    ``fla.layers.attn.Attention``, which raises an ImportError asking for the
+    separately compiled Flash Attention package when it is absent. That one
+    error shape is translated into plain install guidance naming the curated
+    ``dnallm[flash-attn]`` extra; the original error is preserved as the
+    cause, and the result carries :data:`_DNALLM_MISSING_EXTRA_GUIDANCE_ATTR`
+    so the generic load chain re-raises it unchanged (D-17).
+
+    Args:
+        loader: The ``AutoModel*`` class whose ``from_pretrained`` is called.
+        checkpoint_dir: Resolved CrossDNA checkpoint directory.
+        kwargs: Keyword arguments forwarded verbatim to ``from_pretrained``.
+
+    Returns:
+        Whatever ``loader.from_pretrained`` returns on success.
+
+    Raises:
+        ImportError: The flash-attn guidance error, chained from the original
+            fla ImportError. Every other exception propagates unchanged.
+    """
+    try:
+        return loader.from_pretrained(checkpoint_dir, **kwargs)
+    except ImportError as e:
+        if _FLASH_ATTENTION_MARKER not in str(e):
+            raise
+        guidance = ImportError(
+            f"CrossDNA needs the optional Flash Attention package, which DNALLM does not "
+            "install by default. Install it with: pip install --no-build-isolation "
+            "'dnallm[flash-attn]' (this builds Flash Attention from source: it needs "
+            "Linux with an NVIDIA CUDA GPU and can take an hour or longer). "
+            f"See {_EXTRA_GUIDE_URL}"
+        )
+        setattr(guidance, _DNALLM_MISSING_EXTRA_GUIDANCE_ATTR, True)
+        raise guidance from e
+
 
 def _read_crossdna_config(path: str) -> dict[str, Any] | None:
     """Return config.json when *path* looks like a CrossDNA checkpoint."""
@@ -519,9 +573,10 @@ def _handle_crossdna_models(
         if bnb_config is not None:
             model_load_kwargs["quantization_config"] = bnb_config
             model_load_kwargs["device_map"] = "auto"
-        model = modules["AutoModelForMaskedLM"].from_pretrained(
+        model = _from_pretrained_with_flash_attn_guidance(
+            modules["AutoModelForMaskedLM"],
             checkpoint_dir,
-            **model_load_kwargs,
+            model_load_kwargs,
         )
         return model, tokenizer
 
@@ -571,9 +626,10 @@ def _handle_crossdna_models(
         model_load_kwargs["quantization_config"] = bnb_config
         model_load_kwargs["device_map"] = "auto"
 
-    model = auto_model_for_sequence_classification.from_pretrained(
+    model = _from_pretrained_with_flash_attn_guidance(
+        auto_model_for_sequence_classification,
         checkpoint_dir,
-        **model_load_kwargs,
+        model_load_kwargs,
     )
     model._crossdna_checkpoint_dir = checkpoint_dir
 

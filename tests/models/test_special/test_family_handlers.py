@@ -970,12 +970,10 @@ class TestMissingExtraGuidance:
         checkpoint = tmp_path / "8.1M"
         checkpoint.mkdir()
         (checkpoint / "config.json").write_text(
-            json.dumps(
-                {
-                    "model_type": "crossdna",
-                    "auto_map": {"AutoModelForMaskedLM": "repo--CrossDNAForMaskedLM"},
-                }
-            ),
+            json.dumps({
+                "model_type": "crossdna",
+                "auto_map": {"AutoModelForMaskedLM": "repo--CrossDNAForMaskedLM"},
+            }),
             encoding="utf-8",
         )
         return checkpoint
@@ -1014,15 +1012,18 @@ class TestMissingExtraGuidance:
         from dnallm.models.model import _raise_missing_extra_import_error
 
         trigger = self._missing("deepspeed")
+        wrapped = None
         try:
             raise trigger
         except ModuleNotFoundError:
             try:
                 raise ValueError("wrapped the import failure")
-            except ValueError as wrapped:
-                assert wrapped.__context__ is trigger
-                with pytest.raises(ImportError) as exc_info:
-                    _raise_missing_extra_import_error(wrapped, self.BIGBIRD)
+            except ValueError as error:
+                wrapped = error
+        assert isinstance(wrapped, ValueError)
+        assert wrapped.__context__ is trigger
+        with pytest.raises(ImportError) as exc_info:
+            _raise_missing_extra_import_error(wrapped, self.BIGBIRD)
         assert exc_info.value.__cause__ is trigger
 
     def test_deepspeed_inside_a_cyclic_chain_still_matches(self):
@@ -1152,9 +1153,7 @@ class TestMissingExtraGuidance:
         class _TinyBase(torch.nn.Module):
             pass
 
-        monkeypatch.setattr(
-            crossdna, "get_class_from_dynamic_module", lambda ref, path: _TinyBase
-        )
+        monkeypatch.setattr(crossdna, "get_class_from_dynamic_module", lambda ref, path: _TinyBase)
         config = SimpleNamespace(auto_map={"AutoModelForMaskedLM": "repo--CrossDNAForMaskedLM"})
         modules = {
             "AutoConfig": Mock(**{"from_pretrained.return_value": config}),

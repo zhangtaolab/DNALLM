@@ -43,6 +43,7 @@ from .special import (
     _handle_basenji2_tokenizer,
     _handle_crossdna_models,
 )
+from .special.crossdna import _DNALLM_MISSING_EXTRA_GUIDANCE_ATTR
 from .head import (
     BasicMLPHead,
     BasicCNNHead,
@@ -1205,6 +1206,60 @@ def _load_random_init_model(
     return model, tokenizer
 
 
+# The optional-dependency guide every missing-extra error points at (D-17).
+_EXTRA_GUIDE_URL = "https://zhangtaolab.github.io/DNALLM/user_guide/optional_dependencies/"
+
+
+def _raise_missing_extra_import_error(error: BaseException, model_name: str) -> None:
+    """Turn a missing-deepspeed failure into actionable install guidance (D-17).
+
+    The GENA-LM-BigBird remote code imports ``deepspeed.ops.sparse_attention``
+    at construction time, so a default install fails deep inside
+    ``from_pretrained`` with a ``ModuleNotFoundError`` that resurfaces wrapped
+    under unrelated exception types. This helper traverses the current
+    exception's ``__cause__`` / ``__context__`` chain (cycle-safe by object
+    identity) and, when a direct or nested ``ModuleNotFoundError`` names
+    ``deepspeed`` or one of its submodules, raises a plain-language
+    ``ImportError`` naming the model, the exact ``pip install 'dnallm[deepspeed]'``
+    command, the mandatory stay-below-0.19.7 caveat, and the optional
+    dependency guide - chained from the triggering error so the original
+    technical cause survives. An error already carrying the CrossDNA
+    flash-attn guidance marker is re-raised unchanged so the specific
+    guidance survives the generic ``ValueError`` wrap. Every other exception
+    is left alone: the caller falls through to its existing wrap behavior.
+
+    Args:
+        error: The exception currently being handled at a load-chain wrap site.
+        model_name: Model name or path for the error message.
+
+    Raises:
+        ImportError: The deepspeed install guidance (chained from the matching
+            ``ModuleNotFoundError``), or *error* itself when it is already a
+            guided CrossDNA error. Returns without raising otherwise.
+    """
+    if getattr(error, _DNALLM_MISSING_EXTRA_GUIDANCE_ATTR, False):
+        raise error
+    pending = [error]
+    seen = {id(error)}
+    while pending:
+        node = pending.pop()
+        if isinstance(node, ModuleNotFoundError):
+            name = getattr(node, "name", None)
+            if name == "deepspeed" or (isinstance(name, str) and name.startswith("deepspeed.")):
+                raise ImportError(
+                    f"deepspeed package is required for {model_name} but not installed. "
+                    "Install it with: pip install 'dnallm[deepspeed]' "
+                    "(deepspeed 0.19.7 removed the sparse-attention module this "
+                    "model's code imports, so a version below 0.19.7 is required - "
+                    "the dnallm[deepspeed] extra pins it). "
+                    f"See {_EXTRA_GUIDE_URL}"
+                ) from node
+        for adjacent in (node.__cause__, node.__context__):
+            if adjacent is not None and id(adjacent) not in seen:
+                seen.add(id(adjacent))
+                pending.append(adjacent)
+
+
 def load_model_and_tokenizer(
     model_name: str,
     task_config: TaskConfig,
@@ -1366,6 +1421,7 @@ def load_model_and_tokenizer(
             if "basenji2" in model_name.lower():
                 tokenizer = _handle_basenji2_tokenizer(tokenizer)
         except Exception as e:
+            _raise_missing_extra_import_error(e, model_name)
             raise ValueError(f"Failed to load model: {e}") from e
         model._model_path = model_name
         model.source = source
@@ -1436,6 +1492,7 @@ def load_model_and_tokenizer(
         model._model_path = downloaded_model_path  # ty: ignore[invalid-assignment]
         model.source = source  # ty: ignore[invalid-assignment]
     except Exception as e:
+        _raise_missing_extra_import_error(e, model_name)
         raise ValueError(f"Failed to load model: {e}") from e
 
     # Configure model padding
