@@ -16,10 +16,8 @@ programmatic counterpart of the [pre-flight wizard](tui/preflight_wizard.md)'s
 from dnallm import load_config
 from dnallm.models.model import load_preset_model
 
-configs = load_config("configs/finetune_config.yaml")   # task section
-model, tokenizer = load_preset_model(
-    "zhangtaolab/plant-dnabert-BPE-promoter", configs["task"]
-)
+configs = load_config("configs/finetune_config.yaml")  # task section
+model, tokenizer = load_preset_model("zhangtaolab/plant-dnabert-BPE-promoter", configs["task"])
 ```
 
 Weights are fetched from ModelScope by default (cached after the first
@@ -80,10 +78,10 @@ The registry is read-only and importable without torch
 ```python
 from dnallm.models import registry
 
-registry.get_by_task_type("binary")   # 121 entries trained for binary tasks
+registry.get_by_task_type("binary")  # 121 entries trained for binary tasks
 registry.try_resolve("zhangtaolab/plant-dnabert-BPE-promoter")
-registry.all_entries()                # all 236, frozen Pydantic entries
-registry.is_lab_model(entry)          # True for the 189 zhangtaolab models
+registry.all_entries()  # all 236, frozen Pydantic entries
+registry.is_lab_model(entry)  # True for the 189 zhangtaolab models
 ```
 
 Each entry carries `name`, `model` (repo id), `task` (task type, labels,
