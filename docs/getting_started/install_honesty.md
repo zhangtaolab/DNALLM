@@ -13,7 +13,7 @@ pins live in `[tool.uv.sources]`, which only uv respects (see the
 | `dnallm[full]` | the full dev aggregate: `dev` + `test` + `notebook` + `mcp` + isort | identical set — no index machinery involved | live probe 2026-10-14 |
 | `dnallm[base]` — since the v1.4 alias removal | `warning: The package ... does not have an extra named 'base'`; installs **core only**; exit 0 | `WARNING: dnallm X.Y.Z does not provide the extra 'base'`; installs **core only**; exit 0 | live probe 2026-10-14 (missing-extra case) |
 | `dnallm[cuda130]` | torch from the pinned `torch-cuda130` index (`[tool.uv.sources]` respected) | torch from default PyPI — Linux: the cu130-bundled default build; Windows: **CPU-only** | uv docs (sources are uv-only); v1.3 stack research |
-| `dnallm[fla]` on Windows | pulls `triton-windows` via the PEP 508 `platform_system == 'Windows'` marker (declared v1.3) | identical — the marker is standard wheel metadata honored by both | PEP 508 marker semantics; Windows execution proof at 3.7.1.post27 (WINDOWS ledger #18, RTX 5080) |
+| base `dnallm` install on Windows | pulls `triton-windows` from base dependencies via the PEP 508 `platform_system == 'Windows'` marker (declared v1.3 behind the retired `fla` extra, moved to `[project]` dependencies at v1.4) | identical — the marker is standard wheel metadata honored by both | PEP 508 marker semantics; Windows execution proof at 3.7.1.post27 (WINDOWS ledger #18, RTX 5080) |
 
 ## Reading the rows honestly
 
@@ -44,6 +44,7 @@ seeded venvs, installing a synthetic wheel carrying the exact alias shape
 the `base` row above is that matrix's missing-extra arm, the state
 the alias was removed into. Row 3: the uv documentation statement "Sources
 are only respected by uv" (v1.3 stack research, fetched from
-docs.astral.sh). Row 4: the v1.3 pyproject declaration plus PEP 508 marker
-semantics; the Windows pull was empirically executed at triton-windows
-3.7.1.post27 on an RTX 5080 (WINDOWS ledger #18).
+docs.astral.sh). Row 4: PEP 508 marker semantics over the triton-windows
+declaration, which moved from the retired `fla` extra (v1.3) into the base
+`[project]` dependencies at v1.4; the Windows pull was empirically executed
+at triton-windows 3.7.1.post27 on an RTX 5080 (WINDOWS ledger #18).

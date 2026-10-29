@@ -4,13 +4,13 @@
 
 PlantHelixSeek-CRE/-Anno remote code imports `fla.ops.kda.chunk.chunk_kda` from [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) for its HelixSeekDelta (KDA) layers. **Without the package the models still load and run — there is no error —** but 9/39 layers silently fall back to a pure-PyTorch path that is not KDA math, and outputs become positionally uninformative (measured: Anno predicts all-O at 0.82–0.98 confidence everywhere; CRE gives p(CRE) ≈ 0.007 both inside and outside real DHS sites).
 
-**Fix:** install the `fla` extra (included in `all`):
+**Fix:** `flash-linear-attention` ships as a base dependency of DNALLM, so install or reinstall the standard package — there is no extra to install (the former `fla` extra has been retired, and upgrading installs the package automatically):
 
 ```bash
-uv pip install -e '.[fla]'
+uv pip install -e .   # in a repository clone; wheel users: pip install --upgrade dnallm
 ```
 
-With the kernels installed the same checkpoints separate cleanly (p(CRE) 0.77 in-DHS vs 0.22 non-DHS on the probe set). Install the package **bare** — the `[cuda]`/`[rocm]` extras it shipped since v0.5 are legacy names no longer on the current install surface (they pin their own torch and would downgrade your environment) — and keep the version within `0.5.x` (`chunk_kda` semantics are not stable across minor versions). For current GPU installation lanes see the [GPU Support Matrix](../getting_started/gpu_support.md).
+With the kernels installed the same checkpoints separate cleanly (p(CRE) 0.77 in-DHS vs 0.22 non-DHS on the probe set). DNALLM installs the package **bare** — the `[cuda]`/`[rocm]` extras it shipped since v0.5 are legacy names no longer on the current install surface (they pin their own torch and would downgrade your environment) — and keeps the version within `0.5.x` (`chunk_kda` semantics are not stable across minor versions). For current GPU installation lanes see the [GPU Support Matrix](../getting_started/gpu_support.md).
 
 #### Mamba models on macOS (Apple Silicon)
 

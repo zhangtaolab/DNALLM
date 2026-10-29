@@ -419,11 +419,11 @@ class TestExtrasSurgeryResidueGates:
         (
             "docs/faq/models_troubleshooting.md",
             "With the kernels installed the same checkpoints separate cleanly "
-            "(p(CRE) 0.77 in-DHS vs 0.22 non-DHS on the probe set). Install "
-            "the package **bare** — the `[cuda]`/`[rocm]` extras it shipped "
-            "since v0.5 are legacy names no longer on the current install "
-            "surface (they pin their own torch and would downgrade your "
-            "environment) — and keep the version within `0.5.x` "
+            "(p(CRE) 0.77 in-DHS vs 0.22 non-DHS on the probe set). DNALLM "
+            "installs the package **bare** — the `[cuda]`/`[rocm]` extras it "
+            "shipped since v0.5 are legacy names no longer on the current "
+            "install surface (they pin their own torch and would downgrade "
+            "your environment) — and keeps the version within `0.5.x` "
             "(`chunk_kda` semantics are not stable across minor versions). "
             "For current GPU installation lanes see the "
             "[GPU Support Matrix](../getting_started/gpu_support.md).",
