@@ -25,6 +25,7 @@ from dnallm.models.registry import (
     sort_key_lab_first,
     try_resolve,
 )
+from dnallm.models.support import support_word
 from dnallm.preflight import check_compatibility, validate_data
 from dnallm.preflight.report import (
     AvailabilityReasonCode,
@@ -625,3 +626,65 @@ def test_predict_intent_without_task_type_yields_empty_listing() -> None:
     result = check_compatibility(intent="predict")
     assert result.listing == []
     assert result.verdicts == []
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Task 4: the additive plain-language support word (D-16, 27.2-05)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Live-registry fixtures for the four support categories (committed verdicts).
+SUPPORT_NATIVE_REPO = "zhangtaolab/plant-dnabert-BPE"  # verified-tf5
+SUPPORT_SHIM_REPO = "zhihan1996/DNABERT-2-117M"  # shim-required-tf5
+SUPPORT_EXTERNAL_REPO = "songlab/gpn-brassicales"  # exact external-package phrase
+SUPPORT_INHERITED_REPO = "zhangtaolab/dnabert2-promoter"  # finetuned, base shim-required
+
+
+def test_listing_entry_support_defaults_to_untested() -> None:
+    """Direct construction stays backward-compatible: support defaults to untested."""
+    from dnallm.preflight.report import ListingEntry
+
+    entry = ListingEntry(model="org/name", entry_name="Some entry", is_lab=True)
+    assert entry.support == "untested"
+
+
+def test_listing_entry_support_is_frozen_and_non_empty() -> None:
+    """The additive field joins the frozen contract and rejects a blank word."""
+    from pydantic import ValidationError
+
+    from dnallm.preflight.report import ListingEntry
+
+    entry = ListingEntry(model="org/name", entry_name="Some entry", is_lab=True, support="works")
+    assert entry.support == "works"
+    with pytest.raises(ValidationError):
+        entry.support = "family-tested"  # type: ignore[misc]
+    with pytest.raises(ValidationError):
+        ListingEntry(model="org/name", entry_name="Some entry", is_lab=True, support="")
+
+
+def test_build_listing_support_matches_shared_vocabulary_for_every_entry() -> None:
+    """Every builder row carries exactly support_word of its source registry entry."""
+    from dnallm.preflight.compatibility import _build_listing
+
+    entries = all_entries()
+    rows = _build_listing(entries)
+    assert len(rows) == len(entries)
+    for entry, row in zip(entries, rows, strict=True):
+        assert row.support == support_word(entry), entry.model
+
+
+@pytest.mark.parametrize(
+    ("repo", "word"),
+    [
+        pytest.param(SUPPORT_NATIVE_REPO, "works", id="native"),
+        pytest.param(SUPPORT_SHIM_REPO, "works with built-in fixes", id="shim-required"),
+        pytest.param(SUPPORT_EXTERNAL_REPO, "needs pip install gpn", id="external-package"),
+        pytest.param(SUPPORT_INHERITED_REPO, "works with built-in fixes", id="finetuned-inherited"),
+    ],
+)
+def test_build_listing_support_words_by_category(repo: str, word: str) -> None:
+    """The four support categories each render their exact shared word."""
+    from dnallm.preflight.compatibility import _build_listing
+
+    rows = _build_listing([try_resolve(repo)])
+    assert rows[0].support == word
+
