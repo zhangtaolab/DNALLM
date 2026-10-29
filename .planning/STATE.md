@@ -3,12 +3,12 @@ gsd_state_version: "1.0"
 milestone: v1.4
 current_phase: "27.2"
 current_phase_name: "Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED)"
-status: executing
-stopped_at: Completed 27.2-04-PLAN.md
-last_updated: "2026-10-29T05:15:01.360Z"
+status: verifying
+stopped_at: Completed 27.2-05-PLAN.md
+last_updated: "2026-10-29T05:26:49.295Z"
 last_activity: 2026-10-29
 last_activity_desc: Phase 27.2 execution started
-state_head: b4cf7a963fa825eadb2c55629f7bf1d7a2e5d9f2
+state_head: 77a398b0fddc33f4bfcf8007e0f0b7e222e31a40
 progress:
   total_phases: 2
   completed_phases: 5
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-28)
 
 Phase: 27.2 (Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED)) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-29 — Phase 27.2 execution started
 
 ## Performance Metrics
@@ -70,6 +70,7 @@ Last activity: 2026-10-29 — Phase 27.2 execution started
 | Phase 27.2 P02 | 21 min | 2 tasks | 7 files |
 | Phase 27.2 P03 | 21 min | 3 tasks | 10 files |
 | Phase 27.2 P04 | 15 min | 3 tasks | 9 files |
+| Phase 27.2 P05 | 7 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -157,6 +158,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 27.2]: 27.2-04: the census generator reads shared DOCS_STATUS_CELLS through a lazy _docs_status_cells() helper, not a module-level import - census_compat must stay stdlib-only at module load so loading the tool can never import hub clients while the mirror endpoint env var is set (WR-02 loader guard)
 - [Phase 27.2]: 27.2-04: yaml.safe_load cannot parse mkdocs.yml (pre-existing !!python/name: emoji tags, lines 281-282) - the parse leg of the docs verify runs with yaml.UnsafeLoader, the loader mkdocs config files require; strict mkdocs build is the independent structural check
 - [Phase 27.2]: 27.2-04: dnallm/models/support.py is the single shared support-word source (five exact status words, three repo overrides, registry.resolve base inheritance with cycle-safe untested fallback, 100% coverage); the static guide's section order (families before the compact table) keeps the plan's GENA-LM span probes unambiguous
+- [Phase 27.2]: 27.2-05: ListingEntry.support is an additive frozen field defaulting to 'untested'; _build_listing is the only TUI-path derivation point and calls support_word(entry) - no per-surface mapping.
+- [Phase 27.2]: 27.2-05: the TUI Support column is appended LAST so _AVAILABILITY_COLUMN stays 4 - refresh, on-demand, and probe writers keep writing only the availability cell.
+- [Phase 27.2]: 27.2-05: the MCP text line appends support as a fifth pipe segment after the unchanged callability ladder; row keys, envelope, counts, and client signatures stay additive-only.
+- [Phase 27.2]: 27.2-05: pinned ruff 0.17.1 caught a trailing-newline rule the repo hook's ruff 0.16.10 does not; fixed in a style commit, repo-wide check clean.
 
 ### Pending Todos
 
@@ -213,8 +218,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-29T05:15:01.294Z
-Stopped at: Completed 27.2-04-PLAN.md
+Last session: 2026-10-29T05:26:49.226Z
+Stopped at: Completed 27.2-05-PLAN.md
 Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)
