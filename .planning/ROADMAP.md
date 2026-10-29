@@ -96,3 +96,13 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd-discuss-phase 28 then /gsd-plan-phase 28 to break down)
+
+## Backlog
+
+### Phase 999.1: Follow-up — Phase 27.2 deferred UAT follow-up: Test 2 (BACKLOG)
+
+**Goal:** Resolve the UAT checkpoint deferred during Phase 27.2 verification
+**Source phase:** 27.2
+**Deferred at:** 2026-10-29 during /gsd-verify-work 27.2 session completion
+**Follow-ups:**
+- [ ] Test 2: TUI suitability-table legibility optimization: cap column widths / abbreviate the long support words / move Support ahead of the wide Trained outputs & Availability columns so the decision-critical word is visible at 80-120 col terminals (measured: 170-col content vs 74-114 visible) (deferred 2026-10-29)
