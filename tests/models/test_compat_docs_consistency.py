@@ -341,6 +341,50 @@ class TestPageContract:
         )
 
 
+class TestSharedVocabularyAndGuideLink:
+    """The gate keeps literal copies, asserts equality with the shared mapping, and requires exactly one guide link (D-13/D-14/D-16).
+
+    Checker independence is preserved: the gate never imports the generator
+    (``scripts/census_compat.py``). The shared vocabulary module
+    (``dnallm.models.support``) is the single wording source, so this gate
+    keeps its own literal copies and asserts equality -- a wording edit must
+    deliberately update both sides, and the link assertion fails closed when
+    the generated page drops or duplicates the static-guide link.
+    """
+
+    def test_status_cells_equal_the_shared_support_mapping(self) -> None:
+        """STATUS_CELLS (literal gate copies) == the shared DOCS_STATUS_CELLS."""
+        from dnallm.models.support import DOCS_STATUS_CELLS
+
+        assert STATUS_CELLS == DOCS_STATUS_CELLS, (
+            "the gate's literal status-cell copies and the shared support "
+            "vocabulary drifted apart -- a wording edit must update both "
+            "sides deliberately (gate copy here, dnallm/models/support.py)"
+        )
+
+    def test_page_carries_exactly_one_guide_link(self) -> None:
+        """The committed page links the static support guide exactly once (D-14)."""
+        link = "[Optional dependencies and support](optional_dependencies.md)"
+        page = _read_page()
+        count = page.count(link)
+        assert count >= 1, (
+            "the committed compatibility page carries no link to the static "
+            "optional-dependency guide -- regenerate it with --emit-docs"
+        )
+        assert count == 1, (
+            "the compatibility page must link the static guide exactly once "
+            f"(found {count})"
+        )
+
+    def test_guide_link_sits_after_the_table(self) -> None:
+        """The link is page-tail prose below the compatibility table."""
+        page = _read_page()
+        link_pos = page.index("[Optional dependencies and support](optional_dependencies.md)")
+        _, table_end = _parse_table(page)
+        table_offset = sum(len(line) + 1 for line in page.splitlines()[: table_end + 1])
+        assert link_pos > table_offset
+
+
 class TestRowsMatchRegistry:
     """Every table row is re-derived from the typed registry, independently."""
 

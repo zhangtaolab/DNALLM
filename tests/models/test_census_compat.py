@@ -961,6 +961,57 @@ class TestDocsBlockedReason:
             census.docs_blocked_reason("hf org/repo@sha; an unforeseen blocking shape")
 
 
+class TestDocsSharedVocabulary:
+    """The generated page's status wording is the shared support vocabulary (D-16).
+
+    The generator reads ``DOCS_STATUS_CELLS`` from ``dnallm.models.support``
+    instead of keeping a second copy, so docs, TUI, and MCP listings can
+    never drift apart. Lazy import on the generator side: the census parent
+    stays stdlib-only at module import (loading the tool never reroutes the
+    host process through the mirror endpoint set at its top).
+    """
+
+    def test_status_cells_come_from_the_shared_module_not_a_local_copy(self) -> None:
+        """The generator's status cells ARE the shared module's dict (identity)."""
+        from dnallm.models import support
+
+        assert census._docs_status_cells() is support.DOCS_STATUS_CELLS
+
+    def test_generator_defines_no_local_status_cells_copy(self) -> None:
+        """The generator-local DOCS_STATUS_CELLS definition is gone (single source)."""
+        assert not hasattr(census, "DOCS_STATUS_CELLS"), (
+            "census_compat.py still defines its own DOCS_STATUS_CELLS -- the "
+            "wording must live in dnallm/models/support.py alone (D-16)"
+        )
+
+    def test_docs_status_cell_returns_the_shared_wording_unchanged(self) -> None:
+        """For the three mapped statuses the cell text is exactly the shared string.
+
+        Control pin: swapping the wording's source must not change any cell.
+        """
+        from dnallm.models import support
+
+        for status, cell in support.DOCS_STATUS_CELLS.items():
+            entry = SimpleNamespace(
+                model=f"synth/{status}", tf_compat_status=status, tf_compat_evidence=None
+            )
+            assert census.docs_status_cell(entry) == cell
+
+    def test_docs_page_text_carries_exactly_one_guide_link(self) -> None:
+        """The generated page tail links the static guide exactly once (D-14)."""
+        page = census.docs_page_text()
+        assert (
+            page.count("[Optional dependencies and support](optional_dependencies.md)") == 1
+        ), "the generated page must carry exactly one relative link to the static guide"
+
+    def test_guide_link_sits_after_the_compatibility_table(self) -> None:
+        """The link is page-tail prose: after the table and both footnotes."""
+        page = census.docs_page_text()
+        link_pos = page.index("[Optional dependencies and support](optional_dependencies.md)")
+        footnote_pos = page.index("2. Transformers 4 compatibility is inferred")
+        assert link_pos > footnote_pos
+
+
 class TestMainExitComposition:
     """--run --verify surfaces both failure classes independently (CR-01)."""
 
