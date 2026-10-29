@@ -41,8 +41,8 @@ entry from the table, so the model's code crashes with a missing-key error
 before any weights load. DNALLM restores the exact recipe (copied verbatim
 from transformers 4.49, the version the model was written for) into the
 table before the model loads. With that one entry restored, the model loads
-and runs a real forward pass — the repair is applied automatically, and you
-never claim the model works as-is.
+and runs a real forward pass. The repair is applied automatically at load —
+this model does not work as-is, only through the fix.
 
 ## DNABERT-2
 
