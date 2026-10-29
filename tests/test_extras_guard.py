@@ -74,9 +74,20 @@ EXPECTED_FULL_MEMBERS = frozenset({
 })  # types-transformers removed 2026-10-17: mypy-only stub (ty bundles its
 # own typeshed and never reads installed stub packages) — D-09 flip
 
-# WPAR-07 declaration: the exact marker-gated triton-windows spec in the fla
-# extra (exact-string assertion; any drift in the band or marker fails).
+# WPAR-07 declaration: the exact marker-gated triton-windows spec in the base
+# [project] dependencies (exact-string assertion; any drift in the band or
+# marker fails). Promoted from the retired fla extra with the dependency in
+# 28-01 (D-09).
 EXPECTED_TRITON_WINDOWS_SPEC = "triton-windows>=3.7.1.post27,<3.8; platform_system == 'Windows'"
+
+# The exact flash-linear-attention band that must ride the base install
+# (D-09, 28-01): PlantHelixSeek works out-of-the-box on a default install.
+EXPECTED_FLA_BASE_SPEC = "flash-linear-attention>=0.5.2,<0.6"
+
+# The curated external-package extras (28-01, D-10..D-13): exact single-member
+# bands, no platform markers, never members of all/full.
+EXPECTED_DEEPSPEED_EXTRA = ["deepspeed>=0.19.6,<0.19.7"]
+EXPECTED_FLASH_ATTN_EXTRA = ["flash-attn>=2.8.3.post2,<2.9"]
 
 
 def _load_mcp_extra() -> list[str]:
@@ -200,8 +211,9 @@ class TestFullExtraAndBaseAlias:
     lived through v1.3 and is retired at v1.4 (PKG-01, pre-committed at v1.3
     close): the extras table must carry no ``base`` key at all, so the
     deprecation cannot silently outlive its announced removal. The
-    triton-windows declaration stays marker-gated to Windows in fla
-    (WPAR-07), and cuda121/rocm stay absent from both the extras table and
+    triton-windows declaration stays marker-gated to Windows in the base
+    [project] dependencies (WPAR-07, moved there with the fla promotion in
+    28-01), and cuda121/rocm stay absent from both the extras table and
     the uv index/sources machinery.
     """
 
@@ -233,13 +245,15 @@ class TestFullExtraAndBaseAlias:
             "under-install that a missing extra produces"
         )
 
-    def test_triton_windows_marker_declared_in_fla(self) -> None:
-        """fla carries the exact marker-gated triton-windows spec (WPAR-07)."""
-        fla = _load_extras().get("fla", [])
-        assert EXPECTED_TRITON_WINDOWS_SPEC in fla, (
-            f"fla extra lost the exact triton-windows Windows-marker declaration "
-            f"(WPAR-07): expected {EXPECTED_TRITON_WINDOWS_SPEC!r} among {fla} -- "
-            f"exact band, no floating, Windows-only marker"
+    def test_triton_windows_marker_declared_in_base_deps(self) -> None:
+        """[project] dependencies carries the exact marker-gated triton-windows spec (WPAR-07, D-09)."""
+        with PYPROJECT.open("rb") as fh:
+            data = tomllib.load(fh)
+        deps = data["project"]["dependencies"]
+        assert EXPECTED_TRITON_WINDOWS_SPEC in deps, (
+            f"base dependencies lost the exact triton-windows Windows-marker "
+            f"declaration (WPAR-07/D-09): expected {EXPECTED_TRITON_WINDOWS_SPEC!r} "
+            f"among {deps} -- exact band, no floating, Windows-only marker"
         )
 
     def test_cuda121_and_rocm_extras_absent(self) -> None:
@@ -264,6 +278,83 @@ class TestFullExtraAndBaseAlias:
             assert source.get("index") not in ("torch-cuda121", "torch-rocm"), (
                 f"the retired uv source entry reappeared in [tool.uv.sources]: {source}"
             )
+
+
+class TestCuratedExtras:
+    """Guards for the deepspeed / flash-attn curated extras and the fla
+    promotion (28-01, D-09..D-13).
+
+    The two external-package extras are exact single-member bands measured on
+    the runner-class GB10 box: ``deepspeed>=0.19.6,<0.19.7`` (0.19.7 removed
+    ``ops.sparse_attention``, the only thing GENA-LM-BigBird's remote code
+    imports) and ``flash-attn>=2.8.3.post2,<2.9``. Neither carries a platform
+    marker (D-11: pip fails loudly where the compile cannot run rather than
+    silently installing an empty extra) and neither joins ``all``/``full``
+    (D-13: heavy compile packages stay separately installed). The retired
+    ``fla`` extra must stay deleted; its two dependency strings ride the base
+    install (D-09).
+    """
+
+    def test_deepspeed_extra_is_the_exact_band(self) -> None:
+        """deepspeed is exactly the 0.19.6/0.19.7 single-member band (T-28-02)."""
+        deepspeed = _load_extras().get("deepspeed")
+        assert deepspeed == EXPECTED_DEEPSPEED_EXTRA, (
+            f"the deepspeed extra must be exactly {EXPECTED_DEEPSPEED_EXTRA} "
+            f"(D-10/D-11): measured {deepspeed!r} -- deepspeed.ops.sparse_attention "
+            f"was removed upstream in 0.19.7, so the ceiling is load-bearing"
+        )
+
+    def test_flash_attn_extra_is_the_exact_band(self) -> None:
+        """flash-attn is exactly the 2.8.3.post2/2.9 single-member band."""
+        flash_attn = _load_extras().get("flash-attn")
+        assert flash_attn == EXPECTED_FLASH_ATTN_EXTRA, (
+            f"the flash-attn extra must be exactly {EXPECTED_FLASH_ATTN_EXTRA} "
+            f"(D-10/D-11): measured {flash_attn!r} -- the floor is the version "
+            f"measured on the runner replica (sha256-pinned sdist build)"
+        )
+
+    def test_curated_extras_carry_no_platform_markers(self) -> None:
+        """Neither curated extra member carries an environment marker (D-11)."""
+        for name in ("deepspeed", "flash-attn"):
+            for member in _load_extras()[name]:
+                assert ";" not in member, (
+                    f"the {name} extra must carry no platform marker (D-11): "
+                    f"{member!r} -- pip fails loudly on unsupported platforms "
+                    f"instead of silently installing an empty extra"
+                )
+
+    def test_retired_fla_extra_stays_deleted(self) -> None:
+        """The extras table carries no fla key (D-09: promoted to base)."""
+        extras = _load_extras()
+        assert "fla" not in extras, (
+            "the retired fla extra reappeared in optional-dependencies "
+            f"(D-09: fla is a base dependency since 28-01): {extras.get('fla')!r}"
+        )
+
+    def test_fla_band_rides_base_dependencies(self) -> None:
+        """The exact flash-linear-attention 0.5.x band is a base dependency."""
+        with PYPROJECT.open("rb") as fh:
+            data = tomllib.load(fh)
+        deps = data["project"]["dependencies"]
+        assert EXPECTED_FLA_BASE_SPEC in deps, (
+            f"base dependencies lost the exact fla band (D-09): expected "
+            f"{EXPECTED_FLA_BASE_SPEC!r} among {deps} -- chunk_kda semantics "
+            f"are not guaranteed stable across fla minor versions"
+        )
+
+    def test_curated_and_retired_extras_absent_from_meta_extras(self) -> None:
+        """all/full bracket lists carry none of fla, deepspeed, flash-attn (D-13)."""
+        extras = _load_extras()
+        for meta_name in ("all", "full"):
+            bracket = extras.get(meta_name, [])
+            for member in bracket:
+                banned = ("fla", "deepspeed", "flash-attn")
+                hit = next((name for name in banned if name in member), None)
+                assert hit is None, (
+                    f"the {meta_name} meta-extra must not name {hit!r} "
+                    f"(D-09/D-13: curated compile extras stay separately "
+                    f"installed): {member!r}"
+                )
 
 
 class TestExtrasSurgeryResidueGates:
