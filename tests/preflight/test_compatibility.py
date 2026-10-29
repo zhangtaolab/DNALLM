@@ -687,4 +687,3 @@ def test_build_listing_support_words_by_category(repo: str, word: str) -> None:
 
     rows = _build_listing([try_resolve(repo)])
     assert rows[0].support == word
-
