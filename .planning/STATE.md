@@ -4,11 +4,11 @@ milestone: v1.4
 current_phase: "27.2"
 current_phase_name: "Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED)"
 status: executing
-stopped_at: Completed 27.2-01-PLAN.md
-last_updated: "2026-10-29T04:03:14.129Z"
+stopped_at: Completed 27.2-02-PLAN.md
+last_updated: "2026-10-29T04:31:02.943Z"
 last_activity: 2026-10-29
 last_activity_desc: Phase 27.2 execution started
-state_head: e6f817475132eae63e0d0db05a8d96dca3c0bd8e
+state_head: cc283875f278a3869c4ff0db99580e26995f79c6
 progress:
   total_phases: 2
   completed_phases: 5
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-28)
 ## Current Position
 
 Phase: 27.2 (Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED)) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-10-29 — Phase 27.2 execution started
 
@@ -67,6 +67,7 @@ Last activity: 2026-10-29 — Phase 27.2 execution started
 | Phase 27.1 P01 | 8 min | 3 tasks | 4 files |
 | Phase 27.1 P02 | 6 min | 2 tasks | 4 files |
 | Phase 27.2 P01 | 34 min | 2 tasks | 10 files |
+| Phase 27.2 P02 | 21 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -146,6 +147,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 27.2]: 27.2-01: load-boundary author-defect repairs run POST-delegation - transformers 5's own _finalize_model_loading materializes non-persistent meta buffers (_move_missing_keys_from_meta_to_device inside it), so a pre-delegation repair sees an unreadable meta tensor and never fires; the shared wrapper hosts MutBERT in 27.2-02
 - [Phase 27.2]: 27.2-01: gena reset is torch.zeros(position_ids.size(), dtype=long) on the buffer's device, defect-detected (value outside [0, type_vocab_size)) per D-08 - never a version gate; SHIM_RESTORED_LOADS carries gena ahead of the committed flip while the independent registry mirror holds until 27.2-03
 - [Phase 27.2]: 27.2-01: registry writer is update-capable - changed canonical tf_compat triples are replaced in place (reverse position order, no duplication, non-canonical layouts fail closed) and merge_records drops a prior skip disposition on fresh green load+forward, so a green re-probe can never keep publishing remote-code-broken
+- [Phase 27.2]: 27.2-02: MutBERT repair wraps the defective nested forward per-instance with call-time word_embeddings resolution, and DNABERT-2 shims are installed pre-construction by wrapping transformers.dynamic_module_utils.get_class_in_module - the census load program arms the same installer for the exact DNABERT-2 repo after source acquisition and before AutoConfig, so one implementation serves both paths (D-05 file choice preserved).
+- [Phase 27.2]: Both SHIM_RESTORED_LOADS entries (MutBERT, DNABERT-2) land ahead of the committed flip per the plan-01 interim discipline: the committed skip dispositions still govern the committed artifact, so the census table and the independent registry mirror intentionally differ until plan 27.2-03's measured write-back.
 
 ### Pending Todos
 
@@ -202,8 +205,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-29T04:03:00.721Z
-Stopped at: Completed 27.2-01-PLAN.md
+Last session: 2026-10-29T04:31:02.863Z
+Stopped at: Completed 27.2-02-PLAN.md
 Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)
