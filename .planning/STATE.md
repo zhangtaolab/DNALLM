@@ -4,11 +4,11 @@ milestone: v1.4
 current_phase: 28
 current_phase_name: "Optional extras: deepspeed & flash-attn model support"
 status: executing
-stopped_at: "Completed 28-01-PLAN.md (halted at A2 designed stop: BigBird forward owner ruling pending)"
-last_updated: "2026-10-29T15:38:19.031Z"
+stopped_at: Completed 28-02-PLAN.md
+last_updated: "2026-10-29T16:08:42.737Z"
 last_activity: 2026-10-29
 last_activity_desc: Phase 28 execution started
-state_head: 9c2ad172c0504555baa8dcd1368b6aa4158765db
+state_head: 3997652810ebcda44c3d55f31104ee7e1d072814
 progress:
   total_phases: 2
   completed_phases: 5
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-29)
 ## Current Position
 
 Phase: 28 (Optional extras: deepspeed & flash-attn model support) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-10-29 — Phase 28 execution started
 
@@ -72,6 +72,7 @@ Last activity: 2026-10-29 — Phase 28 execution started
 | Phase 27.2 P04 | 15 min | 3 tasks | 9 files |
 | Phase 27.2 P05 | 7 min | 3 tasks | 8 files |
 | Phase 28 P01 | 92min | 3 tasks | 5 files |
+| Phase 28 P02 | 16min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -169,6 +170,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 28]: 28-01 MEASURED BLOCKER: BigBird forward structurally impossible — deepspeed 0.19.6 sparse LUT needs triton libtriton.superblock (absent in triton 3.6.0 AND 3.8.0; torch>=2.4 implies triton 3.x); extra greens the LOAD (old ModuleNotFoundError fixed); Plan 02 BigBird flip awaits owner ruling (options A crossDNA-only / B new semantics / C drop); CrossDNA fully green (load+forward (1,64,5) cuda) and NOT blocked
 - [Phase 28]: 28-01: sparse BigBird needs probe seq_len % 64 == 0 — committed census LOAD_SEQUENCE_LENGTH=32 can never forward it; extras evidence measured at length 64 via one-line scratch tool copy (committed tool untouched); future extras lane must probe BigBird at a 64-multiple or the divisibility error masks the kernel verdict
 - [Phase 28]: [Phase 28] 28-01 halt resolved by owner ruling A (2026-10-29): CrossDNA-only extra-required-tf5 flip in Plan 02; BigBird keeps its committed skip disposition with evidence naming the load-green/forward-red split (deepspeed extra greens load; forward structurally impossible via removed triton libtriton.superblock API — deepspeed 0.19.6 sparse LUT, symbol absent in triton 3.6/3.8, no installable resolution under torch>=2.4). No new status vocabulary. — Research A2 pre-authorized the contingency: measured forward-red means no disposition flip. Option A is the smallest honest reading, consistent with Phase 27 census-verdict-governs discipline; the load-green fact rides in evidence text only. CrossDNA flip, extras lane, and CrossDNA docs proceed unchanged.
+- [Phase 28]: 28-02: owner ruling A executed - CrossDNA-only extra-required-tf5 flip (writer: exactly 2 replacements; 49 matched; distribution 19/21/5/1/3/0); BigBird keeps skip with split evidence naming deepspeed 0.19.6 + _patch_apply_chunking_to_forward + the load-green/forward-red split; docs lead reclassified library-change via new lockstep needle
+- [Phase 28]: 28-02: BigBird support word stays 'needs deepspeed' (plan-literal works-word withheld - forward measured structurally dead, would overclaim and break out-of-plan pins); CrossDNA gains 'works with the flash-attn extra'; TestDispositionCompleteness vocabulary grows to fix/skip/extra with green-record extra judgment allowed
+- [Phase 28]: 28-02: disposition.extra branch ordered before skip AND green so the extras-green seed and default-env failure shapes map to one extra-required-tf5 verdict; guidance-marker exception attribute (_dnallm_missing_extra_guidance) lets specific ImportErrors survive broad except-Exception wraps
 
 ### Pending Todos
 
@@ -226,9 +230,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-29T15:32:33.296Z
-Stopped at: Completed 28-01-PLAN.md (halted at A2 designed stop: BigBird forward owner ruling pending)
-Resume file: .planning/phases/28-optional-extras-for-the-two-external-package-models-deepspee/28-01-SUMMARY.md
+Last session: 2026-10-29T16:08:42.618Z
+Stopped at: Completed 28-02-PLAN.md
+Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)
 
