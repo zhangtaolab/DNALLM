@@ -69,14 +69,14 @@ Plans:
 **Goal:** Restore transformers-5 usability for every fixable preset and set the support story in docs. Land the four measured rung fixes (GENERanno ROPE 'default' init alias; DNABERT-2 meta-device ALiBi construction; GENA-LM token_type_ids buffer reset and MutBERT input_shape forward wrap — the latter two are owner-approved author-defect repairs, 2026-10-29), upgrade GPN/Omni-DNA error messages to exact pip-install guidance, document GENA-LM-BigBird's deepspeed requirement (deliberately not a dependency; not stubbable) and CrossDNA's special-handler-vs-census-reporting alignment, and ship the docs/support surface: regenerated model_compatibility.md, a plain-language optional-dependency section, a README supported-models statement, and TUI/MCP listing support flags. Census discipline holds: a disposition flips only on a measured green probe (replica-grade until the census lane is live post-merge), and repaired models are always worded "works with DNALLM's built-in compatibility fixes", never "as-is".
 **Requirements**: source pending todo 2026-10-29-transformers-5-compatibility-remediation-campaign-all-8 (severity major, scope ALL 8)
 **Depends on:** Phase 27
-**Plans:** 1/5 plans executed
+**Plans:** 2/5 plans executed
 
 Plans:
 **Wave 1**
 - [x] 27.2-01-PLAN.md — GENERanno end-to-end tracer plus GENA-LM construction-path repair, measured probes, and update-capable registry writer
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 27.2-02-PLAN.md — MutBERT forward repair and DNABERT-2 pre-construction ALiBi/Triton fixes with census-visible probes
+- [x] 27.2-02-PLAN.md — MutBERT forward repair and DNABERT-2 pre-construction ALiBi/Triton fixes with census-visible probes
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 27.2-03-PLAN.md — CrossDNA census route alignment, GPN/Omni-DNA install guidance, final measured registry write-back and generated docs
