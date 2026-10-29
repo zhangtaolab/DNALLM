@@ -76,7 +76,9 @@ class TestSupportWords:
         [pytest.param(status, word, id=status) for status, word in EXPECTED_SUPPORT_WORDS.items()],
     )
     def test_status_maps_to_exact_word(self, status: str, word: str) -> None:
-        assert support.support_word(_entry(model=f"synth/{status}", tf_compat_status=status)) == word
+        assert (
+            support.support_word(_entry(model=f"synth/{status}", tf_compat_status=status)) == word
+        )
 
     def test_missing_status_maps_to_untested(self) -> None:
         assert support.support_word(_entry()) == EXPECTED_UNTESTED
