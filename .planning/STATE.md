@@ -5,10 +5,10 @@ current_phase: 28
 current_phase_name: "Optional extras: deepspeed & flash-attn model support"
 status: executing
 stopped_at: "Completed 28-01-PLAN.md (halted at A2 designed stop: BigBird forward owner ruling pending)"
-last_updated: "2026-10-29T15:32:33.366Z"
+last_updated: "2026-10-29T15:38:19.031Z"
 last_activity: 2026-10-29
 last_activity_desc: Phase 28 execution started
-state_head: 39bc4834299e9a24c75746158a5c6c919d5d52f3
+state_head: 9c2ad172c0504555baa8dcd1368b6aa4158765db
 progress:
   total_phases: 2
   completed_phases: 5
@@ -168,6 +168,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 28]: 28-01: flash-attn installer carries TWO occurrence-counted patches — sm_121 gencode branch AND four -std=c++17->c++20 flips (torch>=2.13 ATen C++20 floor, measured under lane torch 2.14.1+cu130); 64-min build at MAX_JOBS=8, kernel smoke green on GB10
 - [Phase 28]: 28-01 MEASURED BLOCKER: BigBird forward structurally impossible — deepspeed 0.19.6 sparse LUT needs triton libtriton.superblock (absent in triton 3.6.0 AND 3.8.0; torch>=2.4 implies triton 3.x); extra greens the LOAD (old ModuleNotFoundError fixed); Plan 02 BigBird flip awaits owner ruling (options A crossDNA-only / B new semantics / C drop); CrossDNA fully green (load+forward (1,64,5) cuda) and NOT blocked
 - [Phase 28]: 28-01: sparse BigBird needs probe seq_len % 64 == 0 — committed census LOAD_SEQUENCE_LENGTH=32 can never forward it; extras evidence measured at length 64 via one-line scratch tool copy (committed tool untouched); future extras lane must probe BigBird at a 64-multiple or the divisibility error masks the kernel verdict
+- [Phase 28]: [Phase 28] 28-01 halt resolved by owner ruling A (2026-10-29): CrossDNA-only extra-required-tf5 flip in Plan 02; BigBird keeps its committed skip disposition with evidence naming the load-green/forward-red split (deepspeed extra greens load; forward structurally impossible via removed triton libtriton.superblock API — deepspeed 0.19.6 sparse LUT, symbol absent in triton 3.6/3.8, no installable resolution under torch>=2.4). No new status vocabulary. — Research A2 pre-authorized the contingency: measured forward-red means no disposition flip. Option A is the smallest honest reading, consistent with Phase 27 census-verdict-governs discipline; the load-green fact rides in evidence text only. CrossDNA flip, extras lane, and CrossDNA docs proceed unchanged.
 
 ### Pending Todos
 

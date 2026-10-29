@@ -112,7 +112,7 @@ coverage:
 
 duration: 92min
 completed: 2026-10-29
-status: halted
+status: complete
 commits: 4
 plan_head_before: 459fcb36277499a0643ef1beb5a667e541ed9e36
 plan_head_after: 39bc483
@@ -220,6 +220,7 @@ Research A2 pre-authorized exactly this contingency: *"If the forward reds, BigB
   - **B.** New/adjusted status semantics for load-green/forward-red (schema + docs + support-word changes — larger Plan 02).
   - **C.** Drop BigBird from the extras story (keep the extra as the load fix, document forward as upstream-dead).
 - **Not blocked:** Plan 02's CrossDNA flip, the extras lane, and the docs rewrite for CrossDNA can proceed on this evidence under any option.
+- **OWNER RULING (2026-10-29, halt resolved): Option A.** CrossDNA-only `extra-required-tf5` flip in Plan 02; BigBird keeps its committed skip disposition, with its evidence updated to name the load-green/forward-red split ("load works with the deepspeed extra; forward blocked by an upstream-dead Triton API"). No new status vocabulary. Halt lifted; this plan counts complete for dependency purposes.
 
 ## Issues Encountered
 
