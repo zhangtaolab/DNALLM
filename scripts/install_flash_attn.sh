@@ -11,17 +11,21 @@
 # so a default build embeds four architecture families and runs on sm_121
 # only through the same-major sm_120 binary-compatibility rule. This script
 # patches setup.py to add the explicit compute_121/sm_121 branch so the
-# build is deterministic for this device class.
+# build is deterministic for this device class. setup.py ALSO hardcodes
+# -std=c++17 in four places while torch >= 2.13's ATen headers set a C++20
+# floor (#error C++20 or later compatible compiler is required to use ATen)
+# — the same defect class scripts/install_mamba.sh patches — so the four
+# flags are flipped to -std=c++20 with the same occurrence-exact assertions.
 #
 # WHAT: fetch the flash_attn sdist file directly from a package index's
 # simple page (default PyPI; override with --index-url, e.g. the TUNA
 # mirror https://pypi.tuna.tsinghua.edu.cn/simple), verify its sha256
 # against the pinned constant below BEFORE anything is extracted or
-# executed, add the architecture-121 gencode branch to the extracted
-# setup.py (occurrence-counted assertions on both sides of the edit),
-# then build the wheel from the patched tree with --no-build-isolation
-# (the sdist ships no pyproject.toml and setup.py imports torch
-# unconditionally — an isolated PEP 517 build dies with
+# executed, add the architecture-121 gencode branch and flip the four
+# -std flags in the extracted setup.py (occurrence-counted assertions on
+# both sides of every edit), then build the wheel from the patched tree
+# with --no-build-isolation (the sdist ships no pyproject.toml and setup.py
+# imports torch unconditionally — an isolated PEP 517 build dies with
 # ModuleNotFoundError: torch) and install exactly that wheel. The fetch
 # deliberately avoids pip's resolution machinery: pip builds sdist
 # metadata by EXECUTING setup.py from the downloaded archive, which
@@ -228,17 +232,24 @@ SRC_DIR="${EXTRACT_DIR}/flash_attn-${FLASH_ATTN_VERSION}"
 SETUP_PY="${SRC_DIR}/setup.py"
 [ -f "$SETUP_PY" ] || error "Extracted tree does not contain flash_attn-${FLASH_ATTN_VERSION}/setup.py."
 
-# --- 4. Patch: add the architecture-121 gencode branch ----------------------
-# The upstream setup.py emits exactly one '-gencode arch=compute_XX,code=sm_XX'
-# occurrence per existing architecture branch (80/90/100/120, guarded by the
-# FLASH_ATTN_CUDA_ARCHS env membership tests). This patch inserts ONE new
-# branch for 121 after the 120 branch, in the same style. Occurrence-exact
-# assertions on both sides: zero compute_121/sm_121 tokens before, exactly one
-# after, and each of the four existing architecture tokens unchanged at one —
-# any other count is a hard error (a future version bump that re-pins the hash
-# but changes the patch shape must fail loudly, never silently build
-# unpatched). An ast.parse pass then proves the edited file is still valid
-# Python (stdlib only; setup.py itself is never imported here).
+# --- 4. Patch: sm_121 gencode branch + the four -std=c++17 -> c++20 flips ---
+# Patch A inserts ONE new architecture-121 branch after the 120 branch, in
+# the upstream style. The upstream setup.py emits exactly one
+# '-gencode arch=compute_XX,code=sm_XX' occurrence per existing architecture
+# branch (80/90/100/120, guarded by the FLASH_ATTN_CUDA_ARCHS env membership
+# tests). Occurrence-exact assertions on both sides: zero compute_121/sm_121
+# tokens before, exactly one after, and each of the four existing
+# architecture tokens unchanged at one — any other count is a hard error (a
+# future version bump that re-pins the hash but changes the patch shape must
+# fail loudly, never silently build unpatched).
+#
+# Patch B flips the four -std=c++17 flags to -std=c++20: torch >= 2.13's
+# ATen headers require a C++20 compiler (the measured first-build failure on
+# this box's lane resolution, torch 2.14.1+cu130 — same class as the mamba
+# c++20 patch). Exactly 4 before, exactly 0 c++17 after, exactly 4 c++20
+# after, counted per occurrence. An ast.parse pass then proves the edited
+# file is still valid Python (stdlib only; setup.py itself is never imported
+# here).
 count_occurrences() { # count_occurrences TOKEN FILE
     grep -o -F -- "$1" "$2" | wc -l
 }
@@ -265,12 +276,28 @@ if [ "$AFTER_121" -ne 1 ] || [ "$BRANCH_121" -ne 1 ]; then
     error "Patch assertions failed: arch=compute_121,code=sm_121 occurrences: $AFTER_121 (want 1), '121'-branch conditions: $BRANCH_121 (want 1)."
 fi
 check_existing_arch_branches
+
+info "Patching -std=c++17 -> -std=c++20 in $SETUP_PY ..."
+CXX17_BEFORE=$(count_occurrences "-std=c++17" "$SETUP_PY")
+if [ "$CXX17_BEFORE" -ne 4 ]; then
+    error "Expected exactly 4 '-std=c++17' occurrences in setup.py, found $CXX17_BEFORE — patch shape changed; refusing to build."
+fi
+CXX20_BEFORE=$(count_occurrences "-std=c++20" "$SETUP_PY")
+if [ "$CXX20_BEFORE" -ne 0 ]; then
+    error "Expected exactly 0 '-std=c++20' occurrences in setup.py before patching, found $CXX20_BEFORE — upstream already ships c++20 flags; the pinned patch shape is stale."
+fi
+sed -i 's/-std=c++17/-std=c++20/g' "$SETUP_PY"
+CXX17_AFTER=$(count_occurrences "-std=c++17" "$SETUP_PY")
+CXX20_AFTER=$(count_occurrences "-std=c++20" "$SETUP_PY")
+if [ "$CXX17_AFTER" -ne 0 ] || [ "$CXX20_AFTER" -ne 4 ]; then
+    error "Patch assertions failed: -std=c++17 remaining: $CXX17_AFTER (want 0), -std=c++20 total: $CXX20_AFTER (want 4)."
+fi
 "$PYTHON_BIN" -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' "$SETUP_PY" \
-    || error "Patched setup.py no longer parses as Python — the gencode insertion corrupted the file; refusing to build."
-info "Patch applied: one architecture-121 branch emitting one compute_121/sm_121 gencode; 80/90/100/120 branches unchanged."
+    || error "Patched setup.py no longer parses as Python — a patch corrupted the file; refusing to build."
+info "Patch applied: one architecture-121 branch emitting one compute_121/sm_121 gencode (80/90/100/120 branches unchanged); 4/4 -std flags flipped to c++20, 0 c++17 remain."
 
 if [ "$PATCH_ONLY" = true ]; then
-    echo "PATCH VERIFIED: sha256 ok, sm_121 gencode patch verified"
+    echo "PATCH VERIFIED: sha256 ok, sm_121 gencode patch verified, 4/4 c++17 flags flipped to c++20"
     exit 0
 fi
 
