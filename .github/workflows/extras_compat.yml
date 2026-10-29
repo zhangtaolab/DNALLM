@@ -1,0 +1,271 @@
+name: extras_compat
+
+# Extras-environment guard lane (Phase 28, D-05..D-08): proves the two
+# external-package models still load and forward when their CURATED extras
+# are installed -- the mirror question of census_compat.yml. The default
+# census keeps measuring the default install and must keep seeing these two
+# rows as missing-extra failures (D-02, that file stays byte-untouched);
+# this lane installs deepspeed through the curated extra and flash-attn
+# through the sha256-pinned installer, then requires tonight's fresh probe
+# evidence AND registry agreement through two independent gates (D-08).
+#
+# Owner ruling A (2026-10-29) sets the expected probe shape: CrossDNA is
+# fully green through the flash-attn extra; BigBird's LOAD greens through
+# the deepspeed extra while its forward stays structurally red -- deepspeed
+# 0.19.6's sparse-attention LUT needs triton libtriton.superblock, a symbol
+# absent from every triton 3.x dnallm can resolve under torch>=2.4. Gate 1
+# pins exactly that split; a forward failure at any OTHER cause (including
+# a seq-length divisibility error) means the probe never reached the real
+# kernel verdict and must redden the lane.
+#
+# Triggers (D-06): this workflow OWNS the 04:00 UTC nightly cron (staggered
+# after ci.yml's 03:00/05:30 lanes, queue-serialized on the single
+# dnallm-nightly runner) plus standalone workflow_dispatch for reproduction
+# and the post-merge first live run. workflow_call is not an independent
+# public trigger: its only caller is ci.yml's dispatch-gated extras-compat
+# job, so PR code (including forks) can never reach the self-hosted GPU box
+# (T-28-09). The first live dispatch (`gh workflow run extras_compat.yml
+# --ref v1.4`) is a post-v1.4-to-main-merge operator step -- GitHub
+# registers dispatchable workflows from the default branch only.
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+  workflow_call:
+
+# Least privilege (census_compat.yml convention): repo code runs on the
+# self-hosted GPU box, so the job never inherits read/write token scopes,
+# and no secret is ever needed by this lane.
+permissions:
+  contents: read
+
+jobs:
+  extras-compat:
+    runs-on: [self-hosted, dnallm-nightly]
+    # Event gate: the schedule arm is ANDed with its exact cron string
+    # (D-06 cron-string discipline -- a second cron entry added later
+    # fails closed instead of silently reaching the runner); standalone
+    # dispatch and the internal reusable call stay admitted.
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '0 4 * * *') ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'workflow_call'
+    # The uncached flash-attn source build measured ~64 min at MAX_JOBS=8 on
+    # this box (28-01); self-hosted jobs have no platform time cap, so this
+    # is the only whole-job bound against a hung build monopolizing the
+    # single runner that also serves the 03:00/05:30 lanes.
+    timeout-minutes: 360
+    steps:
+      - name: Check for GPU
+        id: gpu-check
+        # Fail-closed posture (census_compat.yml WR-05 pattern): a silent
+        # skip would green the lane with zero evidence. On GPU absence,
+        # write the marker into the artifact directory and FAIL -- the
+        # upload below still runs (if: always()) so the marker reaches
+        # the owner.
+        run: |
+          mkdir -p census-artifacts
+          if command -v nvidia-smi &> /dev/null && nvidia-smi > /dev/null 2>&1; then
+            echo "has_gpu=true" >> $GITHUB_OUTPUT
+            echo "GPU detected, will run the extras probes"
+          else
+            echo "has_gpu=false" >> $GITHUB_OUTPUT
+            echo "gpu_absent=$(date -u +%FT%TZ) nvidia-smi unavailable" > census-artifacts/gpu_absent.marker
+            echo "No GPU detected — failing: this lane's deliverable is fresh extras probe evidence"
+            exit 1
+          fi
+
+      - name: Checkout code
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        # Fail closed, no installer fallback: this lane's long flash-attn
+        # build must never start behind an unpinned fetched installer, and
+        # the dnallm-nightly box carries a runner-ops mirror-configured uv
+        # under ~/.local/bin (TUNA route in ~/.config/uv/uv.toml). A wiped
+        # box is an operator incident, not something this lane repairs.
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          if command -v uv >/dev/null 2>&1; then
+            echo "uv already provisioned: $(uv --version)"
+            # Persist the path for later steps: a run step's export PATH
+            # dies with its own shell (CR-01 census-lane precedent).
+            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          else
+            echo "FAIL: uv is required on the dnallm-nightly box (runner-ops provisioned under ~/.local/bin) but was not found"
+            exit 1
+          fi
+
+      - name: Create virtual environment and install dependencies
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        # Install order is load-bearing (D-12): .[full] resolves torch
+        # first, pip is bootstrapped for the installer script (the venv is
+        # uv-created, so pip is absent until this line), the deepspeed
+        # extra rides the plain curated-extra route (band-pinned
+        # >=0.19.6,<0.19.7 -- 0.19.7 removed sparse_attention upstream),
+        # and flash-attn goes through the sha256-pinned installer script
+        # ONLY: no prebuilt wheel exists for aarch64 + cu130 + torch 2.14,
+        # and the sdist needs the sm_121 gencode + c++20 patches the script
+        # applies (measured 64-min build, wheel smoke-proven on this GB10).
+        # The pyproject flash-attn extra stays the END-USER route; a bare
+        # package-index install is forbidden in CI (D-12, T-28-01).
+        run: |
+          # Pin the interpreter: unpinned `uv venv` prefers uv-managed
+          # interpreters and this persistent box now carries a 3.16 alpha
+          # (run 38678158479; 28-01 measured the extras env on 3.13, and
+          # the pinned installer builds cp313).
+          uv venv --python 3.13
+          uv pip install -e ".[full]"
+          uv pip install --python .venv/bin/python pip
+          uv pip install -e ".[deepspeed]"
+          # MAX_JOBS=8 measured 64 min on this 20-core box (28-01).
+          export MAX_JOBS=8
+          bash scripts/install_flash_attn.sh --python .venv/bin/python --index-url https://pypi.tuna.tsinghua.edu.cn/simple
+
+      - name: Record runner identity
+        # T-28-11: GPU identity only -- never env dumps or credentials.
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        run: |
+          nvidia-smi --query-gpu=name,compute_cap,driver_version --format=csv,noheader
+
+      - name: Seed and probe the two extras entries (length 64)
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        # D-07: the probe reuses census single-entry mode over exactly the
+        # two external-package models the curated extras exist for. The
+        # fresh artifact is SEEDED from the committed 49-record census
+        # (the hand-authored dispositions and the full roster live there,
+        # and gate 2 diffs against all 49), then the two entries' seeded
+        # load evidence is NULLED so apply_loads re-measures both models
+        # tonight -- a prior load that already passed is carried forward,
+        # never re-fetched, and a carried green cannot catch a broken
+        # extras environment.
+        #
+        # D-07 length fact (28-01 measured): sparse BigBird requires
+        # seq_len % block_size(64) == 0, so the committed tool's
+        # LOAD_SEQUENCE_LENGTH=32 (the default lane's contract, kept
+        # untouched) can only ever forward-red on divisibility and mask the
+        # real kernel verdict. The probe therefore runs through a one-line
+        # copy with the constant at 64 -- occurrence-asserted and
+        # diff-proven to differ from the committed tool by exactly that
+        # line (the 28-01 scratch-copy discipline, lane-resident).
+        #
+        # No --verify here: gates 1 and 2 below assert independently.
+        # NO `|| true` masking -- a red probe must redden the lane while
+        # the always-upload still delivers the evidence.
+        run: |
+          source .venv/bin/activate
+          # Re-create the artifact dir AFTER checkout (CR-01): the shared
+          # persistent workspace always carries a repo, and checkout's
+          # default clean removes the untracked dir the pre-checkout mkdir
+          # created for the GPU-absent marker path.
+          mkdir -p census-artifacts .lane-tools
+          cp tests/models/compat_census.json census-artifacts/extras-fresh.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          repos = {
+              "AIRI-Institute/gena-lm-bigbird-base-sparse",
+              "chengCCC/CrossDNA_pretrain",
+          }
+          path = Path("census-artifacts/extras-fresh.json")
+          doc = json.loads(path.read_text())
+          stripped = 0
+          for record in doc["entries"]:
+              if record.get("repo") in repos:
+                  record["load"] = None
+                  record.pop("load_note", None)
+                  stripped += 1
+          if stripped != 2:
+              raise SystemExit(
+                  f"FAIL: expected to strip load evidence for exactly 2 seeded entries, stripped {stripped}"
+              )
+          path.write_text(json.dumps(doc, indent=1) + "\n")
+          PY
+          COUNT=$(grep -c '^LOAD_SEQUENCE_LENGTH = 32$' scripts/census_compat.py)
+          if [ "$COUNT" -ne 1 ]; then
+            echo "FAIL: expected exactly one 'LOAD_SEQUENCE_LENGTH = 32' line in the committed census tool (found $COUNT)"
+            exit 1
+          fi
+          sed 's/^LOAD_SEQUENCE_LENGTH = 32$/LOAD_SEQUENCE_LENGTH = 64/' \
+            scripts/census_compat.py > .lane-tools/census_compat_len64.py
+          CHANGED=$(diff scripts/census_compat.py .lane-tools/census_compat_len64.py | grep -c '^<')
+          if [ "$CHANGED" -ne 1 ]; then
+            echo "FAIL: the length-64 probe copy must differ from the committed tool by exactly one line (found $CHANGED)"
+            exit 1
+          fi
+          python .lane-tools/census_compat_len64.py --run --with-loads \
+            --entries AIRI-Institute/gena-lm-bigbird-base-sparse,chengCCC/CrossDNA_pretrain \
+            --artifact census-artifacts/extras-fresh.json
+
+      - name: "Gate 1: fresh probe evidence matches the ruling-A expected shape"
+        # D-08 gate 1 (independent of --verify): parse tonight's raw load
+        # evidence from the fresh artifact and require the per-model
+        # expected outcome. The gate reads ONLY the load booleans and the
+        # forward error text -- never the verdict mapping or the seeded
+        # judgment, so the extra disposition alone can never satisfy it on
+        # a failed forward. Ruling A: CrossDNA green through the flash-attn
+        # extra; BigBird load-green through the deepspeed extra with the
+        # forward red AT THE KNOWN STRUCTURAL CAUSE -- any other failure
+        # (or a sudden green) means the world moved and the lane must go
+        # red so the registry row can be re-ruled.
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        run: |
+          source .venv/bin/activate
+          python - <<'PY'
+          import json
+
+          entries = json.load(open("census-artifacts/extras-fresh.json"))["entries"]
+          records = {r["repo"]: r for r in entries}
+          crossdna = records["chengCCC/CrossDNA_pretrain"]["load"]
+          assert isinstance(crossdna, dict), "CrossDNA record carries no fresh load evidence (probe did not run)"
+          assert crossdna["ok"] is True and crossdna["forward_ok"] is True, (
+              "CrossDNA must load AND forward green through the flash-attn extra "
+              f"(got ok={crossdna['ok']}, forward_ok={crossdna['forward_ok']}, "
+              f"error={crossdna.get('error')})"
+          )
+          bigbird = records["AIRI-Institute/gena-lm-bigbird-base-sparse"]["load"]
+          assert isinstance(bigbird, dict), "BigBird record carries no fresh load evidence (probe did not run)"
+          assert bigbird["ok"] is True, (
+              "BigBird construction must green through the deepspeed extra "
+              f"(got ok={bigbird['ok']}, error={bigbird.get('error')})"
+          )
+          assert bigbird["forward_ok"] is False, (
+              "BigBird forward is structurally red under owner ruling A (triton "
+              "superblock removal) -- a green forward means the world moved; "
+              "re-rule the registry row instead of passing this gate"
+          )
+          error = bigbird.get("error") or ""
+          assert "superblock" in error, (
+              "BigBird forward must fail at the known structural cause "
+              "(triton libtriton.superblock, absent in triton 3.x); a different "
+              "failure text means the probe never reached the real kernel verdict"
+          )
+          print("Gate 1 OK: CrossDNA load+forward green; BigBird load green, forward structurally red at superblock")
+          PY
+
+      - name: "Gate 2: fresh verdicts match the committed registry"
+        # D-08 gate 2: the fail-closed drift gate over the FULL 49-record
+        # artifact through the COMMITTED census tool (verify is
+        # length-independent). The seeded dispositions map tonight's fresh
+        # records onto the committed rows -- CrossDNA to extra-required-tf5,
+        # BigBird to remote-code-broken -- so any upstream model-repo or
+        # package change surfaces as an UNEXPECTED disagreement here.
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        run: |
+          source .venv/bin/activate
+          python scripts/census_compat.py --verify --artifact census-artifacts/extras-fresh.json
+
+      - name: Upload fresh extras evidence
+        # Unconditional: the artifact is the deliverable, especially on
+        # failure -- a red run with evidence beats a green run without it.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: extras-fresh-evidence
+          path: |
+            census-artifacts/extras-fresh.json
+            census-artifacts/gpu_absent.marker
+          if-no-files-found: warn
