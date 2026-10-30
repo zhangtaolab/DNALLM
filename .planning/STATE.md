@@ -4,10 +4,10 @@ milestone: v1.4
 current_phase: 28
 status: completed
 stopped_at: Phase 28 complete — all phases complete
-last_updated: "2026-10-30T12:00:31.699Z"
+last_updated: "2026-10-30T12:28:32.198Z"
 last_activity: 2026-10-30
 last_activity_desc: Phase 28 complete
-state_head: 205223a4e0c3362f3a29902eb669137835ea521f
+state_head: c08e8eeef7497bb6ccf5c26d52fef33359203f21
 progress:
   total_phases: 2
   completed_phases: 5
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-30)
 Phase: 28
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-10-30 - Completed quick task 261030-rst: close stale phase-12 mkdocs strict deferred item
+Last activity: 2026-10-30 - Completed quick task 261030-s4k: fix raw_reverse_complement no-op
 
 ## Performance Metrics
 
@@ -227,6 +227,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/
 | 261030-qxo | Close 4 stale UAT-audit items: flip resolved statuses with evidence (27.1 preset_loading ruff, 05 MCP host/port + interpret executor, 09 test_plot_for_regression) | 2026-10-30 | 007bb56 | [261030-qxo-close-4-stale-uat-audit-items-flip-resol](./quick/261030-qxo-close-4-stale-uat-audit-items-flip-resol/) |
 | 261030-r96 | UAT docs truth sweep: 11 prose hits to DNA large language model(s) (6 registry paper titles kept), README uv run pytest to --no-sync (6 commands), phase 10 + 05 README deferred items flipped | 2026-10-30 | 205223a | [261030-r96-uat-audit-docs-truth-sweep-rewrite-dna-l](./quick/261030-r96-uat-audit-docs-truth-sweep-rewrite-dna-l/) |
 | 261030-rst | Close stale phase-12 mkdocs strict deferred item: flip to resolved with dated dual evidence (prior fix 47b9bc2 + fresh zero-warning MkDocs 1.6.1 strict build at 8b224ea) + hand-maintained-mirror preservation warning; HBG1/numpy bullets untouched | 2026-10-30 | aab4260 | [261030-rst-fix-marimo-mirror-broken-links-at-the-so](./quick/261030-rst-fix-marimo-mirror-broken-links-at-the-so/) |
+| 261030-s4k | Fix DNADataset.raw_reverse_complement no-op: assign ds.map result (data.py one-liner), 4 red-to-green tests incl. non-palindromic fixtures (lane 157 passed), phase 03 rc bullet flipped | 2026-10-30 | c08e8ee | [261030-s4k-fix-dnadataset-raw-reverse-complement-no](./quick/261030-s4k-fix-dnadataset-raw-reverse-complement-no/) |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
