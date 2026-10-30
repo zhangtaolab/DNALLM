@@ -27,6 +27,7 @@ from dnallm.datahandling.data import (
     load_preset_dataset,
     show_preset_dataset,
 )
+from dnallm.utils.sequence import reverse_complement
 
 # Ruff S105 treats any string literal assigned to or compared against a *_token
 # name as a hardcoded password; these named constants keep the special-token
@@ -1610,29 +1611,75 @@ class TestAugmentation:
 
         assert d.dataset["train"]["sequence"] == ["AACCGGTT"]
 
-    def test_raw_reverse_complement_leaves_sequences_unchanged(self):
-        """raw_reverse_complement discards its map result, so data is unchanged.
+    def test_raw_reverse_complement_rewrites_sampled_sequences(self):
+        """With ratio=1.0 every sequence becomes its reverse complement.
 
-        The method builds the complemented dataset but never assigns the
-        ``Dataset.map`` output back — the observable contract is a no-op.
+        Fixtures are non-palindromic so a real rewrite is observable, labels
+        survive untouched, and the method itself returns None.
         """
-        d = DNADataset(
-            Dataset.from_dict({"sequence": ["AAAACCCCGGGGTTTT", "ACGT"], "labels": [0, 1]})
-        )
+        originals = ["AAAACCCCGGGG", "ACGTTT"]
+        d = DNADataset(Dataset.from_dict({"sequence": list(originals), "labels": [0, 1]}))
 
-        d.raw_reverse_complement(ratio=1.0, seed=1)
+        result = d.raw_reverse_complement(ratio=1.0, seed=1)
 
-        assert d.dataset["sequence"] == ["AAAACCCCGGGGTTTT", "ACGT"]
+        assert result is None
+        assert d.dataset["sequence"] == [reverse_complement(s) for s in originals]
         assert d.dataset["labels"] == [0, 1]
 
+    def test_raw_reverse_complement_zero_ratio_leaves_sequences_unchanged(self):
+        """With ratio=0.0 no sequence is reverse-complemented."""
+        originals = ["AAAACCCCGGGG", "ACGTTT"]
+        d = DNADataset(Dataset.from_dict({"sequence": list(originals), "labels": [0, 1]}))
+
+        assert d.raw_reverse_complement(ratio=0.0, seed=2) is None
+
+        assert d.dataset["sequence"] == originals
+        assert d.dataset["labels"] == [0, 1]
+
+    def test_raw_reverse_complement_fixed_seed_selects_same_rows(self):
+        """A fixed seed transforms the same rows across equivalent datasets.
+
+        Two independently constructed datasets with identical contents yield
+        identical ordered outputs; every row is either its original or that
+        row's reverse complement, and exactly int(n * ratio) rows differ.
+        """
+        sequences = ["AAAC", "CCCA", "ACG", "AAC", "CCG", "AAACCC", "ACGTTT", "GGGAAA"]
+        labels = list(range(len(sequences)))
+        data = {"sequence": list(sequences), "labels": list(labels)}
+
+        d1 = DNADataset(Dataset.from_dict(data))
+        d2 = DNADataset(Dataset.from_dict(data))
+
+        d1.raw_reverse_complement(ratio=0.5, seed=42)
+        d2.raw_reverse_complement(ratio=0.5, seed=42)
+
+        assert d1.dataset["sequence"] == d2.dataset["sequence"]
+        changed = 0
+        for original, output in zip(sequences, d1.dataset["sequence"], strict=True):
+            assert output in (original, reverse_complement(original))
+            if output != original:
+                changed += 1
+        assert changed == int(len(sequences) * 0.5)
+        assert d1.dataset["labels"] == labels
+
     def test_raw_reverse_complement_on_dataset_dict(self):
-        """The DatasetDict branch is exercised per split (also a no-op)."""
-        ds = Dataset.from_dict({"sequence": ["AAAACCC"], "labels": [1]})
-        d = DNADataset(DatasetDict({"train": ds}))
+        """Every split of a DatasetDict is reverse-complemented at ratio 1.0."""
+        train = ["AAAACCCCGGGG", "ACGTTT"]
+        test = ["CCCGGGA", "TTTACCG"]
+        d = DNADataset(
+            DatasetDict({
+                "train": Dataset.from_dict({"sequence": list(train), "labels": [0, 1]}),
+                "test": Dataset.from_dict({"sequence": list(test), "labels": [1, 0]}),
+            })
+        )
 
-        d.raw_reverse_complement(ratio=0.5, seed=3)
+        d.raw_reverse_complement(ratio=1.0, seed=5)
 
-        assert d.dataset["train"]["sequence"] == ["AAAACCC"]
+        assert set(d.dataset.keys()) == {"train", "test"}
+        assert d.dataset["train"]["sequence"] == [reverse_complement(s) for s in train]
+        assert d.dataset["test"]["sequence"] == [reverse_complement(s) for s in test]
+        assert d.dataset["train"]["labels"] == [0, 1]
+        assert d.dataset["test"]["labels"] == [1, 0]
 
 
 class TestSplitDisjointness:
