@@ -5,10 +5,10 @@ current_phase: 28
 current_phase_name: "Optional extras: deepspeed & flash-attn model support"
 status: verifying
 stopped_at: Completed 28-06-PLAN.md
-last_updated: "2026-10-30T08:42:20.331Z"
+last_updated: "2026-10-30T09:08:08.209Z"
 last_activity: 2026-10-30
 last_activity_desc: Phase 28 execution started
-state_head: b4892ab8f725273ff210e25164a36f21b34aa708
+state_head: 71956bc3e96097dda117492dbaf6d216319e5bfd
 progress:
   total_phases: 2
   completed_phases: 5
@@ -185,6 +185,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 28]: 28-04: extras lane is ruling-A shaped end to end — gate 1 asserts CrossDNA fully green + BigBird load-green/forward-red AT the superblock cause (pre-ruling 'both green' wording impossible), gate 2 is the committed --verify over the 49-row artifact (CrossDNA extra-required-tf5 / BigBird remote-code-broken); probe runs through a runtime-generated diff-proven length-64 census copy, committed tool pinned never --run in this lane
 - [Phase 28]: 28-04: seed-strip discipline — the lane nulls the two seeded loads before probing (apply_loads carries a prior passed load instead of re-fetching), so every run re-measures; ci.yml reaches the lane only via dispatch-gated workflow_call with no schedule arm, extras_compat.yml owns the 04:00 UTC cron (exactly-once nightly + dispatch); first live dispatch stays a post-merge operator step
 - [Phase 28]: BigBird split-aware lead class (load-works-prediction-blocked) keyed on the existing upstream-dead-Triton needle; README special-model table gains BigBird + CrossDNA rows with guide anchors; G-28-2 closed with ruling A intact
+- [Phase 28]: api-coverage verify:pre gate waived for Phase 28 (owner ruling 2026-10-30, 'Waive & record'): the gate's surface scan matched the word 'api' from the phrase 'upstream-dead Triton API' — a library programming interface, not an external HTTP API integration. Phase 28 integrates no external APIs; no COVERAGE.md owed. Recorded so future gate hits on this phase are traceable to this waiver. — Keyword false positive: 'Triton API' names a library interface in census evidence text; ai-integration capability gate cannot distinguish it from an HTTP API integration.
 
 ### Pending Todos
 
