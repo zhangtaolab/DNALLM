@@ -5,7 +5,7 @@ title: Testing
 <!-- generated-by: gsd-doc-writer -->
 # Testing Overview
 
-DNALLM's test suite is a single pytest suite with a single configuration: collection roots, markers, timeouts, async mode, and the coverage floor all live in `[tool.pytest.ini_options]` and `[tool.coverage.*]` in [`pyproject.toml`](https://github.com/zhangtaolab/DNALLM/blob/main/pyproject.toml). The suite divides into a **fast lane** (`-m "not slow"`) that runs on every push and pull request, and a **slow lane** of real-model tests (real Hugging Face / ModelScope downloads) exercised by the nightly coverage census. Every skip the suite produces is audited against a typed allowlist, and every `--cov` run is held to a 90% floor.
+DNALLM's test suite is a single pytest suite with a single configuration: collection roots, markers, timeouts, async mode, and the coverage floor all live in `[tool.pytest.ini_options]` and `[tool.coverage.*]` in [`pyproject.toml`](https://github.com/zhangtaolab/DNALLM/blob/main/pyproject.toml). The suite divides into a **fast lane** (`-m "not slow"`) that runs on every push and pull request, and a **slow lane** of real-model tests (real Hugging Face / ModelScope downloads, files suffixed `_real_model.py` plus other network-bound tests) exercised by the nightly coverage census. Every skip the suite produces is audited against a typed allowlist, every `--cov` run is held to a 90% floor, and the model registry is guarded by offline drift tests that keep the committed registry, the generated compatibility docs, and the census evidence in agreement.
 
 This page is the overview. Two companion documents carry the authoritative detail:
 
@@ -43,7 +43,8 @@ Configuration facts that surprise newcomers:
 - Module directories: `benchmark/`, `cli/`, `configuration/`, `datahandling/`, `finetune/`, `inference/`, `interpret/`, `mcp/`, `models/`, `preflight/`, `tasks/`, `tui/`, `utils/`. Two of these carry structure guards: `tests/preflight/test_structure.py` and `tests/tui/test_structure.py` AST-enforce that those packages never import torch/transformers/datasets at module level, and `tests/test_package_facade.py` proves in subprocesses that importing `dnallm.preflight` or `dnallm.models.registry` leaves the training stack out of `sys.modules`.
 - `examples/` — the example/notebook/script execution census (nightly lane; per-test timeout marks in the 3600–7200s range)
 - `scripts/` — tests for the CI scripts themselves (`audit_skips.py`, `check_docs_sync.py`)
-- Root contract tests — `test_models_lock_contracts.py`, `test_extras_guard.py`, `test_config_mapping_contracts.py`, `test_runner_infra_contracts.py`, `test_dispatch_direction.py`, `test_frozen_pairs.py`, `test_genomic_intervals.py`
+- Root contract tests — `test_models_lock_contracts.py`, `test_extras_guard.py`, `test_config_mapping_contracts.py`, `test_runner_infra_contracts.py`, `test_dispatch_direction.py`, `test_frozen_pairs.py`, `test_genomic_intervals.py`, `test_package_facade.py`, `test_compat_activation.py` (a bare `import dnallm` must arm the transformers compat shims), and `test_version_contract.py` (`dnallm.__version__` must track `pyproject.toml`)
+- Registry and census guard tests (registry-as-truth) — `tests/models/test_registry.py` pins the runtime registry loader (`dnallm.models.registry`, the sole parser of the 236-entry `model_info.yaml`) and enforces its read-only guarantees: single parse owner, no write/serialize API, frozen entries. `tests/models/test_census_compat.py` unit-tests the pure logic of `scripts/census_compat.py` (the transformers 4/5 compatibility census tool) offline, and `tests/models/test_compat_docs_consistency.py` is an independent drift gate that re-derives the expected rows of the generated [`docs/user_guide/model_compatibility.md`](../user_guide/model_compatibility.md) page from the registry accessors and fails on any disagreement — it deliberately shares no code with the generator. The committed 49-record census evidence lives in `tests/models/compat_census.json`. `tests/test_extras_guard.py` brackets the `pyproject.toml` extras: a member may not be silently dropped, lost, or resolved back into a known-broken pair.
 - `test_data/` and `fixtures/` — fixture datasets per task type (binary, multiclass, multilabel, regression, token classification, embedding, language modeling) and genomic-interval fixtures
 - `expected_skips.yaml` — the typed skip allowlist consumed by the skip audit
 - Second root `dnallm/mcp/tests/` — MCP client/server/model-manager tests plus the six slow-marked live-server probes
@@ -78,6 +79,8 @@ Two lane-specific behaviors worth knowing:
 - The MCP live-server probes (`dnallm/mcp/tests/test_sse_client.py`, `test_streamable_http_client.py`) target a `dnallm-mcp-server` on `localhost:8000`. No PR/push CI job starts one there, so they skip deterministically with the typed `network-unavailable:` reason in every gating lane; the `example-nightly` lane's Stage 2 does start the server (streamable-http, then a restart in SSE mode) and runs all six probes for real.
 - Giant-model (evo-class) tests carry the `giants` marker, which the example nightly deselects by owner policy; run them explicitly with `pytest -m giants`.
 
+Real-model integration tests are named with the `_real_model.py` suffix (`tests/finetune/test_trainer_real_model.py`, `tests/inference/test_inference_real_model.py`) and carry the `slow` mark: they download real checkpoints and belong to the nightly census, not the fast lane.
+
 ## Writing new tests
 
 Conventions:
@@ -106,11 +109,20 @@ Coverage is configured in `[tool.coverage.run]` / `[tool.coverage.report]` in `p
 
 Key semantics:
 
-- The 90% value is a **ratchet floor, not the achievement** — the fast lane measured 96.72% at the v1.2 closeout (2026-10-10; it was 96.30% when the gate landed). Hold new work at or above the current total rather than at the floor.
+- The 90% value is a **ratchet floor, not the achievement** — the fast lane measured 96.72% at the v1.2 closeout (2026-10-10; the full nightly census measured 96.42%). Hold new work at or above the current total rather than at the floor.
 - The floor applies regardless of how many tests ran — for scoped runs, drop `--cov` or pass `--no-cov`.
 - Omitted from measurement (the `omit` list): the vendored HF evaluate copy (`dnallm/tasks/metrics/`), the ported Enformer, the unimportable adapters (`dnallm/finetune/megatron.py`, `dnallm/models/special/mamba_npu.py`), and the packaged MCP tests/helper scripts.
 - **Kernel subprocesses are not measured, by design.** The example tests run notebooks in IPython kernel subprocesses, so the example lane certifies that notebooks executed end to end — it does not move the coverage number, and the coverage number says nothing about notebook executability. The full design note is in [Continuous Integration](../user_guide/continuous_integration.md).
 - There is no codecov upload and no XML coverage report in CI; totals are reported in the job terminal only.
+
+**Local measurement on numpy 2.5 environments.** `pytest-cov` breaks under Python 3.13 + numpy 2.5.x (the maintainer's dev venv ships numpy 2.5.3): the `--cov` flag makes the suite fail at `conftest.py` import with `ImportError: Unable to import required dependency numpy`, and partial runs report nonsense totals. Plain pytest and the plain coverage tool work fine. CI legs are unaffected (they pin `numpy==2.2.0`). Measure locally with the plain tool instead:
+
+```bash
+python -m coverage run --include='*/dnallm/utils/*' -m pytest tests/utils/ -q
+python -m coverage report --include='*/dnallm/utils/*'
+```
+
+When a per-module floor (rather than the total) is the requirement, parse `files[*].summary.percent_covered` from `coverage json` — `--fail-under` only gates the total. Do not mix `--cov=` and `--include=` semantics, and make sure the selected tests actually exercise the included files.
 
 ## CI integration
 
@@ -119,9 +131,17 @@ All test CI lives in [`.github/workflows/ci.yml`](https://github.com/zhangtaolab
 - **`test`** — Ubuntu matrix over Python 3.11/3.12/3.13 (NumPy pinned to 2.2.0): `ruff format --check` and `ruff check` first, then `pytest -m "not slow" --cov --junitxml`, then the skip audit and an exit-code canary (an intentionally failing test must make pytest exit non-zero).
 - **`test-windows`** — Python 3.12 fast leg mirroring `test` (with `PYTHONUTF8=1` and git `autocrlf` off); Linux-only checks (SONAME probe, `/proc` fd accounting) typed-skip here by allowlist entry.
 - **`test-cuda`** — Python 3.11 against a CUDA 13.0 toolkit install, running `pytest tests/ -m "not slow"`.
-- **`coverage-gate`** — Python 3.12 fast census with full junit and durations, the skip audit, and the pinned-stub `ty` type-check hard gate (static checks stay out of pytest).
+- **`coverage-gate`** — Python 3.12 fast census with full junit and durations, the skip audit, and the `ty` type-check hard gate (`uvx ty@0.0.84 check dnallm/` against a stub environment pinned by `.github/workflows/ty-stub-constraints.txt`; static checks stay out of pytest — ty replaced the advisory mypy run).
 
-The nightly legs run on the self-hosted `dnallm-nightly` GPU runner, gated to schedule and manual `workflow_dispatch` only (push/PR code never reaches that box): `coverage-nightly` (03:00 UTC — the full census including slow tests, under the 90% floor), `test-mamba` (03:00 UTC — source-built mamba-ssm/causal-conv1d kernel leg), and `example-nightly` (05:30 UTC — the staged example-execution census with `-m "not giants"`). The stage tables, timeout arithmetic, and per-job detail are documented in [Continuous Integration](../user_guide/continuous_integration.md) and [`.github/workflows/README.md`](https://github.com/zhangtaolab/DNALLM/blob/main/.github/workflows/README.md).
+The self-hosted `dnallm-nightly` GPU runner carries the heavy lanes, gated to schedule and manual `workflow_dispatch` only (push/PR code never reaches that box):
+
+- **`coverage-nightly`** (03:00 UTC, ci.yml) — the full census including slow tests, under the 90% floor.
+- **`test-mamba`** (03:00 UTC, ci.yml) — source-built mamba-ssm/causal-conv1d kernel leg through the sha256-pinned patch pipeline in `scripts/install_mamba.sh`.
+- **`example-nightly`** (05:30 UTC, ci.yml) — the staged example-execution census with `-m "not giants"`, including the MCP live-server probes in Stage 2.
+- **`extras_compat`** (04:00 UTC, owned by [`extras_compat.yml`](https://github.com/zhangtaolab/DNALLM/blob/main/.github/workflows/extras_compat.yml)) — installs the curated `deepspeed` extra and the sha256-pinned `scripts/install_flash_attn.sh` build, re-probes the two external-package models (sparse BigBird, CrossDNA), and gates through two independent checks: fresh probe evidence must match the expected per-model shape, and the fresh verdicts must verify against the committed registry.
+- **`census_compat`** (dispatch-only, [`census_compat.yml`](https://github.com/zhangtaolab/DNALLM/blob/main/.github/workflows/census_compat.yml)) — no cron: the owner triggers it manually (`gh workflow run census_compat.yml --ref <branch>`) on transformers bumps or whenever the transformers 4/5 compatibility census needs re-verification; any verdict disagreement with the committed `tf_compat_*` registry fields fails the lane.
+
+The stage tables, timeout arithmetic, and per-job detail are documented in [Continuous Integration](../user_guide/continuous_integration.md) and [`.github/workflows/README.md`](https://github.com/zhangtaolab/DNALLM/blob/main/.github/workflows/README.md).
 
 ## Related pages
 

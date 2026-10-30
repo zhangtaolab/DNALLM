@@ -26,7 +26,7 @@ The following table shows all currently supported models and their fine-tuning/i
 | DNABERT-2 | MaskedLM | BERT | ✅ | Zhihan1996 | 117M | 1 | [arXiv](https://doi.org/10.48550/arXiv.2306.15006) |
 | DNABERT-S | MaskedLM | BERT | ✅ | Zhihan1996 | 117M | 1 | [arXiv](https://doi.org/10.48550/arXiv.2402.08777) |
 | EVO-1 | CausalLM | StripedHyena | ❌ | togethercomputer | 6.5B | 2 | [Science](https://www.science.org/doi/10.1126/science.ado9336) |
-| EVO-2 | CausalLM | StripedHyena2 | ❌ | arcinstitute | 1B / 7B / 40B | 6 | [bioRxiv](https://www.biorxiv.org/content/10.1101/2025.02.18.638918) |
+| EVO-2 | CausalLM | StripedHyena2 | ❌ | arcinstitute | 1B / 7B / 40B | 7 | [bioRxiv](https://www.biorxiv.org/content/10.1101/2025.02.18.638918) |
 | GENA-LM | MaskedLM | BERT | ✅ | AIRI-Institute | 150M / 500M | 7 | [Nucleic Acids Research](https://doi.org/10.1093/nar/gkae1310) |
 | GENA-LM-BigBird | MaskedLM | BigBird | ✅ | AIRI-Institute | 150M | 3 | [Nucleic Acids Research](https://doi.org/10.1093/nar/gkae1310) |
 | GENERator | CausalLM | Llama | ✅ | GenerTeam | 1.2B / 3B | 2 | [arXiv](https://doi.org/10.48550/arXiv.2502.07272) |
@@ -39,7 +39,7 @@ The following table shows all currently supported models and their fine-tuning/i
 | Jamba-DNA | CausalLM | Jamba | ✅ | RaphaelMourad | 114M | 1 | [GitHub](https://github.com/raphaelmourad/LLM-for-genomics-training) |
 | Mistral-DNA | CausalLM | MixtralForCausalLM | ✅ | RaphaelMourad | 1M / 17M / 138M / 417M / 422M | 10 | [GitHub](https://github.com/raphaelmourad/Mistral-DNA) |
 | ModernBert-DNA | MaskedLM | ModernBert | ✅ | RaphaelMourad | 37M | 3 | [GitHub](https://github.com/raphaelmourad/LLM-for-genomics-training) |
-| megaDNA | CausalLM | MEGADNA | ⭕ | lingxusb | 78M / 145M / 277M | 3 | [arXiv](https://doi.org/10.48550/arXiv.2505.17257) |
+| megaDNA | CausalLM | MEGADNA | ⭕ | lingxusb | 78M / 145M / 277M | 4 | [arXiv](https://doi.org/10.48550/arXiv.2505.17257) |
 | MutBERT | MaskedLM | RoPEBert | ✅ | JadenLong | 86M | 3 | [bioRxiv](https://www.biorxiv.org/content/10.1101/2025.01.23.634452v2) |
 | OmniNA | CausalLM | Llama | ✅ | XLS | 66M / 220M | 2 | [bioRxiv](https://doi.org/10.1101/2024.01.14.575543) |
 | Omni-DNA | CausalLM | OLMoModel | ✅ | zehui127 | 20M / 60M / 116M / 300M / 700M / 1B | 6 | [arXiv](https://doi.org/10.48550/arXiv.2502.03499) |

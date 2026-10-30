@@ -152,7 +152,7 @@ Two rules to avoid the most common pitfalls:
    dnallm`) FIRST, then install torch from the index above. The editable
    install re-resolves `torch` from PyPI, whose default Windows wheel is the
    CPU build (`+cpu`) — it will silently replace a GPU torch installed
-   earlier. Respect the `torch<2.12` pin from `pyproject.toml`, e.g.:
+   earlier. Respect the `torch<2.15` pin from `pyproject.toml`, e.g.:
 
    ```bash
    # [pip lane]
@@ -170,10 +170,10 @@ Two rules to avoid the most common pitfalls:
    # Wrong:     2.11.0+cpu  None False  <-- pip fell back to the CPU wheel
    ```
 
-> **Note:** The `torch==2.11.0` pin above is the newest release satisfying
-> DNALLM's `torch<2.12` requirement. The PyTorch indexes also ship newer
-> versions (2.12+), which must NOT be used with the current DNALLM release.
-> Check the exact pins in `pyproject.toml` for your version.
+> **Note:** The `torch==2.11.0` pin above satisfies DNALLM's
+> `torch>=2.4.0,<2.15` requirement. The PyTorch indexes also ship newer
+> versions; torch 2.15 or above must NOT be used with the current DNALLM
+> release. Check the exact pins in `pyproject.toml` for your version.
 
 #### Windows with CUDA 13.0
 
@@ -259,16 +259,16 @@ lane matches your GPU generation, the [GPU Support Matrix](gpu_support.md).
 
 | Group | PyTorch Version | GPU Type | When to Use |
 |-------|----------------|----------|-------------|
-| **cpu** | 2.4.0-2.12 | CPU only | Development without GPU |
-| **cuda124** | 2.4.0-2.12 | NVIDIA | Most modern GPUs |
-| **cuda126** | 2.6.0-2.12 | NVIDIA (latest) | Ada/Hopper with Flash Attention |
-| **cuda128** | 2.6.0-2.12 | NVIDIA (cutting-edge) | RTX 5090 and latest hardware |
-| **cuda130** | 2.9.0-2.12 | NVIDIA (CUDA 13.0, Windows & Linux) — recommended | Newest driver / RTX 50-series, Windows with driver >= 580 |
-| **mamba** | 2.6.0-2.12 | NVIDIA + Mamba | Native Mamba architecture (requires CUDA) |
+| **cpu** | 2.4.0-2.15 | CPU only | Development without GPU |
+| **cuda124** | 2.4.0-2.15 | NVIDIA | Most modern GPUs |
+| **cuda126** | 2.6.0-2.15 | NVIDIA (latest) | Ada/Hopper with Flash Attention |
+| **cuda128** | 2.6.0-2.15 | NVIDIA (cutting-edge) | RTX 5090 and latest hardware |
+| **cuda130** | 2.9.0-2.15 | NVIDIA (CUDA 13.0, Windows & Linux) — recommended | Newest driver / RTX 50-series, Windows with driver >= 580 |
+| **mamba** | 2.6.0-2.15 | NVIDIA + Mamba | Native Mamba architecture (requires CUDA) |
 
-> **Note:** the cu121 lane was retired in v1.3. The `https://download.pytorch.org/whl/cu121` wheel index is FROZEN at torch 2.5.1 (re-verified 2026-10-14) — the retired extra's torch spec (`>=2.2.0,<2.12`) could never resolve past 2.5.1 on its own index, a dead lane under the core `torch>=2.4.0,<2.12` floor. Turing (20xx) GPUs are served by `cuda124`–`cuda128`.
+> **Note:** the cu121 lane was retired in v1.3. The `https://download.pytorch.org/whl/cu121` wheel index is FROZEN at torch 2.5.1 (re-verified 2026-10-14) — the retired extra's torch spec (`>=2.2.0,<2.12`) could never resolve past 2.5.1 on its own index, a dead lane under the core `torch>=2.4.0,<2.15` floor. Turing (20xx) GPUs are served by `cuda124`–`cuda128`.
 
-> **Note:** ROCm is not offered as an extra — the lane was never execution-tested on AMD hardware. AMD MI-series users can manually install torch from AMD's wheel lane — modern: `uv pip install torch --index-url https://download.pytorch.org/whl/rocm7.1` (torch 2.10/2.11, Linux x86_64 only, resolution-tested-only); older series: the rocm6.4 index tops out at torch 2.9.1. ROCm 7.2+ requires torch >=2.12, above dnallm's cap. This is a manual lane — dnallm makes no AMD claim.
+> **Note:** ROCm is not offered as an extra — the lane was never execution-tested on AMD hardware. AMD MI-series users can manually install torch from AMD's wheel lane — modern: `uv pip install torch --index-url https://download.pytorch.org/whl/rocm7.1` (torch 2.10/2.11, Linux x86_64 only, resolution-tested-only); older series: the rocm6.4 index tops out at torch 2.9.1. ROCm 7.2+ requires torch >=2.12 — within dnallm's `<2.15` pin range but untested. This is a manual lane — dnallm makes no AMD claim.
 
 > **Note:** Hardware groups are NOT included in `all` because the `cpu`/`cuda*` groups conflict with each other. Always combine a hardware group with your chosen feature group: e.g., `.[all,cuda124]`
 
