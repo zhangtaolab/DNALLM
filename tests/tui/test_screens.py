@@ -1664,7 +1664,7 @@ async def test_edit_an_existing_config_opens_it_through_the_core(tmp_path, monke
         screen.query_one("#entry-config-path", Input).value = str(config_file)
         await pilot.click("#entry-from-config")
         await pilot.pause()
-        active = isinstance(app.screen, ConfigScreen)
+        active = await _wait_until(lambda: isinstance(app.screen, ConfigScreen))
         await _settle_config(pilot, app)
 
     assert active
