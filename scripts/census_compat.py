@@ -1866,6 +1866,14 @@ DOCS_BROKEN_LEADS: dict[str, str] = {
         "the new library version removed or changed something its code "
         "depends on, so it cannot be loaded until the model authors update it"
     ),
+    # 28-06 G-28-2: the split-aware class - one measured shape (BigBird's)
+    # loads after its curated extra yet stays prediction-dead upstream, so a
+    # generic loading-failure lead would contradict its own suffix.
+    "load-works-prediction-blocked": (
+        "the model loads after installing its optional extra, but it cannot "
+        "make predictions because an upstream component it needs is no longer "
+        "available"
+    ),
 }
 
 # Class map (pattern: docs_blocked_reason): distinctive substrings of the
@@ -1880,11 +1888,13 @@ DOCS_BROKEN_LEADS: dict[str, str] = {
 # damaged-files key resolves to library-change.
 DOCS_BROKEN_LEAD_CLASSES: tuple[tuple[str, str], ...] = (
     ("non-persistent token_type_ids", "library-change"),
-    # 28-02 owner ruling A: BigBird's residual blocker after the deepspeed
-    # extra greens the load - the removed triton superblock API. Classifies
-    # as library-change, NOT external-package: installing something cannot
-    # fix a forward this dead (upstream removed the API deepspeed calls).
-    ("upstream-dead Triton API", "library-change"),
+    # 28-06 G-28-2: BigBird's measured split after the deepspeed extra greens
+    # the load - the forward blocker is the removed triton superblock API.
+    # Selects the split-aware lead class, NOT external-package (installing
+    # something cannot fix a forward this dead) and NOT the generic
+    # library-change lead (it would claim loading fails when the extra in
+    # fact enables it - the exact contradiction the UAT caught).
+    ("upstream-dead Triton API", "load-works-prediction-blocked"),
     ("checkpoint data defect", "damaged-files"),
     ("forward-contract", "own-defect"),
     ("outside dnallm's dependency set", "external-package"),

@@ -39,7 +39,7 @@ Of the 49 preset models, the team found 19 working as-is, 21 with their program 
 | DNABERT | Tested loading its code; full run inferred from the family model | `zhihan1996/DNA_bert_6` (full run tested on `zhangtaolab/plant-dnabert-BPE`) |
 | DNABERT-2 | Works with DNALLM's built-in compatibility fixes (tested) | `zhihan1996/DNABERT-2-117M` |
 | GENA-LM | Works with DNALLM's built-in compatibility fixes (tested) | `AIRI-Institute/gena-lm-bert-base` |
-| GENA-LM-BigBird | Not usable with the current transformers - the new library version removed or changed something its code depends on, so it cannot be loaded until the model authors update it (technical: load works with the deepspeed extra but forward is blocked by an upstream-dead Triton API) | `AIRI-Institute/gena-lm-bigbird-base-sparse` |
+| GENA-LM-BigBird | Not usable with the current transformers - the model loads after installing its optional extra, but it cannot make predictions because an upstream component it needs is no longer available (technical: load works with the deepspeed extra but forward is blocked by an upstream-dead Triton API) | `AIRI-Institute/gena-lm-bigbird-base-sparse` |
 | GENERanno | Works with DNALLM's built-in compatibility fixes (tested) | `lgq12697/GENERanno-eukaryote-0.5b-base` |
 | GENERator | Tested working | `GenerTeam/GENERator-eukaryote-1.2b-base` |
 | GPN | Not usable with the current transformers - the new library version removed or changed something its code depends on, so it cannot be loaded until the model authors update it (technical: ConvNetForMaskedLM not found in transformers 5.17.0) | `songlab/gpn-brassicales` |
