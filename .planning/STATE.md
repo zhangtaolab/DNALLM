@@ -4,10 +4,10 @@ milestone: v1.4
 current_phase: 28
 status: completed
 stopped_at: Phase 28 complete — all phases complete
-last_updated: "2026-10-30T12:28:32.198Z"
+last_updated: "2026-10-30T12:57:00.027Z"
 last_activity: 2026-10-30
 last_activity_desc: Phase 28 complete
-state_head: c08e8eeef7497bb6ccf5c26d52fef33359203f21
+state_head: 708d05bdc8812a011b72946768d34e930382893b
 progress:
   total_phases: 2
   completed_phases: 5
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-30)
 Phase: 28
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-10-30 - Completed quick task 261030-s4k: fix raw_reverse_complement no-op
+Last activity: 2026-10-30 - Completed quick task 261030-sga: test hygiene + numpy ceiling (final UAT-audit run)
 
 ## Performance Metrics
 
@@ -228,6 +228,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/
 | 261030-r96 | UAT docs truth sweep: 11 prose hits to DNA large language model(s) (6 registry paper titles kept), README uv run pytest to --no-sync (6 commands), phase 10 + 05 README deferred items flipped | 2026-10-30 | 205223a | [261030-r96-uat-audit-docs-truth-sweep-rewrite-dna-l](./quick/261030-r96-uat-audit-docs-truth-sweep-rewrite-dna-l/) |
 | 261030-rst | Close stale phase-12 mkdocs strict deferred item: flip to resolved with dated dual evidence (prior fix 47b9bc2 + fresh zero-warning MkDocs 1.6.1 strict build at 8b224ea) + hand-maintained-mirror preservation warning; HBG1/numpy bullets untouched | 2026-10-30 | aab4260 | [261030-rst-fix-marimo-mirror-broken-links-at-the-so](./quick/261030-rst-fix-marimo-mirror-broken-links-at-the-so/) |
 | 261030-s4k | Fix DNADataset.raw_reverse_complement no-op: assign ds.map result (data.py one-liner), 4 red-to-green tests incl. non-palindromic fixtures (lane 157 passed), phase 03 rc bullet flipped | 2026-10-30 | c08e8ee | [261030-s4k-fix-dnadataset-raw-reverse-complement-no](./quick/261030-s4k-fix-dnadataset-raw-reverse-complement-no/) |
+| 261030-sga | Test hygiene + numpy policy: import-time pytest logger sink isolation (no lib change, pre-existing logs preserved), timeout tests 60s to 3.9s, numpy>=2.0.0,<2.6 ceiling + coverage-incompat comment, 3 deferred bullets flipped | 2026-10-30 | 708d05b | [261030-sga-test-hygiene-plus-numpy-policy-autouse-c](./quick/261030-sga-test-hygiene-plus-numpy-policy-autouse-c/) |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
