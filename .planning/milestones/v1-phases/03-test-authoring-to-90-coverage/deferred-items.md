@@ -9,6 +9,7 @@
   **Status:** open
   **What:** `TestToolTimeout::test_tool_timeout_returns_error` and `test_timeout_error_structure` wrap coroutines sleeping 100s in `asyncio.wait_for(..., timeout=30)` — the wrapper's timeout fires at the full 30s wall clock each time (the sleep is not shortened). Pre-existing (out of scope for wave 3); shortening the server's `_tool_timeout_seconds` in those tests the way `test_timeout_configurable` already does would save ~60s per census.
 - DNADataset.raw_reverse_complement is a no-op: the Dataset.map result is discarded (dnallm/datahandling/data.py:983)
-  status: acknowledged
-  **Status:** open
+  status: resolved
+  **Status:** resolved
   **What:** `raw_reverse_complement` builds the complemented dataset via `ds.map(concat_fn, with_indices=True, desc="Reverse complementary")` but never assigns the returned dataset — the original `ds` is returned unchanged, so the requested ratio of sequences is never reverse-complemented (observable: sequences identical after `raw_reverse_complement(ratio=1.0)`). Found during 03-04 Task 2; pinned as-is by `test_raw_reverse_complement_leaves_sequences_unchanged` per the plan's "assert what it does" instruction. Recorded as a latent bug (03-01/03-02 precedent), not fixed: the lines are covered either way and fixing would change user-visible behavior outside this wave's bug-fix scope.
+  **Resolved:** 2026-10-30 — fixed in 5c95dc5 (`fix(datahandling): apply raw reverse-complement mapping`), which assigns the `Dataset.map` result back to `ds` before the return; the defect is now pinned shut by `test_raw_reverse_complement_rewrites_sampled_sequences` plus zero-ratio, fixed-seed same-rows, and DatasetDict split coverage in `TestAugmentation`. The behavior change was explicitly approved by the owner on 2026-10-30.
