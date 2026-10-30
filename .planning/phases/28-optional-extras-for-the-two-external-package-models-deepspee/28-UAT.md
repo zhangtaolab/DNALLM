@@ -3,7 +3,7 @@ status: complete
 phase: 28-optional-extras-for-the-two-external-package-models-deepspee
 source: [28-VERIFICATION.md]
 started: 2026-10-30T01:25:00+08:00
-updated: 2026-10-30T08:06:27.491Z
+updated: 2026-10-30T16:59:00+08:00
 ---
 
 ## Current Test
@@ -36,7 +36,9 @@ blocked: 0
 
 - gap_id: G-28-2
   truth: "A biologist cross-reading the guide and the generated compatibility page gets one consistent BigBird story (needs deepspeed to load; cannot run predictions)"
-  status: failed
+  status: resolved
+  resolved_by: 28-06-PLAN.md
+  resolved_at: 2026-10-30
   reason: "Agent-verified (owner-delegated): compatibility page BigBird row's class lead 'cannot be loaded until the model authors update it' contradicts its own split parenthetical and the guide's load-green fact; README extras table also missing BigBird/CrossDNA rows"
   severity: minor
   test: 2
