@@ -728,7 +728,7 @@ class GradioConfigGenerator:
 
                 benchmark_description = gr.Textbox(
                     label="Benchmark Description",
-                    value="Comparing DNA language models on various tasks",
+                    value="Comparing DNA large language models on various tasks",
                     interactive=True,
                 )
 
