@@ -38,4 +38,5 @@ unchanged — the audit acknowledge writer cannot anchor to table rows.)
 - cli/examples/generated_benchmark_config.yaml — 2 (comments) — Root legacy cli/ examples
 - CHANGELOG.md — historical entries — Append-only history — must NOT be rewritten
 - .planning/** — several — Planning artifacts, excluded from lint/gates
-  status: acknowledged
+  status: resolved
+  **Resolved 2026-10-30:** sweep commits acf8ebd and 19f5fc0 rewrote the 11 remaining prose/default-string hits (pyproject description, module docstrings in tests/models/test_model.py and tests/tasks/test_task.py, two guide pages, the CLI/UI benchmark-description defaults, and the two root cli/examples YAMLs); exactly six residual registry hits in dnallm/models/modeling_auto.py are verbatim paper titles kept by owner decision (AST-verified inside title values), and CHANGELOG.md plus unrelated planning history were not rewritten.
