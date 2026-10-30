@@ -1,6 +1,24 @@
 # Milestones
 
-**Closeout (v1.4):** verified_closeout — clean close. Pre-close artifact audit all-clear after the 4 open items were resolved for real (debug session closed, 2 quick summaries repaired, WINDOWS row-28 ledger reconciled — commit aed99ce); 10 carried suppressions disclosed in STATE.md Deferred Items; milestone audit `tech_debt` with 0 critical gaps.
+## v1.4 Pre-flight UX & Registry-as-Truth-Source — REOPEN close, Phases 27–28 (Shipped: 2026-10-30)
+
+**Phases completed:** 4 phases (27, 27.1, 27.2, 28), 19 plans — the reopened v1.4 line; the original Phases 22–26 close shipped 2026-10-22 (entry below)
+
+**Delivered (reopen):** the transformers-4/5 compatibility program — a 49-entry per-model compatibility census with import-level evidence and typed registry verdicts; remediation of all 8 unsupported presets (4 repaired behind measured compat rungs: GENERanno ROPE, DNABERT-2 ALiBi, GENA-LM buffer reset, MutBERT forward wrap; exact pip guidance for GPN/Omni-DNA); one registry-derived support vocabulary feeding docs, the TUI sixth column, and MCP listings; curated optional extras (`.[deepspeed]` for GENA-LM-BigBird, flash-attn extra for CrossDNA) with plain-language missing-extra interception and a dedicated nightly/dispatch extras CI lane; and IN-01..IN-06 tech-debt closure. Registry distribution final: 19/21/5/1-extra/3-broken/0-blocked over 49 pretrained.
+
+**Key accomplishments:**
+- Re-runnable census tool: 49 pretrained entries import-probed under transformers 5.17.0 (25 import-ok / 18 arch-ok / 4 import-fail / 2 census-blocked) plus 22 family-representative load+forward proofs
+- Generated plain-language compatibility page for biologists (49 honest rows) plus two independent locks: an offline CI drift gate that re-derives every row from the registry (deliberate-red proven both ways) and a dispatch-only fail-closed re-verification lane whose --verify diff turns red on world drift — including a transformers version bump (VERSION DRIFT)
+- The census lane can now exit 0 (sanctioned sha256-pinned mamba kernels in its install step; the exact lane command proven green on the runner-box replica: 49 matched / exit 0), and the "not working" rows lead with plain-language verdicts a biologist can act on
+- Transformers-5 remediation: four measured rungs restore GENERanno / DNABERT-2 / GENA-LM / MutBERT under transformers 5 (every registry flip backed by a stamped probe; idempotency-pinned across 61 rung tests); GPN/Omni-DNA carry exact install guidance; BigBird's deepspeed forward is measured structurally impossible upstream (load-green/forward-red split, ruling A) and CrossDNA flips green through the flash-attn extra
+- One support-word module (`dnallm/models/support.py`) now feeds the regenerated compatibility page, a plain-language optional-dependency guide, README, the TUI suitability column, and MCP listings — same words everywhere
+- Curated extras + interception + CI: `deepspeed`/`flash-attn` extras with version-band rationale, guided ImportError at both load wrap sites, `extras_compat.yml` nightly/dispatch lane with two independent gates behind `ci.yml`'s fourth selector (20 offline contracts green)
+- IN-01..IN-06 tech debt closed (300-char cell cap, gate-pinned summary counts, helper unit tests, kwargs-safe load-boundary bridge, lane uv provisioning)
+- DISP-01 deferred by owner decision after GitHub branch protection (GH006) made the approved option-a direct push structurally impossible: the registration commit `d661998` is preserved on local branch `wip/27.1-03-census-registration`, and DISP-01 moves to a post-v1.4→main-merge operator step (exactly one `--ref v1.4` dispatch, plus the extras lane's first live run T-28-09)
+
+---
+
+**Closeout (v1.4 reopen):** override_closeout — 1 item newly acknowledged (27.1-VERIFICATION gaps_found = DISP-01, owner defer-dispatch until v1.4→main merge), 3 carried forward from prior closes (see STATE.md Deferred Items). Milestone re-audit 2026-10-30: `tech_debt`, 13/14 contract items (the 14th is the same DISP-01), integration 11/11 seams WIRED, 0 critical gaps, no regressions vs archived 22–26 (`.planning/milestones/v1.4-MILESTONE-AUDIT.md` — final-state snapshot superseding the 10-22 and 10-28 versions, both in git history). No new milestone tag (`milestone/v1.4` from the original close stands); 28 quick tasks archived to `milestones/v1.4-quick/`.
 
 ## v1.4 Pre-flight UX & Registry-as-Truth-Source (Shipped: 2026-10-22)
 

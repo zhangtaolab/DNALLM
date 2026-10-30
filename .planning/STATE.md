@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.4
-current_phase: 28
-status: completed
+status: Awaiting next milestone
 stopped_at: Phase 28 complete — all phases complete
-last_updated: "2026-10-30T12:57:00.027Z"
+last_updated: "2026-10-30T13:18:35.195Z"
 last_activity: 2026-10-30
-last_activity_desc: Phase 28 complete
-state_head: 708d05bdc8812a011b72946768d34e930382893b
+last_activity_desc: Milestone v1.4 completed and archived
+state_head: 132126b5a1ec16a6d3df0f61da5e5b535392d4f0
 progress:
-  total_phases: 2
-  completed_phases: 5
-  total_plans: 9
-  completed_plans: 23
+  total_phases: 4
+  completed_phases: 4
+  total_plans: 19
+  completed_plans: 19
 milestone_name: Pre-flight UX & Registry-as-Truth-Source
+current_phase: 28
 ---
 
 Total Phases: 2
@@ -25,14 +25,14 @@ Total Phases: 2
 See: .planning/PROJECT.md (updated 2026-10-30)
 
 **Core value:** One terminal flow takes a user from their own data to a validated, model-compatible config, with the model registry as the runtime single source of truth (Track A first) — suite, coverage gate, and CI honest-green throughout.
-**Current focus:** Milestone v1.4 complete — Phase 28 (optional extras) closed verified+secured; next: `/gsd-complete-milestone v1.4`
+**Current focus:** Milestone v1.4 (incl. reopen Phases 27–28) closed & archived 2026-10-30 (override_closeout: DISP-01 owner-deferred to post-v1.4→main merge); next: `/gsd-new-milestone` — post-merge operator steps pending: census workflow registration + one `--ref v1.4` dispatch, extras lane first live run
 
 ## Current Position
 
-Phase: 28
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-10-30 - Completed quick task 261030-sga: test hygiene + numpy ceiling (final UAT-audit run)
+Phase: Milestone v1.4 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-30 — Milestone v1.4 completed and archived
 
 ## Performance Metrics
 
@@ -206,32 +206,15 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
-| 261024-dtw | Relax mamba Predictor device guard for Mac MPS (cuda/mps passthrough, fp32-only kept) + real-device darwin MPS smoke + FAQ cpu-only fix | 2026-10-24 | 9952ddc | [261024-dtw-relax-mamba-device-guard-in-predictor-to](./quick/261024-dtw-relax-mamba-device-guard-in-predictor-to/) |
-| 261025-e4v | mamba-ssm c++20 patch pipeline — sha256-pinned sdist patch+build pipeline in scripts/install_mamba.sh, CI test-mamba/example-nightly routing, docs sync | 2026-10-25 | ef91f8d | .planning/quick/261025-e4v-mamba-ssm-c-20-patch-pipeline-rework-scripts-install-mamba-s |
-| 261025-e4w | torch ceiling raise — pyproject.toml seven torch bounds <2.12 to <2.15, one commit citing GitHub run 40140203118 + dependabot cycle-record comment | 2026-10-25 | f00e90d | .planning/quick/261025-e4w-torch-ceiling-raise-pyproject-toml-seven-torch-bounds-2-12-t |
-| 261025-e4x | v1.4 lazy-facade shim regression — dnallm/_compat_activation.py meta-path lazy activation restores the import-dnallm compat contract; red-to-green regression tests; 100% module coverage | 2026-10-25 | fac22a0 | .planning/quick/261025-e4x-v1-4-lazy-facade-shim-regression-plain-import-dnallm-must-ag |
-| 5 | bump version to 1.4.1 (pyproject + version.py + changelog; version-contract 19 tests green) | 2026-10-25 | baf3445 | — |
-| 261025-vvv | Fix stale docs reference in README.md | 2026-10-25 | 967708e | /home/forrest/Github/DNALLM/.planning/quick/261025-vvv-fix-stale-docs-reference-in-readme-md |
-| 261025-vvw | Add regression test for config loader | 2026-10-25 | c0c6476 | /home/forrest/Github/DNALLM/.planning/quick/261025-vvw-add-regression-test-for-config-loader |
-| 261026-aij | Recalibrate example-nightly D-03 census assertion 216/217 -> 222/223 on v1.4 (+6 from 0885416) + dated 09 rollup note + D-12 path refresh | 2026-10-26 | 73f85bd | [261026-aij-recalibrate-the-example-nightly-d-03-cen](./quick/261026-aij-recalibrate-the-example-nightly-d-03-cen/) |
-| 261026-b34 | Per-lane workflow_dispatch selection for nightly lanes (run_coverage_nightly/run_example_nightly/run_test_mamba booleans, default true) + workflows README dispatch docs | 2026-10-26 | 9bf4b54 | [261026-b34-add-per-lane-workflow-dispatch-selection](./quick/261026-b34-add-per-lane-workflow-dispatch-selection/) |
-| 261026-g13 | Drop GitHub-side uv cache steps from self-hosted nightly lanes (27GB > 10GB cap + stalled uploads, local ~/.cache/uv persists) + record run 40247981840 census receipts in 09 rollup | 2026-10-26 | c626966 | [261026-g13-disable-github-side-uv-cache-save-on-sel](./quick/261026-g13-disable-github-side-uv-cache-save-on-sel/) |
-| 261028-vgn | Fix all 18 ty@0.0.84 diagnostics in dnallm/tui/workers.py: 16x error[unresolved-attribute] "Self@<worker> has no attribute post_message" across collect_env/validate_data/generate_config/edit_config/check_compatibility/local_availability_batch/probe_availability/download workers, plus 1x warning[unsupported-base] tqdm-union class base at line 258 and its fallout; repo rule: real fixes or line-level "# ty: ignore[code]" pragmas for library dynamics only, no severity overrides, no [tool.ty] excludes | 2026-10-28 | aeb34fa | /home/forrest/Github/DNALLM/.planning/quick/261028-vgn-fix-all-18-ty-0-0-84-diagnostics-in-dnallm-tui-workers-py-16 |
-| 261028-vgo | Fix 7 ty@0.0.84 error[invalid-assignment] diagnostics at dnallm/preflight/config_gen.py:190 (union-typed values assigned to DNALLMConfig TypedDict keys task/inference/finetune/lora/ia3/sweep/vep); single root cause, prefer a typed construction over per-line ignores | 2026-10-28 | b37017a | /home/forrest/Github/DNALLM/.planning/quick/261028-vgo-fix-7-ty-0-0-84-error-invalid-assignment-diagnostics-at-dnal |
-| 261028-vgp | Fix 3 ty@0.0.84 diagnostics in dnallm/utils/transformers_compat.py lines 1597-1601: error[unresolved-attribute] named_children and error[invalid-assignment] all_tied_weights_keys on a Protocol-with-one-member model type, plus warning[unused-ignore-comment] on the stale pragma at 1601; these lines are 27.1-02 (IN-04) load-boundary code, keep behavior identical | 2026-10-28 | e93f067 | /home/forrest/Github/DNALLM/.planning/quick/261028-vgp-fix-3-ty-0-0-84-diagnostics-in-dnallm-utils-transformers-com |
-| 261028-vgq | Fix 1 ty@0.0.84 error[invalid-assignment] at dnallm/tui/screens/download.py:291: DownloadOperation assigned to attribute _worker typed Worker[Any] \| None; align the declared type with what is actually stored | 2026-10-28 | 379d525 | /home/forrest/Github/DNALLM/.planning/quick/261028-vgq-fix-1-ty-0-0-84-error-invalid-assignment-at-dnallm-tui-scree |
-| 261028-vgr | Fix 1 ty@0.0.84 error[invalid-argument-type] at dnallm/preflight/availability.py:485: int() called on int \| None; guard or narrow per actual runtime contract | 2026-10-28 | 55d5d3f | /home/forrest/Github/DNALLM/.planning/quick/261028-vgr-fix-1-ty-0-0-84-error-invalid-argument-type-at-dnallm-prefli |
-| 261028-vgs | Add v1.4 to .github/workflows/ci.yml on.push.branches following the documented v1.3 entry pattern (2026-10-07 first-exposure lesson comment block) so the matrix legs incl. the ty hard gate run on v1.4 pushes before the v1.4-to-main merge | 2026-10-28 | c96bbb1 | /home/forrest/Github/DNALLM/.planning/quick/261028-vgs-add-v1-4-to-github-workflows-ci-yml-on-push-branches-followi |
-| 261029-c95 | Retarget registry GENERanno to lgq12697/GENERanno-eukaryote-0.5b-base with measured census disposition (remote-code-broken: ROPE init KeyError default under tf5.17, evidence pinned at ms commit 0ae1f40f), regenerate compat docs page (7 broken / 1 blocked, DOCS_DATA_DATE 2026-10-29), align broken-count pin 6->7; v1.5 backlog note for lgq12697 bulk ingestion (~130 entries) recorded in SUMMARY | 2026-10-29 | 1aa2364 | [261029-c95-retarget-registry-generanno-to-lgq12697-](./quick/261029-c95-retarget-registry-generanno-to-lgq12697-/) |
-| 261030-oix | Fix Phase-28 code-review findings WR-01+IN-01 in scripts/census_compat.py: 300-char status-cell cap + lead-map guard as fail-closed emit ValueErrors, with 2 targeted tests; page byte-identical | 2026-10-30 | e1ed477 | [261030-oix-fix-phase-28-code-review-findings-wr-01-](./quick/261030-oix-fix-phase-28-code-review-findings-wr-01-/) |
-| 261030-qxo | Close 4 stale UAT-audit items: flip resolved statuses with evidence (27.1 preset_loading ruff, 05 MCP host/port + interpret executor, 09 test_plot_for_regression) | 2026-10-30 | 007bb56 | [261030-qxo-close-4-stale-uat-audit-items-flip-resol](./quick/261030-qxo-close-4-stale-uat-audit-items-flip-resol/) |
-| 261030-r96 | UAT docs truth sweep: 11 prose hits to DNA large language model(s) (6 registry paper titles kept), README uv run pytest to --no-sync (6 commands), phase 10 + 05 README deferred items flipped | 2026-10-30 | 205223a | [261030-r96-uat-audit-docs-truth-sweep-rewrite-dna-l](./quick/261030-r96-uat-audit-docs-truth-sweep-rewrite-dna-l/) |
-| 261030-rst | Close stale phase-12 mkdocs strict deferred item: flip to resolved with dated dual evidence (prior fix 47b9bc2 + fresh zero-warning MkDocs 1.6.1 strict build at 8b224ea) + hand-maintained-mirror preservation warning; HBG1/numpy bullets untouched | 2026-10-30 | aab4260 | [261030-rst-fix-marimo-mirror-broken-links-at-the-so](./quick/261030-rst-fix-marimo-mirror-broken-links-at-the-so/) |
-| 261030-s4k | Fix DNADataset.raw_reverse_complement no-op: assign ds.map result (data.py one-liner), 4 red-to-green tests incl. non-palindromic fixtures (lane 157 passed), phase 03 rc bullet flipped | 2026-10-30 | c08e8ee | [261030-s4k-fix-dnadataset-raw-reverse-complement-no](./quick/261030-s4k-fix-dnadataset-raw-reverse-complement-no/) |
-| 261030-sga | Test hygiene + numpy policy: import-time pytest logger sink isolation (no lib change, pre-existing logs preserved), timeout tests 60s to 3.9s, numpy>=2.0.0,<2.6 ceiling + coverage-incompat comment, 3 deferred bullets flipped | 2026-10-30 | 708d05b | [261030-sga-test-hygiene-plus-numpy-policy-autouse-c](./quick/261030-sga-test-hygiene-plus-numpy-policy-autouse-c/) |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
+
+Items acknowledged and deferred at milestone close, most recent first:
+
+| Category | Item | Status | Deferred At | Milestone |
+|----------|------|--------|-------------|-----------|
+| verification_gaps | 27.1/27.1-VERIFICATION.md | gaps_found (DISP-01 census main-landing + one live dispatch; owner defer-dispatch until v1.4→main merge) | 2026-10-30 | v1.4 |
 
 Items acknowledged and deferred at milestone close, most recent first. The six 2026-10-11 post-close rows were promoted into v1.3 active scope as PKGH/PUBS/DOCR/WPAR requirement IDs (shipped); rows below remain carried.
 
@@ -259,6 +242,5 @@ Resume file: None
 
 ## Operator Next Steps
 
-- Pre-merge (v1.4→main): resolve the 27 first-party ty diagnostics (workers.py/config_gen.py/download.py/availability.py — see Session Continuity) or the coverage-gate ty hard gate goes red on first exposure; consider adding `v1.4` to ci.yml push triggers per the documented 2026-10-07 first-exposure lesson
-- Phase 27.1 execution status: plans 01 and 02 complete; plan 27.1-03 HALTED by owner defer-dispatch (DISP-01 not delivered). After the v1.4→main milestone merge PR lands, run exactly one `gh workflow run census_compat.yml --ref v1.4` and verify 49 matched records, the OK registry-match line, no UNEXPECTED, no VERSION DRIFT, and the `census-fresh-evidence` artifact; the preserved registration commit d661998 stays anchored on `wip/27.1-03-census-registration`
-- After Phase 27.1 closes, re-close the v1.4 line and start the next milestone with /gsd-new-milestone
+
+- Start the next milestone with /gsd-new-milestone

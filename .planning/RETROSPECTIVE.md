@@ -197,6 +197,41 @@ Registry-as-truth-source: cached read-only typed loader as sole parser of `model
 - 3 days wall (10-20 → 10-22), 228 commits, 170 files (+38,911/−328) — fastest plan-per-day rate to date despite a full TUI and the UI safety gate
 - Notable: heaviest single phase (25: 13 plans) absorbed its own gap closures plus a retroactive UI-SPEC without reopening
 
+## Milestone: v1.4 reopen — Compatibility Census & Remediation (Phases 27–28)
+
+**Shipped:** 2026-10-30
+**Phases:** 4 (27, 27.1, 27.2, 28) | **Plans:** 19
+
+### What Was Built
+- Per-model transformers-4/5 compatibility census over the 49 pretrained entries, import-level evidence, typed registry verdicts, generated plain-language docs behind a two-way-proven drift gate
+- Transformers-5 remediation: four measured compat rungs (GENERanno/DNABERT-2/GENA-LM/MutBERT), exact pip guidance for version-locked externals, honest split evidence for structurally-broken forwards
+- One support vocabulary module feeding docs, TUI, and MCP listings; curated deepspeed/flash-attn extras with guided interception and a dedicated nightly extras CI lane
+- IN-01..IN-06 tech-debt closure; UAT cross-milestone sweep closing 9 stale/deferred items + numpy `<2.6` ceiling
+
+### What Worked
+- Census discipline ("a disposition flips only on a measured green probe") held across three phases — zero unverified registry claims at close
+- The reopen mechanism: archive untouched, inserted phases carried the line to a clean second close with the audit re-run covering all four phases
+- Integration re-audit as close gate: 11/11 seams verified with live byte-identical regeneration proof
+
+### What Was Inefficient
+- DISP-01 churn: three owner touchpoints (option-a push → GH006 rejection → defer-dispatch) where the default-branch registration constraint could have been surfaced at plan time
+- The close-time CLI under-counted the reopen (saw only phases holding unchecked boxes) — post-close manual corrections needed for phase dirs, MILESTONES numbers, and closeout facts (a close-after-reopen edge case worth a GSD fix)
+- The 2026-10-30 UAT audit misjudged one item (mkdocs strict "partially fixed") on grep evidence alone — planner-level live verification corrected it; lesson: grep is not a verdict
+
+### Patterns Established
+- Owner-deferred operational steps ride the acknowledge mechanism with self-invalidation (artifact change resurfaces them) — no silent debt
+- Support words derive from one module; surfaces never hard-code them
+- Extras follow the mamba precedent: curated, version-banded, measured-green-only flips
+
+### Key Lessons
+- Dispatchable workflows register from the default branch only — plan the registration step relative to branch protection at design time, not at dispatch time
+- A cross-phase UAT audit pays for itself: 14 outstanding items → 9 closable in one day, several already-fixed-but-unrecorded
+- Replanning halted on evidence (the marimo mirror case) prevents destructive execution of a stale decision
+
+### Cost Observations
+- 3 days reopen wall (10-27 → 10-30), 313 commits over the original close
+- Model mix: opus planners / sonnet executors; 5 quick runs + 2 audit orchestrations same-day at close
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
