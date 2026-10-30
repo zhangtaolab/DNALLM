@@ -1903,6 +1903,13 @@ DOCS_BROKEN_LEAD_CLASSES: tuple[tuple[str, str], ...] = (
     ("not found in transformers", "library-change"),
 )
 
+# The full "What we found" cell cap (WR-01): the independent consistency gate
+# rejects any status cell over 300 characters, so the generator enforces the
+# same cap at render time -- an over-cap cell fails closed at emit instead of
+# being written for the gate to reject downstream. A cell at exactly this
+# length stays valid.
+DOCS_CELL_MAX_CHARS = 300
+
 # The technical cause is demoted to a parenthetical suffix bounded at a
 # word boundary, so no What-we-found cell can dominate the table layout.
 DOCS_TECHNICAL_FRAGMENT_MAX_CHARS = 100
@@ -1976,13 +1983,21 @@ def docs_broken_lead_class(evidence: str | None) -> str:
         The lead-class name (a key of :data:`DOCS_BROKEN_LEADS`).
 
     Raises:
-        ValueError: When the evidence matches no class key or is empty.
+        ValueError: When the evidence matches no class key, is empty, or the
+            matched class has no wording in :data:`DOCS_BROKEN_LEADS` (IN-01:
+            a lockstep-pair drift must fail closed through the emit
+            ValueError handler, never escape as a KeyError).
     """
     detail = _docs_evidence_detail(evidence)
     if not detail:
         raise ValueError("broken entry carries no evidence to classify")
     for needle, lead_class in DOCS_BROKEN_LEAD_CLASSES:
         if needle in detail:
+            if lead_class not in DOCS_BROKEN_LEADS:
+                raise ValueError(
+                    f"lead class {lead_class!r} matched by needle {needle!r} has no "
+                    "wording in DOCS_BROKEN_LEADS"
+                )
             return lead_class
     raise ValueError(f"broken evidence matches no plain-language lead class: {detail!r}")
 
@@ -2059,28 +2074,38 @@ def docs_status_cell(entry) -> str:
 
     Raises:
         ValueError: When the entry carries no census verdict or an unknown
-            one, or a broken/blocked entry carries no evidence to derive
-            its cause from.
+            one, a broken/blocked entry carries no evidence to derive
+            its cause from, or the rendered cell exceeds
+            :data:`DOCS_CELL_MAX_CHARS` (WR-01: a cell the independent
+            consistency gate would reject must fail closed at emit time,
+            never be written for the gate to catch).
     """
     status = entry.tf_compat_status
     if status is None:
         raise ValueError(f"registry entry {entry.model} carries no tf_compat_status")
     docs_status_cells = _docs_status_cells()
     if status in docs_status_cells:
-        return docs_status_cells[status]
-    if status == "remote-code-broken":
+        cell = docs_status_cells[status]
+    elif status == "remote-code-broken":
         cause = docs_broken_cause(entry.tf_compat_evidence)
         if not cause:
             raise ValueError(f"broken entry {entry.model} carries no cause evidence")
         lead = DOCS_BROKEN_LEADS[docs_broken_lead_class(entry.tf_compat_evidence)]
         fragment = docs_bound_technical_fragment(cause)
-        return f"Not usable with the current transformers - {lead} (technical: {fragment})"
-    if status == "census-blocked":
+        cell = f"Not usable with the current transformers - {lead} (technical: {fragment})"
+    elif status == "census-blocked":
         reason = docs_blocked_reason(entry.tf_compat_evidence)
         if not reason:
             raise ValueError(f"blocked entry {entry.model} carries no reason evidence")
-        return f"Could not be checked ({reason})"
-    raise ValueError(f"unknown tf_compat_status {status!r} on {entry.model}")
+        cell = f"Could not be checked ({reason})"
+    else:
+        raise ValueError(f"unknown tf_compat_status {status!r} on {entry.model}")
+    if len(cell) > DOCS_CELL_MAX_CHARS:
+        raise ValueError(
+            f"status cell for {entry.model} is {len(cell)} characters long, over the "
+            f"{DOCS_CELL_MAX_CHARS}-character cap"
+        )
+    return cell
 
 
 def docs_details_cell(entry) -> str:
