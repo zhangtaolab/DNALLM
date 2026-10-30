@@ -2096,6 +2096,9 @@ async def test_skipping_the_download_reaches_the_summary_without_downloading() -
         await pilot.pause()
         summary = app.screen
         assert isinstance(summary, SummaryScreen)
+        # Header mounts HeaderTitle asynchronously; poll for it before rendering.
+        header_mounted = await _wait_until(lambda: len(summary.query("HeaderTitle")) == 1)
+        assert header_mounted, "summary HeaderTitle did not mount within the poll window"
         text = _rendered_text(summary)
 
     assert downloader.calls == []
