@@ -570,20 +570,24 @@ DNALLM-Suite includes a comprehensive test suite with 2,500+ test cases:
 # Install test dependencies first (the mcp extra provides the langchain/pydantic_ai
 # imports needed by the MCP example tests)
 uv pip install -e '.[test,dev,mcp]'
+```
 
+The `--no-sync` flag reuses the environment created by the install command above.
+
+```bash
 # Run all tests
-uv run pytest
+uv run --no-sync pytest
 
 # Run the fast lane only (as CI does on every push/PR)
-uv run pytest -m "not slow"
+uv run --no-sync pytest -m "not slow"
 
 # Run specific test categories
-uv run pytest tests/inference/ -v
-uv run pytest tests/mcp/ -v
-uv run pytest tests/tasks/ -v
+uv run --no-sync pytest tests/inference/ -v
+uv run --no-sync pytest tests/mcp/ -v
+uv run --no-sync pytest tests/tasks/ -v
 
 # Run with coverage
-uv run pytest --cov=dnallm --cov-report=html
+uv run --no-sync pytest --cov=dnallm --cov-report=html
 ```
 
 CI runs the fast lane (2,522 tests) with a >=90% coverage gate on every push and pull request (Python 3.11/3.12/3.13 × numpy 2.2.0, plus a Windows leg). The slow, network-dependent suite (real-model downloads) and a nightly example-execution census that runs the `example/` notebooks and demo apps end-to-end execute on a self-hosted GPU runner (see `.github/workflows/ci.yml`).
