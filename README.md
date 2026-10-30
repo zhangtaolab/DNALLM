@@ -275,6 +275,8 @@ These models are listed below:
 | megaDNA  | CausalLM   | [Hugging Face](https://huggingface.co/lingxusb) | [GitHub](https://github.com/lingxusb/megaDNA) |
 | LucaOne  | CausalLM   | [Hugging Face](https://huggingface.co/collections/LucaGroup/lucaone-689c4c52fc6577441093f208) | [GitHub](https://github.com/LucaOne/LucaOne) |
 | Omni-DNA | CausalLM   | [Hugging Face](https://huggingface.co/collections/zehui127/omni-dna-67a2230c352d4fd8f4d1a4bd) | [ai2-olmo package](docs/user_guide/optional_dependencies.md) — pins `numpy<2`, use a separate environment |
+| GENA-LM-BigBird | MaskedLM | [Hugging Face](https://huggingface.co/AIRI-Institute/gena-lm-bigbird-base-sparse) | [deepspeed extra](docs/user_guide/optional_dependencies.md#gena-lm-bigbird) — required to load; predictions remain blocked upstream |
+| CrossDNA | MaskedLM | [Hugging Face](https://huggingface.co/chengCCC/CrossDNA_pretrain) | [flash-attn extra](docs/user_guide/optional_dependencies.md#crossdna) — works after installation (Linux + CUDA) |
 
 The installation method for the dependencies of these models can be found **[here](docs/getting_started/installation.md)**.
 

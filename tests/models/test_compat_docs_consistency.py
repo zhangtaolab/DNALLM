@@ -712,3 +712,47 @@ class TestGuideDiscovery:
             "README lost the supported-models statement that support varies by "
             "model and transformers version"
         )
+
+    def test_readme_special_model_table_carries_bigbird_and_crossdna_rows(self):
+        """The two curated-extra models are discoverable in the README table.
+
+        28-06 G-28-2: both rows must carry the direct model link, the
+        section-specific guide anchor, and the same honest support story as
+        the generated compatibility page (BigBird: extra required to load,
+        predictions still blocked upstream; CrossDNA: works after install on
+        Linux + CUDA). Scoping is mandatory: CrossDNA also appears in
+        README's general supported-model list, so a whole-file substring
+        assertion could not prove the table row exists.
+        """
+        readme = README_PAGE.read_text(encoding="utf-8")
+        heading = re.search(
+            r"^#+\s+Install Dependencies for Special Models\s*$", readme, flags=re.MULTILINE
+        )
+        assert heading, "README lost the special-model dependency table heading"
+        following = readme[heading.end() :]
+        paragraph = re.search(r"^The installation method", following, flags=re.MULTILINE)
+        assert paragraph, "README lost the installation-method paragraph that ends the table region"
+        table_lines = [
+            line for line in following[: paragraph.start()].splitlines() if line.startswith("|")
+        ]
+        bigbird = [line for line in table_lines if "GENA-LM-BigBird" in line]
+        crossdna = [line for line in table_lines if "CrossDNA" in line]
+        assert len(bigbird) == 1, (
+            "the special-model table must carry exactly one GENA-LM-BigBird row"
+        )
+        assert len(crossdna) == 1, "the special-model table must carry exactly one CrossDNA row"
+        # Both rows are typed MaskedLM, matching the registry task_type (mask).
+        assert bigbird[0].count("| MaskedLM |") == 1, "BigBird row must be typed MaskedLM"
+        assert crossdna[0].count("| MaskedLM |") == 1, "CrossDNA row must be typed MaskedLM"
+        # BigBird: direct model link, section anchor, honest load/prediction split.
+        assert "https://huggingface.co/AIRI-Institute/gena-lm-bigbird-base-sparse" in bigbird[0]
+        assert "docs/user_guide/optional_dependencies.md#gena-lm-bigbird" in bigbird[0]
+        assert "deepspeed extra" in bigbird[0]
+        assert "required to load" in bigbird[0]
+        assert "predictions remain blocked upstream" in bigbird[0]
+        # CrossDNA: direct model link, section anchor, tested extra route.
+        assert "https://huggingface.co/chengCCC/CrossDNA_pretrain" in crossdna[0]
+        assert "docs/user_guide/optional_dependencies.md#crossdna" in crossdna[0]
+        assert "flash-attn extra" in crossdna[0]
+        assert "works after installation" in crossdna[0]
+        assert "Linux + CUDA" in crossdna[0]
