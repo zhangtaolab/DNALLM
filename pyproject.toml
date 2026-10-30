@@ -1,7 +1,7 @@
 [project]
 name = "dnallm"
 version = "1.4.1"
-description = "A comprehensive toolkit for fine-tuning and inference with DNA Language Models"
+description = "A comprehensive toolkit for fine-tuning and inference with DNA Large Language Models"
 readme = "README.md"
 requires-python = ">=3.11"
 keywords = ["dna", "language-model", "bioinformatics", "machine-learning", "genomics"]

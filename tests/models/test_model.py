@@ -1,7 +1,7 @@
 """Tests for DNA model loading and management utilities.
 
 This module tests the functions for downloading, loading, and managing
-DNA language models from various sources.
+DNA large language models from various sources.
 
 """
 

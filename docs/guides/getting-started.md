@@ -6,7 +6,7 @@ title: Getting Started
 
 # Getting Started
 
-The 15-minute path from a clean machine to a fine-tuned DNA language model: install, load a pre-trained model, run one inference, run one fine-tune. Everything below runs on CPU; add a GPU extra when you want speed (one command, linked below — not duplicated here).
+The 15-minute path from a clean machine to a fine-tuned DNA large language model: install, load a pre-trained model, run one inference, run one fine-tune. Everything below runs on CPU; add a GPU extra when you want speed (one command, linked below — not duplicated here).
 
 For the complete install matrix (CUDA lanes, NPU/XPU, Mamba, plain-pip GPU quirks) see the [Installation Guide](../getting_started/installation.md); for runnable examples of every workflow see the [Quick Start](../getting_started/quick_start.md).
 

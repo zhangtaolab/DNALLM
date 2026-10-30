@@ -1,6 +1,6 @@
 # Optional Dependencies and Support
 
-DNALLM loads DNA language models through a widely used AI library called
+DNALLM loads DNA large language models through a widely used AI library called
 *transformers* — the software that downloads a model's files and runs it.
 Every preset model that ships with DNALLM was tested against transformers 5,
 and the per-model results live in the generated
