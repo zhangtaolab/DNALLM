@@ -154,6 +154,10 @@ None - no external service configuration required.
 
 Phase 28 plan 6 of 6 complete — all plans of the phase now have summaries; the phase is ready for verification/close-out. Owner ruling A remains intact in registry and census data.
 
+## Self-Check: PASSED
+
+All 5 modified files plus this SUMMARY exist on disk; all 4 commits (059a9cc, 29f3cb7, 3eb2387, b4892ab) are ancestors of HEAD; evaluation-scope resolved plan 28-06 with commits on this branch.
+
 ---
 *Phase: 28-optional-extras-for-the-two-external-package-models-deepspee*
 *Completed: 2026-10-30*

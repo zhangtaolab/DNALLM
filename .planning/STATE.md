@@ -4,11 +4,11 @@ milestone: v1.4
 current_phase: 28
 current_phase_name: "Optional extras: deepspeed & flash-attn model support"
 status: verifying
-stopped_at: Completed 28-04-PLAN.md
-last_updated: "2026-10-29T17:00:11.757Z"
-last_activity: 2026-10-29
+stopped_at: Completed 28-06-PLAN.md
+last_updated: "2026-10-30T08:42:20.331Z"
+last_activity: 2026-10-30
 last_activity_desc: Phase 28 execution started
-state_head: 81d83e249c373c4db4b69b685205a6dd063342b4
+state_head: b4892ab8f725273ff210e25164a36f21b34aa708
 progress:
   total_phases: 2
   completed_phases: 5
@@ -31,9 +31,9 @@ See: .planning/PROJECT.md (updated 2026-10-29)
 ## Current Position
 
 Phase: 28 (Optional extras: deepspeed & flash-attn model support) — EXECUTING
-Plan: 5 of 5
+Plan: 6 of 6
 Status: Phase complete — ready for verification
-Last activity: 2026-10-29 — Phase 28 execution started
+Last activity: 2026-10-30 — Phase 28 execution started
 
 ## Performance Metrics
 
@@ -76,6 +76,7 @@ Last activity: 2026-10-29 — Phase 28 execution started
 | Phase 28 P03 | 11min | 2 tasks | 10 files |
 | Phase 28 P05 | 8min | 2 tasks | 7 files |
 | Phase 28 P04 | 18min | 2 tasks | 4 files |
+| Phase 28 P06 | 10 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -183,6 +184,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 28]: 28-05: residue-gate companion — test_extras_guard sanctioned entries track reworded README/troubleshooting lines in the same commits that reword them (28-01 gate-move precedent)
 - [Phase 28]: 28-04: extras lane is ruling-A shaped end to end — gate 1 asserts CrossDNA fully green + BigBird load-green/forward-red AT the superblock cause (pre-ruling 'both green' wording impossible), gate 2 is the committed --verify over the 49-row artifact (CrossDNA extra-required-tf5 / BigBird remote-code-broken); probe runs through a runtime-generated diff-proven length-64 census copy, committed tool pinned never --run in this lane
 - [Phase 28]: 28-04: seed-strip discipline — the lane nulls the two seeded loads before probing (apply_loads carries a prior passed load instead of re-fetching), so every run re-measures; ci.yml reaches the lane only via dispatch-gated workflow_call with no schedule arm, extras_compat.yml owns the 04:00 UTC cron (exactly-once nightly + dispatch); first live dispatch stays a post-merge operator step
+- [Phase 28]: BigBird split-aware lead class (load-works-prediction-blocked) keyed on the existing upstream-dead-Triton needle; README special-model table gains BigBird + CrossDNA rows with guide anchors; G-28-2 closed with ruling A intact
 
 ### Pending Todos
 
@@ -240,8 +242,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-29T17:00:11.682Z
-Stopped at: Completed 28-04-PLAN.md
+Last session: 2026-10-30T08:42:10.959Z
+Stopped at: Completed 28-06-PLAN.md
 Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)

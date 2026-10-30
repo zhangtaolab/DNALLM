@@ -92,7 +92,7 @@ Plans:
 **Goal:** Make the two fixable external-package models installable via curated optional extras, following the mamba-extra precedent: `.[deepspeed]` for GENA-LM-BigBird and a flash-attn extra for CrossDNA (uv index pinning / sha256-pinned installer as needed), with CI lanes covering the extras. Dispositions flip only on a measured green probe in an extras-equipped environment (census discipline); GPN/Omni-DNA stay version-locked guidance cases. Support words, docs (optional_dependencies.md, model_compatibility.md), and handler error messages update to name the extras.
 **Requirements**: TBD (owner decision 2026-10-29: option 1 chosen — extras over isolated-venv recipe or status quo)
 **Depends on:** Phase 27.2
-**Plans:** 5/5 plans executed + 1 gap-closure plan (28-06, UAT G-28-2)
+**Plans:** 6/6 plans executed + 1 gap-closure plan (28-06, UAT G-28-2)
 
 Plans:
 **Wave 1**
@@ -107,7 +107,7 @@ Plans:
 - [x] 28-04-PLAN.md — Dedicated nightly/dispatch extras lane, fourth CI selector, two pass gates, and offline workflow contracts (D-02, D-05..D-08, D-12)
 
 **Wave 4** *(gap closure — blocked on Plans 02–05)*
-- [ ] 28-06-PLAN.md — UAT G-28-2: split-aware BigBird compatibility lead and README BigBird/CrossDNA extra rows
+- [x] 28-06-PLAN.md — UAT G-28-2: split-aware BigBird compatibility lead and README BigBird/CrossDNA extra rows
 
 ## Backlog
 
