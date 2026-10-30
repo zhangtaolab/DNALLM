@@ -43,6 +43,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, VerticalScroll
 from textual.coordinate import Coordinate
+from textual.css.query import NoMatches
 from textual.screen import Screen
 from textual.widgets import Button, DataTable, Footer, Header, Input, Static
 
@@ -405,7 +406,15 @@ class SuitabilityScreen(Screen):
 
     def _refresh_availability_cells(self) -> None:
         """Rewrite only the availability column, keeping every other cell."""
-        listing = self.query_one(f"#{_LISTING_TABLE_ID}", DataTable)
+        try:
+            listing = self.query_one(f"#{_LISTING_TABLE_ID}", DataTable)
+        except NoMatches:
+            # A local batch for the current report can arrive before the
+            # listing table is mounted (the worker message does not wait for
+            # compose). Both state stores were already updated by the caller,
+            # so there is no table to repaint yet — the stored availability
+            # is what the cells are built from when the table does mount.
+            return
         for position, entry in enumerate(self._listing):
             if position >= listing.row_count:
                 return

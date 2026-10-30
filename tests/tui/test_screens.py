@@ -2664,6 +2664,37 @@ async def test_a_local_batch_is_only_valid_for_the_report_on_screen(monkeypatch)
     assert still is current
 
 
+async def test_a_local_batch_before_the_listing_mounts_stores_state_without_raising(
+    monkeypatch,
+) -> None:
+    """A local batch landing before the listing table mounts must not raise.
+
+    Windows CI run 41081401307 (PR #69): the current report's local batch
+    reached the screen before ``#suitability-listing`` existed, so the
+    refresh crashed on the listing query after both state writes had already
+    happened. A bare screen that is never run reproduces that moment
+    deterministically — no Pilot, no worker, no message ordering.
+    """
+    report = _synthetic_report()
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+    screen = SuitabilityScreen()
+    screen._report = report
+    screen._listing = list(report.listing)
+    # A bare screen has no app of its own; hand it the real (unrunning) app so
+    # the hook's state writes land in a real WizardState.
+    monkeypatch.setattr(SuitabilityScreen, "_preflight_app", property(lambda self: app))
+
+    assert not screen.query("#suitability-listing")
+    cached = AvailabilityReport(state=AvailabilityState.CACHED)
+    await screen.apply_compatibility_ready(
+        report, {report.listing[0].model: cached}, screen._generation
+    )
+
+    # The batch was stored in both places — the exact object, not a copy.
+    assert app.state.availability_by_entry[report.listing[0].model] is cached
+    assert screen._local_by_model[report.listing[0].model] is cached
+
+
 async def test_a_check_with_no_listing_clears_the_stale_selection(monkeypatch) -> None:
     """WR-07: "Use this model" can never point at a row that left the screen."""
     first = _synthetic_report()
