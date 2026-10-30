@@ -4,10 +4,10 @@ milestone: v1.4
 current_phase: 28
 status: completed
 stopped_at: Phase 28 complete — all phases complete
-last_updated: "2026-10-30T09:57:17.063Z"
+last_updated: "2026-10-30T11:36:57.400Z"
 last_activity: 2026-10-30
 last_activity_desc: Phase 28 complete
-state_head: e1ed4774bd220460da0ee6cdb6b64340fcf9253e
+state_head: 007bb560fc889235c01d7fbc5c0858d20cff2afa
 progress:
   total_phases: 2
   completed_phases: 5
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-30)
 Phase: 28
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-10-30 — Phase 28 complete
+Last activity: 2026-10-30 - Completed quick task 261030-qxo: Close 4 stale UAT-audit items
 
 ## Performance Metrics
 
@@ -224,6 +224,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/
 | 261028-vgs | Add v1.4 to .github/workflows/ci.yml on.push.branches following the documented v1.3 entry pattern (2026-10-07 first-exposure lesson comment block) so the matrix legs incl. the ty hard gate run on v1.4 pushes before the v1.4-to-main merge | 2026-10-28 | c96bbb1 | /home/forrest/Github/DNALLM/.planning/quick/261028-vgs-add-v1-4-to-github-workflows-ci-yml-on-push-branches-followi |
 | 261029-c95 | Retarget registry GENERanno to lgq12697/GENERanno-eukaryote-0.5b-base with measured census disposition (remote-code-broken: ROPE init KeyError default under tf5.17, evidence pinned at ms commit 0ae1f40f), regenerate compat docs page (7 broken / 1 blocked, DOCS_DATA_DATE 2026-10-29), align broken-count pin 6->7; v1.5 backlog note for lgq12697 bulk ingestion (~130 entries) recorded in SUMMARY | 2026-10-29 | 1aa2364 | [261029-c95-retarget-registry-generanno-to-lgq12697-](./quick/261029-c95-retarget-registry-generanno-to-lgq12697-/) |
 | 261030-oix | Fix Phase-28 code-review findings WR-01+IN-01 in scripts/census_compat.py: 300-char status-cell cap + lead-map guard as fail-closed emit ValueErrors, with 2 targeted tests; page byte-identical | 2026-10-30 | e1ed477 | [261030-oix-fix-phase-28-code-review-findings-wr-01-](./quick/261030-oix-fix-phase-28-code-review-findings-wr-01-/) |
+| 261030-qxo | Close 4 stale UAT-audit items: flip resolved statuses with evidence (27.1 preset_loading ruff, 05 MCP host/port + interpret executor, 09 test_plot_for_regression) | 2026-10-30 | 007bb56 | [261030-qxo-close-4-stale-uat-audit-items-flip-resol](./quick/261030-qxo-close-4-stale-uat-audit-items-flip-resol/) |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
