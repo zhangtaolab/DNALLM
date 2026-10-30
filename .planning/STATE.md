@@ -4,10 +4,10 @@ milestone: v1.4
 current_phase: 28
 status: completed
 stopped_at: Phase 28 complete — all phases complete
-last_updated: "2026-10-30T11:36:57.400Z"
+last_updated: "2026-10-30T12:00:31.699Z"
 last_activity: 2026-10-30
 last_activity_desc: Phase 28 complete
-state_head: 007bb560fc889235c01d7fbc5c0858d20cff2afa
+state_head: 205223a4e0c3362f3a29902eb669137835ea521f
 progress:
   total_phases: 2
   completed_phases: 5
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-30)
 Phase: 28
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-10-30 - Completed quick task 261030-qxo: Close 4 stale UAT-audit items
+Last activity: 2026-10-30 - Completed quick task 261030-r96: UAT docs truth sweep (terminology + README)
 
 ## Performance Metrics
 
@@ -225,6 +225,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/
 | 261029-c95 | Retarget registry GENERanno to lgq12697/GENERanno-eukaryote-0.5b-base with measured census disposition (remote-code-broken: ROPE init KeyError default under tf5.17, evidence pinned at ms commit 0ae1f40f), regenerate compat docs page (7 broken / 1 blocked, DOCS_DATA_DATE 2026-10-29), align broken-count pin 6->7; v1.5 backlog note for lgq12697 bulk ingestion (~130 entries) recorded in SUMMARY | 2026-10-29 | 1aa2364 | [261029-c95-retarget-registry-generanno-to-lgq12697-](./quick/261029-c95-retarget-registry-generanno-to-lgq12697-/) |
 | 261030-oix | Fix Phase-28 code-review findings WR-01+IN-01 in scripts/census_compat.py: 300-char status-cell cap + lead-map guard as fail-closed emit ValueErrors, with 2 targeted tests; page byte-identical | 2026-10-30 | e1ed477 | [261030-oix-fix-phase-28-code-review-findings-wr-01-](./quick/261030-oix-fix-phase-28-code-review-findings-wr-01-/) |
 | 261030-qxo | Close 4 stale UAT-audit items: flip resolved statuses with evidence (27.1 preset_loading ruff, 05 MCP host/port + interpret executor, 09 test_plot_for_regression) | 2026-10-30 | 007bb56 | [261030-qxo-close-4-stale-uat-audit-items-flip-resol](./quick/261030-qxo-close-4-stale-uat-audit-items-flip-resol/) |
+| 261030-r96 | UAT docs truth sweep: 11 prose hits to DNA large language model(s) (6 registry paper titles kept), README uv run pytest to --no-sync (6 commands), phase 10 + 05 README deferred items flipped | 2026-10-30 | 205223a | [261030-r96-uat-audit-docs-truth-sweep-rewrite-dna-l](./quick/261030-r96-uat-audit-docs-truth-sweep-rewrite-dna-l/) |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
