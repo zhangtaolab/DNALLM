@@ -1011,6 +1011,86 @@ class TestDocsBlockedReason:
             census.docs_blocked_reason("hf org/repo@sha; an unforeseen blocking shape")
 
 
+class TestDocsFailClosedGuards:
+    """WR-01 / IN-01 (Phase-28 review): emit fails closed, never writes.
+
+    Both guards are proven at the real public emit boundary --
+    ``emit_docs`` -> ``docs_page_text`` -> ``docs_status_cell`` -- through a
+    synthetic pretrained entry served by a monkeypatched registry, so the
+    fail-closed verdict is exercised all the way to the no-destination-write
+    guarantee, never only on a private helper. The registry accessors are
+    patched on ``dnallm.models.registry`` itself because ``docs_page_text``
+    imports both at call time.
+    """
+
+    @staticmethod
+    def _serve_entry(monkeypatch, entry) -> None:
+        """Serve one synthetic pretrained entry through the real accessors."""
+        import dnallm.models.registry as registry_module
+
+        monkeypatch.setattr(registry_module, "all_entries", lambda: [entry])
+        monkeypatch.setattr(registry_module, "sort_key_lab_first", lambda e: (0, e.name))
+
+    @staticmethod
+    def _broken_entry(evidence: str):
+        """Return a synthetic pretrained remote-code-broken registry entry."""
+        return SimpleNamespace(
+            name="Synthetic Broken Model",
+            model="synth/broken",
+            kind="pretrained",
+            tf_compat_status="remote-code-broken",
+            tf_compat_tested="5.17.0",
+            tf_compat_evidence=evidence,
+        )
+
+    def test_over_cap_status_cell_fails_closed_before_writing(
+        self, monkeypatch, tmp_path, capsys
+    ) -> None:
+        # WR-01: the longest lead in the map (load-works-prediction-blocked,
+        # 145 chars) plus a 120-non-space-char first cause clause yields the
+        # maximal 101-char bounded fragment, rendering a 303-char cell -- 3
+        # over the 300-character cap the independent consistency gate
+        # enforces. The generator must refuse to write that page itself.
+        evidence = (
+            "ms synth/broken@e66bf25; "
+            + "x" * 120
+            + "; load works with the deepspeed extra but forward is blocked by "
+            "an upstream-dead Triton API"
+        )
+        self._serve_entry(monkeypatch, self._broken_entry(evidence))
+        destination = tmp_path / "model_compatibility.md"
+
+        assert census.emit_docs(destination) == 1
+        assert not destination.exists()
+        out = capsys.readouterr().out
+        assert "ERROR" in out
+        assert "synth/broken" in out
+        assert "300" in out
+
+    def test_lead_class_missing_from_wording_map_fails_closed_not_keyerror(
+        self, monkeypatch, tmp_path, capsys
+    ) -> None:
+        # IN-01: a class-map entry resolving to a lead class absent from
+        # DOCS_BROKEN_LEADS (a lockstep-pair typo on either side) must fail
+        # through the emit ValueError handler with a clean ERROR + exit 1,
+        # never escape as a raw KeyError traceback.
+        evidence = "ms synth/broken@e66bf25; a synthetic failure detail needle"
+        self._serve_entry(monkeypatch, self._broken_entry(evidence))
+        monkeypatch.setattr(
+            census,
+            "DOCS_BROKEN_LEAD_CLASSES",
+            (("a synthetic failure detail needle", "typo-class-without-wording"),),
+        )
+        destination = tmp_path / "model_compatibility.md"
+
+        assert census.emit_docs(destination) == 1
+        assert not destination.exists()
+        out = capsys.readouterr().out
+        assert "ERROR" in out
+        assert "typo-class-without-wording" in out
+        assert "DOCS_BROKEN_LEADS" in out
+
+
 class TestDocsSharedVocabulary:
     """The generated page's status wording is the shared support vocabulary (D-16).
 
