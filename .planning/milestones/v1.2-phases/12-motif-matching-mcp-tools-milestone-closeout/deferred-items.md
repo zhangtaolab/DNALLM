@@ -44,7 +44,16 @@
   mkdocs nav/strict validation, regenerate the marimo mirrors with absolute
   doc paths, or accept and switch the strict gate on after fixing the
   CONTRIBUTING link. Recorded here per the executor scope-boundary rule.
-  status: acknowledged
+  status: resolved
+  **Resolved 2026-10-30:** commit 47b9bc2
+  (docs(19-01): strict-clean — 15 mkdocs warnings to zero) already fixed all
+  15 warnings. Fresh verification at HEAD 8b224ea with MkDocs 1.6.1:
+  .venv/bin/mkdocs build --strict exited 0 with zero WARNING lines. The three
+  docs/example/marimo mirrors are hand-maintained; their Prerequisites,
+  Overview, and See-Also prose lives only in the mirrors.
+  scripts/generate_md_from_marimo.py is bootstrap scaffolding only, and a
+  dry-run regeneration produced extensive non-link deletions. Do not
+  regenerate without a preservation redesign.
 
 ## [Code review — Phase 12 IN-05] numpy 2.5.x cannot be instrumented by coverage on Python 3.13
 
