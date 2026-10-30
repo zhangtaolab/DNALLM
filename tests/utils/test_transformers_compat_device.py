@@ -283,7 +283,7 @@ class TestConsumerShimOrdering:
         runtime_imports = [
             node
             for node in tree.body
-            if isinstance(node, ast.ImportFrom) and node.module == ".models"
+            if isinstance(node, ast.ImportFrom) and node.level == 1 and node.module == "models"
         ]
         assert runtime_imports == [], (
             "dnallm/__init__.py must not eagerly import .models -- the ordering guarantee "
