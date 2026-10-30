@@ -3,10 +3,10 @@ gsd_state_version: "1.0"
 milestone: v1.4
 status: Awaiting next milestone
 stopped_at: Phase 28 complete — all phases complete
-last_updated: "2026-10-30T13:18:35.195Z"
+last_updated: "2026-10-30T14:12:07.238Z"
 last_activity: 2026-10-30
 last_activity_desc: Milestone v1.4 completed and archived
-state_head: 132126b5a1ec16a6d3df0f61da5e5b535392d4f0
+state_head: c90e340c595fb588a9849524b7b31fd30138aeec
 progress:
   total_phases: 4
   completed_phases: 4
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-30)
 Phase: Milestone v1.4 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-30 — Milestone v1.4 completed and archived
+Last activity: 2026-10-30 - Completed quick task 261030-uck: fix TUI HeaderTitle mount flake (post-close CI hardening)
 
 ## Performance Metrics
 
@@ -206,6 +206,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 261030-uck | Fix TUI HeaderTitle mount-timing flake (WINDOWS row 41): bounded _wait_until poll in the skip-path test, 205-test TUI lane green, ledger row flipped to fixed with CI evidence chain | 2026-10-30 | c90e340 | [261030-uck-fix-tui-headertitle-mount-timing-flake-w](./quick/261030-uck-fix-tui-headertitle-mount-timing-flake-w/) |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
