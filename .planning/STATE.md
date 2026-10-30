@@ -22,10 +22,10 @@ Total Phases: 2
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-29)
+See: .planning/PROJECT.md (updated 2026-10-30)
 
 **Core value:** One terminal flow takes a user from their own data to a validated, model-compatible config, with the model registry as the runtime single source of truth (Track A first) — suite, coverage gate, and CI honest-green throughout.
-**Current focus:** Phase 28 — Optional extras: deepspeed & flash-attn model support
+**Current focus:** Milestone v1.4 complete — Phase 28 (optional extras) closed verified+secured; next: `/gsd-complete-milestone v1.4`
 
 ## Current Position
 
@@ -200,7 +200,7 @@ Legacy carried ledger (owner-scoped, outside active requirements, not todo-syste
 
 Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/v1.1-MILESTONE-AUDIT.md`. v1.3 known gaps carried in the WINDOWS ledger: #25 PyPI trusted-publisher registration, #27 Windows KDA smoke, #26 pip-side alias resolve.
 - Phase 27.1 plan 27.1-03 Task 2 HALTED: direct push of the owner-approved option-a registration commit to main was rejected by branch protection (GH006). main requires PRs (1 approving review) + 2 required status checks (coverage-gate (py3.12, fast leg), docs-validation); enforce_admins=true blocks even the owner from direct push. The byte-identical single-file commit d661998 (only .github/workflows/census_compat.yml == origin/v1.4) is preserved: local branch wip/27.1-03-census-registration (nothing pushed); the temp worktree was removed during close-out (branch alone anchors the commit). **RESOLVED 2026-10-28 by owner defer-dispatch:** DISP-01 is deferred to the post-v1.4→main-merge operator step (the Phase 27 deferred operational act above); plan 27.1-03 summarized as halted; no main mutation and no dispatch occurred.
-- Phase 28 (28-01): BigBird (GENA-LM-BigBird) forward measured structurally impossible in any dnallm env — deepspeed 0.19.6 sparse kernel requires triton libtriton.superblock (removed before triton 3.x; verified absent in 3.6.0 + 3.8.0). deepspeed extra greens the load; forward stays red. Plan 02's BigBird disposition flip blocked on owner ruling (A: CrossDNA-only flip / B: new status semantics / C: drop BigBird). CrossDNA flip NOT blocked.
+- Phase 28 (28-01): BigBird (GENA-LM-BigBird) forward measured structurally impossible in any dnallm env — deepspeed 0.19.6 sparse kernel requires triton libtriton.superblock (removed before triton 3.x; verified absent in 3.6.0 + 3.8.0). **RESOLVED 2026-10-29 by owner ruling A:** CrossDNA-only extra-required-tf5 flip (28-02); BigBird keeps skip with the load-green/forward-red split evidence; the 28-06 gap plan made every public surface agree with that split.
 
 ### Quick Tasks Completed
 
