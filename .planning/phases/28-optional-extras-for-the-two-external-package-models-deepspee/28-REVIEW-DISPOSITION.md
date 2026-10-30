@@ -23,7 +23,7 @@ findings:
     severity: info
     disposition: open
     title: "BigBird compatibility row's lead sentence contradicts its own technical suffix on the load half"
-open: 5
+open: 3
 total: 5
 recorded: 2026-10-30T09:15:32.400Z
 ---
@@ -32,8 +32,8 @@ recorded: 2026-10-30T09:15:32.400Z
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | open | - |
-| IN-01 | info | open | - |
+| WR-01 | warning | fixed | quick task 261030-oix (e1ed477) |
+| IN-01 | info | fixed | quick task 261030-oix (e1ed477) |
 | WR-02 | warning | open | - (not in the current review) |
 | IN-02 | info | open | - (not in the current review) |
 | IN-03 | info | open | - (not in the current review) |
