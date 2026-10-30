@@ -6,15 +6,15 @@ findings:
   - id: WR-01
     severity: warning
     disposition: open
-    title: "Edited quick_start line still advertises the removed `base` dependency group"
+    title: "Generator can emit a cell its own gate rejects — 9 chars of headroom left on the 300-char cap"
+  - id: IN-01
+    severity: info
+    disposition: open
+    title: "A lead-map drift surfaces as a KeyError traceback in `--emit-docs` instead of the designed fail-closed exit 1"
   - id: WR-02
     severity: warning
     disposition: open
     title: "flash-attn installer never cleans its temp directories; nightly lane leaks them indefinitely"
-  - id: IN-01
-    severity: info
-    disposition: open
-    title: "`TF_COMPAT_STATUSES` is a dead constant that this phase updated to look load-bearing"
   - id: IN-02
     severity: info
     disposition: open
@@ -25,7 +25,7 @@ findings:
     title: "BigBird compatibility row's lead sentence contradicts its own technical suffix on the load half"
 open: 5
 total: 5
-recorded: 2026-10-29T17:14:16.678Z
+recorded: 2026-10-30T09:15:32.400Z
 ---
 
 # Phase 28: Code Review Disposition
@@ -33,10 +33,10 @@ recorded: 2026-10-29T17:14:16.678Z
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
 | WR-01 | warning | open | - |
-| WR-02 | warning | open | - |
 | IN-01 | info | open | - |
-| IN-02 | info | open | - |
-| IN-03 | info | open | - |
+| WR-02 | warning | open | - (not in the current review) |
+| IN-02 | info | open | - (not in the current review) |
+| IN-03 | info | open | - (not in the current review) |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
