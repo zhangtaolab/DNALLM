@@ -75,4 +75,9 @@
   explicit numpy ceiling co-located with the pyarrow cap comment in
   `pyproject.toml`, or pin the dev venv; at minimum record the
   incompatibility in a comment next to the numpy floor.
-  status: acknowledged
+  status: resolved
+  **Resolved:** 2026-10-30 — pyproject.toml now declares numpy>=2.0.0,<2.6
+  (commit fa1ee0d, `chore(deps): cap numpy below 2.6`), with an adjacent
+  comment recording the numpy 2.5.x / coverage 7.16.x / py3.13 double-init
+  ImportError and the lift condition (verified coverage compatibility with
+  numpy 2.6+); tomllib+SpecifierSet parse: 2.2.0 allowed, 2.6.0 rejected.

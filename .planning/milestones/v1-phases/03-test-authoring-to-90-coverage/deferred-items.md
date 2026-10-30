@@ -1,13 +1,34 @@
 ## Deferred Items
 
 - dnallm's import-time file sink creates `logs/dnallm.log` under the pytest launch cwd on every suite run
-  status: acknowledged
-  **Status:** open
+  status: resolved
+  **Status:** resolved
   **What:** `DNALLMLogger._setup_handlers` (dnallm/utils/logger.py:57-60) does `Path("logs").mkdir(exist_ok=True)` and binds a `FileHandler` relative to the CWD at the first `get_logger()` call — which happens at module import (e.g. `dnallm/mcp/model_manager.py:19`). Every pytest run therefore (re)creates `logs/dnallm.log` in the repo root before any test executes. The path is gitignored, so git-status tree-clean gates never see it, but plan-level `Path('logs').exists()` checks are unsatisfiable by construction. Found during 03-03 Task 3 (start_server logs/ gate). Out of scope for wave 3 (pre-existing library behavior, not caused by the wave's changes); wave 5's test_logger work could pin the sink to a tmp_path via an autouse fixture if desired.
+  **Resolved:** 2026-10-30 — closed test-side in 394dd14
+  (`test(logging): isolate pytest log sink`): the root tests/conftest.py now
+  primes the process's first dnallm import inside a pytest-owned
+  TemporaryDirectory cwd (restored immediately in finally), so the default
+  singleton's dnallm.log FileHandler lands outside the checkout — with no
+  dnallm/utils/logger.py change. Session-autouse teardown closes only the
+  redirected handlers and removes the temporary directory; checkout logs are
+  never touched. Pinned by TestGetLogger::test_import_time_file_sink_is_outside_checkout
+  (RED against the checkout sink before the conftest change). Full
+  tests/utils/test_logger.py lane 16/16 green; checkout logs/dnallm.log
+  snapshot identical before/after the lane (21395366 bytes, mtime 1793361331,
+  SHA-256 bafb1591417847be00f757454c771a7efaa1207ac0d1fa6884f5c59cd6c17be7).
 - test_timeout.py spends a fixed ~60s per run on two tests that wait out the full 30s default timeout
-  status: acknowledged
-  **Status:** open
+  status: resolved
+  **Status:** resolved
   **What:** `TestToolTimeout::test_tool_timeout_returns_error` and `test_timeout_error_structure` wrap coroutines sleeping 100s in `asyncio.wait_for(..., timeout=30)` — the wrapper's timeout fires at the full 30s wall clock each time (the sleep is not shortened). Pre-existing (out of scope for wave 3); shortening the server's `_tool_timeout_seconds` in those tests the way `test_timeout_configurable` already does would save ~60s per census.
+  **Resolved:** 2026-10-30 — closed in 678a466
+  (`test(mcp): shorten timeout test waits`): both tests now set
+  mock_server._tool_timeout_seconds = 0.1 before wrapping (the
+  test_timeout_configurable pattern) with 1s-sleeping coroutines;
+  timeout_seconds == 0.1 asserted, the structure test's type check widened
+  to int-or-float, and every original error/structure assertion kept. Full
+  tests/mcp/test_timeout.py lane 8/8 green in 3.93s under the 20s bound;
+  --durations=0 slowest item 0.20s (test_stream_batch_timeout), both
+  rewritten tests at 0.10s — no ~30s call remains.
 - DNADataset.raw_reverse_complement is a no-op: the Dataset.map result is discarded (dnallm/datahandling/data.py:983)
   status: resolved
   **Status:** resolved
