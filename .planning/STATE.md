@@ -3,10 +3,10 @@ gsd_state_version: "1.0"
 milestone: v1.4
 status: Awaiting next milestone
 stopped_at: Phase 28 complete — all phases complete
-last_updated: "2026-10-30T14:34:08.129Z"
+last_updated: "2026-10-30T16:09:41.960Z"
 last_activity: 2026-10-30
 last_activity_desc: Milestone v1.4 completed and archived
-state_head: fc892cc483d316b0f8d407c7e0514f0fd2c0b2c6
+state_head: c327617b46ae7f76205933899dfc3dad28bfdcc8
 progress:
   total_phases: 4
   completed_phases: 4
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-30)
 Phase: Milestone v1.4 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-30 - Completed quick task 261030-uxw: harden second TUI screen-transition race (WINDOWS row 42)
+Last activity: 2026-10-31 - Completed quick task 261030-x0d: fix two TUI races blocking PR #69 (guard + layout settle, rows 43-44)
 
 ## Performance Metrics
 
@@ -208,6 +208,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/
 |---|-------------|------|--------|-----------|
 | 261030-uck | Fix TUI HeaderTitle mount-timing flake (WINDOWS row 41): bounded _wait_until poll in the skip-path test, 205-test TUI lane green, ledger row flipped to fixed with CI evidence chain | 2026-10-30 | c90e340 | [261030-uck-fix-tui-headertitle-mount-timing-flake-w](./quick/261030-uck-fix-tui-headertitle-mount-timing-flake-w/) |
 | 261030-uxw | Harden second TUI screen-transition race (WINDOWS row 42): _wait_until for ConfigScreen transition in edit-path test, family note recorded, TUI lane 205 green | 2026-10-30 | fc892cc | [261030-uxw-harden-second-tui-screen-transition-race](./quick/261030-uxw-harden-second-tui-screen-transition-race/) |
+| 261030-x0d | Fix two TUI races blocking PR 69 Windows check: mount-safe _refresh_availability_cells guard (TDD regression), 80x24 layout settle, WINDOWS rows 43-44 | 2026-10-31 | c327617 | [261030-x0d-fix-two-tui-races-blocking-pr-69-windows](./quick/261030-x0d-fix-two-tui-races-blocking-pr-69-windows/) |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
