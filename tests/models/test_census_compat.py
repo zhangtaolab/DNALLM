@@ -956,6 +956,27 @@ class TestDocsBrokenLeadClass:
         )
         assert census.docs_broken_lead_class(evidence) == "library-change"
 
+    def test_upstream_dead_triton_needle_maps_to_load_works_prediction_blocked(self) -> None:
+        # 28-06 G-28-2: BigBird's committed split evidence - the deepspeed
+        # extra greens the load while the forward stays dead upstream - must
+        # select its own lead class, never the generic library-change lead
+        # that claims loading fails (the exact table-lead contradiction the
+        # UAT caught: the lead said "cannot be loaded" beside a suffix saying
+        # "load works with the deepspeed extra").
+        evidence = (
+            "hf AIRI-Institute/gena-lm-bigbird-base-sparse@3a9028d; "
+            "load works with the deepspeed extra but forward is blocked by "
+            "an upstream-dead Triton API; deepspeed 0.19.6's sparse-attention "
+            "LUT construction calls triton libtriton.superblock, a symbol "
+            "absent from triton 3.6.0 and 3.8.0"
+        )
+        assert census.docs_broken_lead_class(evidence) == "load-works-prediction-blocked"
+        assert census.DOCS_BROKEN_LEADS["load-works-prediction-blocked"] == (
+            "the model loads after installing its optional extra, but it "
+            "cannot make predictions because an upstream component it needs "
+            "is no longer available"
+        )
+
 
 class TestDocsBlockedReason:
     """Blocked reasons fail closed: only the two mapped shapes ever render.

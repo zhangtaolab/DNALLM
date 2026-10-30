@@ -68,6 +68,13 @@ BROKEN_LEADS = {
         "the new library version removed or changed something its code "
         "depends on, so it cannot be loaded until the model authors update it"
     ),
+    # 28-06 G-28-2: BigBird's measured split gets its own lead so the table
+    # lead can never again contradict a load-green technical suffix.
+    "load-works-prediction-blocked": (
+        "the model loads after installing its optional extra, but it cannot "
+        "make predictions because an upstream component it needs is no longer "
+        "available"
+    ),
 }
 
 # The class map: distinctive evidence substrings (most-specific first) to
@@ -76,14 +83,15 @@ BROKEN_LEADS = {
 # non-persistent-buffer needle (27.2-01, GENA-LM's corrected
 # construction-path cause) leads: a detail mentioning both it and the
 # superseded damaged-files key is a library change, never damaged files. The
-# upstream-dead-Triton needle (28-02 owner ruling A, GENA-LM-BigBird's
-# corrected residual cause: the deepspeed extra greens the load, the forward
-# blocker is the removed triton superblock API - not an external-package
-# gap, which installing something would fix) sits in the same
-# most-specific-first region.
+# upstream-dead-Triton needle (28-06 G-28-2, GENA-LM-BigBird's measured
+# split: the deepspeed extra greens the load, the forward blocker is the
+# removed triton superblock API) selects the split-aware lead class - not
+# external-package (installing something cannot fix a forward this dead)
+# and not the generic library-change lead (it would claim loading fails
+# when the extra in fact enables it).
 BROKEN_LEAD_CLASSES = (
     ("non-persistent token_type_ids", "library-change"),
-    ("upstream-dead Triton API", "library-change"),
+    ("upstream-dead Triton API", "load-works-prediction-blocked"),
     ("checkpoint data defect", "damaged-files"),
     ("forward-contract", "own-defect"),
     ("outside dnallm's dependency set", "external-package"),
