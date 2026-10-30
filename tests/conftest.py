@@ -1,5 +1,9 @@
 """Shared pytest fixtures for DNALLM test suite."""
 
+import logging
+import os
+import tempfile
+from pathlib import Path
 from types import SimpleNamespace
 from typing import ClassVar
 from unittest.mock import Mock
@@ -9,6 +13,45 @@ import pandas as pd
 import pytest
 import torch
 import yaml
+
+# ---------------------------------------------------------------------------
+# Import-time DNALLM logger isolation (test-side only; dnallm/utils/logger.py
+# is never modified). DNALLMLogger._setup_handlers binds a FileHandler to
+# logs/dnallm.log relative to the cwd at the first get_logger() call, and the
+# eager `from .cli import cli` inside dnallm/__init__.py constructs that
+# singleton during the first dnallm import. This priming must therefore run
+# here in the root conftest, before any test module is collected and triggers
+# its own dnallm import, so the default sink lands under a pytest-owned
+# temporary directory instead of the checkout's logs/ directory.
+# ---------------------------------------------------------------------------
+
+_LOG_TMP_DIR = tempfile.TemporaryDirectory(prefix="dnallm-pytest-logs-")
+
+
+def _prime_import_time_logger() -> logging.Logger:
+    """Force-construct the dnallm logger singleton with a temporary cwd.
+
+    Both the dnallm.utils.logger import (whose package init eagerly imports
+    dnallm.cli, which calls ``get_logger("dnallm.cli")`` at module level) and
+    the explicit ``get_logger()`` must happen while the cwd points inside the
+    pytest-owned temporary directory. The singleton can thus be named
+    ``dnallm.cli`` rather than ``dnallm`` — the returned stdlib logger object
+    is saved regardless of its name.
+    """
+    saved_cwd = Path.cwd()
+    try:
+        os.chdir(_LOG_TMP_DIR.name)
+        from dnallm.utils.logger import get_logger  # priming-time only; not re-exported
+
+        primed = get_logger().logger
+    finally:
+        # Restore the launch cwd immediately so collection and every test
+        # observe the original working directory.
+        os.chdir(saved_cwd)
+    return primed
+
+
+_PRIMED_STD_LOGGER = _prime_import_time_logger()
 
 
 class SimpleDNATokenizer:
@@ -228,9 +271,23 @@ def inference_config_factory(tmp_path):
 
 @pytest.fixture(scope="session", autouse=True)
 def global_cleanup():
-    """Session-scoped cleanup fixture."""
-    return
-    # Cleanup after all tests complete
+    """Session-scoped cleanup fixture.
+
+    After all tests complete, close and remove only the FileHandlers that the
+    import-time priming redirected under the pytest-owned temporary directory
+    (the explicit close is required on Windows as well as POSIX), then clean
+    that directory up. Checkout log files and unrelated handlers are never
+    touched.
+    """
+    yield
+    tmp_root = Path(_LOG_TMP_DIR.name).resolve()
+    for handler in list(_PRIMED_STD_LOGGER.handlers):
+        if isinstance(handler, logging.FileHandler) and Path(
+            handler.baseFilename
+        ).resolve().is_relative_to(tmp_root):
+            handler.close()
+            _PRIMED_STD_LOGGER.removeHandler(handler)
+    _LOG_TMP_DIR.cleanup()
 
 
 @pytest.fixture
