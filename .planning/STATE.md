@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-30)
 Phase: 28
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-10-30 - Completed quick task 261030-r96: UAT docs truth sweep (terminology + README)
+Last activity: 2026-10-30 - Completed quick task 261030-rst: close stale phase-12 mkdocs strict deferred item
 
 ## Performance Metrics
 
@@ -226,6 +226,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/
 | 261030-oix | Fix Phase-28 code-review findings WR-01+IN-01 in scripts/census_compat.py: 300-char status-cell cap + lead-map guard as fail-closed emit ValueErrors, with 2 targeted tests; page byte-identical | 2026-10-30 | e1ed477 | [261030-oix-fix-phase-28-code-review-findings-wr-01-](./quick/261030-oix-fix-phase-28-code-review-findings-wr-01-/) |
 | 261030-qxo | Close 4 stale UAT-audit items: flip resolved statuses with evidence (27.1 preset_loading ruff, 05 MCP host/port + interpret executor, 09 test_plot_for_regression) | 2026-10-30 | 007bb56 | [261030-qxo-close-4-stale-uat-audit-items-flip-resol](./quick/261030-qxo-close-4-stale-uat-audit-items-flip-resol/) |
 | 261030-r96 | UAT docs truth sweep: 11 prose hits to DNA large language model(s) (6 registry paper titles kept), README uv run pytest to --no-sync (6 commands), phase 10 + 05 README deferred items flipped | 2026-10-30 | 205223a | [261030-r96-uat-audit-docs-truth-sweep-rewrite-dna-l](./quick/261030-r96-uat-audit-docs-truth-sweep-rewrite-dna-l/) |
+| 261030-rst | Close stale phase-12 mkdocs strict deferred item: flip to resolved with dated dual evidence (prior fix 47b9bc2 + fresh zero-warning MkDocs 1.6.1 strict build at 8b224ea) + hand-maintained-mirror preservation warning; HBG1/numpy bullets untouched | 2026-10-30 | aab4260 | [261030-rst-fix-marimo-mirror-broken-links-at-the-so](./quick/261030-rst-fix-marimo-mirror-broken-links-at-the-so/) |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
@@ -245,8 +246,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-30T08:42:10.959Z
-Stopped at: Phase 28 complete — all phases complete
+Last session: 2026-10-30T12:13:34Z
+Stopped at: Completed quick task 261030-rst — stale mkdocs strict deferred item closed
 Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)
