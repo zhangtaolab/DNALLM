@@ -320,6 +320,11 @@ async def test_the_panel_is_usable_at_80x24(tmp_path) -> None:
         body = screen.query_one("#data-body", VerticalScroll).region
         check_button = screen.query_one("#data-check", Button).region
         table = screen.query_one("#data-findings", DataTable)
+        # A slow runner can still be mid-layout here (the Windows CI leg saw a
+        # one-row table region): wait, bounded, until the header plus the
+        # first findings row are really in the geometry before snapshotting.
+        layout_settled = await _wait_until(lambda: table.region.height >= table.header_height + 1)
+        assert layout_settled, "the findings table never reached header + one row at 80x24"
         table_region = table.region
         header_height = table.header_height
         first_row = _table_rows(table)[0]
