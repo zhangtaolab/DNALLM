@@ -6,67 +6,59 @@
 - ✅ **v1.1 Example Execution Testing & Repair** — Phases 5–9 (shipped 2026-10-07) — [archive](milestones/v1.1-ROADMAP.md)
 - ✅ **v1.2 Paper Revision Suite Support** — Phases 10–12 (shipped 2026-10-10) — [archive](milestones/v1.2-ROADMAP.md)
 - ✅ **v1.3 Platform Reach & Packaging Honesty** — Phases 13–21 (shipped 2026-10-16; reopened 2026-10-17 for owner-directed Phase 21) — [archive](milestones/v1.3-ROADMAP.md)
+- ✅ **v1.4 Pre-flight UX & Registry-as-Truth-Source** — Phases 22–26 (shipped 2026-10-22) + reopened line Phases 27–28 (2026-10-27 → 2026-10-30: compatibility census, tf5 remediation, optional extras; final close 2026-10-30) — [archive](milestones/v1.4-ROADMAP.md)
 
 ## Phases
 
-- [x] **Phase 21: Type-checker atomic swap — ty hard flip + mypy retirement (D-09)** — completed 2026-10-17 (CI-validated on ed1c2e8/2041e00; full-tree residue sweep quick 261017-414)
+<details>
+<summary>✅ v1.4 Pre-flight UX & Registry-as-Truth-Source (Phases 22–28) — SHIPPED 2026-10-22; reopen 2026-10-27→10-30 closed 2026-10-30</summary>
 
-**Goal:** ty (pinned `ty@0.0.84`) becomes the sole type gate and mypy retires in ONE atomic change (the D-08/D-09 discipline set in v1.1 Phase 9). The 232-diagnostic baseline clears to zero via real fixes plus line-level `# ty: ignore[code]` pragmas for library dynamics — no severity overrides, no new `[tool.ty.src]` excludes. Same change: the coverage-gate advisory ty step hardens (`|| true` dropped), the two test-job advisory mypy steps retire, the pre-commit mypy hook retires, `check_code.py` swaps mypy→ty, and the mypy dev-dep + `[tool.mypy]`/overrides + `.mypy_cache` gitignore entry are removed. `# type: ignore` comments stay — ty honors them live.
+- [x] Phase 22: Registry Foundation — Runtime Loader & Enrichment (2/2 plans) — completed 2026-10-20
+- [x] Phase 23: Pre-flight Core — Pure Validation / Suitability / Config API (5/5 plans) — completed 2026-10-21
+- [x] Phase 24: Preset Loading — `load_preset_model` Registry Rewire (1/1 plan) — completed 2026-10-21
+- [x] Phase 25: Terminal UI — Pre-flight Wizard & `tui` Extra (13/13 plans) — completed 2026-10-22
+- [x] Phase 26: MCP Consistency — Registry-Keyed Check & Honest Listing (2/2 plans) — completed 2026-10-22
+- [x] Phase 27: Transformers 4/5 Model Compatibility Census (5/5 plans + gap-closure 27-05) — completed 2026-10-28
+- [x] Phase 27.1: Address tech debt: IN-01..IN-06 + census lane live dispatch (INSERTED; DISP-01 owner-deferred post-merge) — closed 2026-10-30
+- [x] Phase 27.2: Transformers-5 compatibility remediation: all 8 unsupported presets + support story in docs (INSERTED) (5/5 plans) — completed 2026-10-29
+- [x] Phase 28: Optional extras: deepspeed & flash-attn model support (6/6 plans + gap-closure 28-06) — completed 2026-10-30
+
+</details>
 
 <details>
-<summary>✅ v1.3 Platform Reach & Packaging Honesty (Phases 13–20) — SHIPPED 2026-10-16</summary>
+<summary>✅ v1.3 Platform Reach & Packaging Honesty (Phases 13–21) — SHIPPED 2026-10-16; reopened 2026-10-17 for Phase 21</summary>
 
-- [x] Phase 13: Ollama Surface Disposition (1/1 plans) — completed 2026-10-13
-- [x] Phase 14: GAP-1 Transformers 5.x Disposition (2/2 plans) — completed 2026-10-13
-- [x] Phase 15: Windows Parity Core — Numpy Interval Evaluators (1/1 plans) — completed 2026-10-13
-- [x] Phase 16: Windows Parity Rollout — Dispatch Gates & Frozen Value Parity (4/4 plans) — completed 2026-10-14
-- [x] Phase 17: Publish Chain Robustness (3/3 plans; 17-03 halted at owner-deferred PyPI registration, WINDOWS #25) — completed 2026-10-15
-- [x] Phase 18: Packaging & Install Honesty — Atomic Extras Surgery (3/3 plans; 18-03 halted at owner-deferred Windows KDA smoke, WINDOWS #27) — completed 2026-10-15
-- [x] Phase 19: Docs Accuracy Sweep & Milestone Closeout (7/7 plans) — completed 2026-10-15
-- [x] Phase 20: Tech-debt closeout — CLI flag-only crash + residual docs mentions (1/1 plan; post-audit option B) — completed 2026-10-16
-
-Full phase details, requirements mapping, and success criteria: [milestones/v1.3-ROADMAP.md](milestones/v1.3-ROADMAP.md)
-
-Closeout record: v1.3-MILESTONE-AUDIT.md (tech_debt verdict cleared by Phase 20; 27/29 requirements satisfied — PUBS-04/WPAR-07 acceptance halves owner-deferred as WINDOWS #25/#27, carried forward).
+- [x] Phases 13–21 — completed 2026-10-17 (details in archive)
 
 </details>
 
 <details>
 <summary>✅ v1.2 Paper Revision Suite Support (Phases 10–12) — SHIPPED 2026-10-10</summary>
 
-- [x] Phase 10: Evaluation Contract Layer & Shared Scaffolding (4/4 plans) — completed 2026-10-09
-- [x] Phase 11: PEFT Adaptation, Baselines & New Evaluation Capabilities (5/5 plans) — completed 2026-10-09
-- [x] Phase 12: Motif Matching, MCP Tools & Milestone Closeout (3/3 plans) — completed 2026-10-10
-
-Full phase details, requirements mapping, and success criteria: [milestones/v1.2-ROADMAP.md](milestones/v1.2-ROADMAP.md)
+- [x] Phases 10–12 — completed 2026-10-10 (details in archive)
 
 </details>
 
 <details>
 <summary>✅ v1.1 Example Execution Testing & Repair (Phases 5–9) — SHIPPED 2026-10-07</summary>
 
-- [x] Phase 5: Execution Harness, Honest Gates & Runner Feasibility (6/6 plans) — completed 2026-10-03
-- [x] Phase 6: Model Registry & Showcase Data Curation (3/3 plans) — completed 2026-10-03
-- [x] Phase 7: PlantHelixSeek Showcase Notebooks (2/2 plans) — completed 2026-10-04
-- [x] Phase 8: Full Execution Rollout & Repair Loop (9/9 plans) — completed 2026-10-05
-- [x] Phase 9: CI Wiring & Census Verification (4/4 plans) — completed 2026-10-06
-
-Full phase details, requirements mapping, and success criteria: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
+- [x] Phases 5–9 — completed 2026-10-07 (details in archive)
 
 </details>
 
 <details>
 <summary>✅ v1 Test Suite Audit & Coverage Hardening (Phases 1–4) — SHIPPED 2026-10-01</summary>
 
-- [x] Phase 1: Harness Integrity & Measured Baseline (2/2 plans) — completed 2026-09-30
-- [x] Phase 2: Suite Hygiene & Known-Bug Fixes (3/3 plans) — completed 2026-09-30
-- [x] Phase 3: Test Authoring to >90% Coverage (5/5 plans) — completed 2026-09-30
-- [x] Phase 4: CI Gate Enforcement (3/3 plans) — completed 2026-10-01
-
-Full phase details, requirements mapping, and success criteria: [milestones/v1-ROADMAP.md](milestones/v1-ROADMAP.md)
+- [x] Phases 1–4 — completed 2026-10-01 (details in archive)
 
 </details>
 
-**Phase Numbering:**
-- The next milestone continues from Phase 22 (numbering never restarts; Phase 21 consumed by the v1.3 reopen)
-- Decimal phases (e.g. 21.1): urgent insertions (marked INSERTED)
+## Backlog
+
+### Phase 999.1: Follow-up — Phase 27.2 deferred UAT follow-up: Test 2 (BACKLOG)
+
+**Goal:** Resolve the UAT checkpoint deferred during Phase 27.2 verification
+**Source phase:** 27.2
+**Deferred at:** 2026-10-29 during /gsd-verify-work 27.2 session completion
+**Follow-ups:**
+- [ ] Test 2: TUI suitability-table legibility optimization: cap column widths / abbreviate the long support words / move Support ahead of the wide Trained outputs & Availability columns so the decision-critical word is visible at 80-120 col terminals (measured: 170-col content vs 74-114 visible) (deferred 2026-10-29)

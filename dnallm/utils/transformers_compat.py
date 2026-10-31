@@ -14,6 +14,7 @@ DNALLM never breaks an otherwise working environment.
 from __future__ import annotations
 
 import warnings
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 import torch
@@ -515,10 +516,19 @@ def _patch_get_extended_attention_mask():
 # the owner instruction of 2026-10-02: fix all non-gated census failures now.
 # If execution surfaces another removed 4.x config default that remote code
 # reads, extend the closed map -- never a catch-all.
+#
+# pad_token_id joined the map on 2026-10-23 (Mac compatibility audit): 4.x set
+# ``self.pad_token_id = kwargs.pop("pad_token_id", None)`` on every config, 5.x
+# resolves it only when config.json carries the key, and DNABERT-2's 4.x-era
+# remote bert_layers.py reads ``config.pad_token_id`` unguarded
+# (``padding_idx=config.pad_token_id``), so the load dies with AttributeError
+# on any platform under transformers 5.20. None is exactly what 4.x answered
+# for the key-absent checkpoint (DNABERT-2's config.json never had it).
 
 _LEGACY_PRETRAINED_CONFIG_DEFAULTS: dict[str, object] = {
     "is_decoder": False,
     "add_cross_attention": False,
+    "pad_token_id": None,
 }
 
 
@@ -1372,6 +1382,723 @@ def _patch_device_type_query():
         transformers.utils.get_device_type = get_device_type  # ty: ignore[unresolved-attribute]  # re-export mirror, intentional monkeypatch
 
 
+# The chunked-forward helper below is vendored with semantics and docstring
+# kept verbatim from the upstream transformers reference implementation: tag
+# v4.49.0, file src/transformers/pytorch_utils.py. transformers 5.x removed
+# the name from modeling_utils -- the re-export site 4.x-era
+# trust_remote_code checkpoints import it from (the remote modeling_bert.py
+# of AIRI-Institute/gena-lm-bert-base lines 51-55 and its bigbird sibling,
+# both census import-fail records of 2026-10-27) -- while pytorch_utils keeps
+# its own implementation as of 5.17. The patch therefore re-attaches the LIVE
+# pytorch_utils object under its upstream name on modeling_utils (zero drift
+# by construction, the alias shape the owner endorsed for cases where the
+# transformers-5 package surface still carries the implementation) and falls
+# back to this vendored copy only if a future transformers drops the name
+# from pytorch_utils as well. Two documented deviations from upstream: (1)
+# the bare `assert len(input_tensors) > 0` is re-raised as an explicit
+# AssertionError with the identical message because repo lint (S101) forbids
+# bare asserts in dnallm/ -- the exception type and text are unchanged; (2)
+# `inspect` resolves through a function-local import (upstream imports it at
+# module scope). Behavior is unchanged.
+
+
+def _apply_chunking_to_forward(
+    forward_fn: Callable[..., torch.Tensor],
+    chunk_size: int,
+    chunk_dim: int,
+    *input_tensors,
+) -> torch.Tensor:
+    """
+    This function chunks the `input_tensors` into smaller input tensor parts of size `chunk_size` over the dimension
+    `chunk_dim`. It then applies a layer `forward_fn` to each chunk independently to save memory.
+
+    If the `forward_fn` is independent across the `chunk_dim` this function will yield the same result as directly
+    applying `forward_fn` to `input_tensors`.
+
+    Args:
+        forward_fn (`Callable[..., torch.Tensor]`):
+            The forward function of the model.
+        chunk_size (`int`):
+            The chunk size of a chunked tensor: `num_chunks = len(input_tensors[0]) / chunk_size`.
+        chunk_dim (`int`):
+            The dimension over which the `input_tensors` should be chunked.
+        input_tensors (`Tuple[torch.Tensor]`):
+            The input tensors of `forward_fn` which will be chunked
+
+    Returns:
+        `torch.Tensor`: A tensor with the same shape as the `forward_fn` would have given if applied`.
+
+
+    Examples:
+
+    ```python
+    # rename the usual forward() fn to forward_chunk()
+    def forward_chunk(self, hidden_states):
+        hidden_states = self.decoder(hidden_states)
+        return hidden_states
+
+
+    # implement a chunked forward function
+    def forward(self, hidden_states):
+        return apply_chunking_to_forward(self.forward_chunk, self.chunk_size_lm_head, self.seq_len_dim, hidden_states)
+    ```"""
+
+    if not len(input_tensors) > 0:
+        # Deviation (1) from upstream v4.49.0: bare assert re-raised because
+        # repo lint (S101) forbids bare asserts; type and text unchanged.
+        raise AssertionError(f"{input_tensors} has to be a tuple/list of tensors")
+
+    import inspect
+
+    # inspect.signature exist since python 3.5 and is a python method -> no problem with backward compatibility
+    num_args_in_forward_chunk_fn = len(inspect.signature(forward_fn).parameters)
+    if num_args_in_forward_chunk_fn != len(input_tensors):
+        raise ValueError(
+            f"forward_chunk_fn expects {num_args_in_forward_chunk_fn} arguments, but only {len(input_tensors)} input "
+            "tensors are given"
+        )
+
+    if chunk_size > 0:
+        tensor_shape = input_tensors[0].shape[chunk_dim]
+        for input_tensor in input_tensors:
+            if input_tensor.shape[chunk_dim] != tensor_shape:
+                raise ValueError(
+                    f"All input tenors have to be of the same shape: {tensor_shape}, "
+                    f"found shape {input_tensor.shape[chunk_dim]}"
+                )
+
+        if input_tensors[0].shape[chunk_dim] % chunk_size != 0:
+            raise ValueError(
+                f"The dimension to be chunked {input_tensors[0].shape[chunk_dim]} has to be a multiple of the chunk "
+                f"size {chunk_size}"
+            )
+
+        num_chunks = input_tensors[0].shape[chunk_dim] // chunk_size
+
+        # chunk input tensor into tuples
+        input_tensors_chunks = tuple(
+            input_tensor.chunk(num_chunks, dim=chunk_dim) for input_tensor in input_tensors
+        )
+        # apply forward fn to every tuple (deviation from upstream v4.49.0:
+        # explicit strict=False -- the bare zip() default -- because repo
+        # lint (B905, preview) requires an explicit argument; the shape
+        # validation above guarantees equal chunk counts, so behavior is
+        # unchanged)
+        output_chunks = tuple(
+            forward_fn(*input_tensors_chunk)
+            for input_tensors_chunk in zip(*input_tensors_chunks, strict=False)
+        )
+        # concatenate output at same dimension
+        return torch.cat(output_chunks, dim=chunk_dim)
+
+    return forward_fn(*input_tensors)
+
+
+def _attach_apply_chunking_to_forward(target_module: object, source_module: object) -> bool:
+    """Attach the chunking helper to *target_module* wherever missing.
+
+    Absence-gated per name: a name the module already exposes natively is
+    never overwritten (transformers 4.x re-exports the helper from
+    modeling_utils; transformers 5.x keeps it only in pytorch_utils). The
+    attached object is the live *source_module* implementation when present
+    (the alias shape, zero drift from the installed transformers) and the
+    vendored v4.49.0 copy otherwise. A module sentinel keeps repeat
+    attachment idempotent.
+
+    Returns:
+        True when an attachment happened, False when the name was already
+        present or the sentinel short-circuited.
+    """
+    if getattr(target_module, "_dnallm_apply_chunking_patch", False):
+        return False
+
+    if hasattr(target_module, "apply_chunking_to_forward"):
+        return False
+
+    implementation = getattr(source_module, "apply_chunking_to_forward", None)
+    if implementation is None:
+        implementation = _apply_chunking_to_forward
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch (checker-agnostic)
+        target_module,
+        "apply_chunking_to_forward",
+        implementation,
+    )
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch (checker-agnostic)
+        target_module,
+        "_dnallm_apply_chunking_patch",
+        True,
+    )
+    return True
+
+
+def _patch_apply_chunking_to_forward():
+    """Re-attach the 4.x ``apply_chunking_to_forward`` removed from modeling_utils by 5.x.
+
+    transformers 5.x removed ``apply_chunking_to_forward`` from
+    ``transformers.modeling_utils`` (verified live on 5.17), but 4.x-era
+    trust_remote_code checkpoints import it from there (the remote
+    modeling_bert.py of AIRI-Institute/gena-lm-bert-base line 53 and its
+    bigbird-base-sparse sibling -- two census import-fail records measured
+    2026-10-27 under transformers 5.17.0 with the eleven prior rungs armed).
+    transformers 5.17 still ships the implementation in
+    ``transformers.pytorch_utils``, so the patch attaches THAT live object
+    under its upstream name on modeling_utils, per name only where the
+    module does not already expose it (no-op on transformers 4.x, where the
+    re-export survives); a module sentinel keeps repeat calls idempotent.
+    If a future transformers drops the name from pytorch_utils too, the
+    attach falls back to the vendored v4.49.0 implementation above.
+    """
+    try:
+        import transformers.modeling_utils
+        import transformers.pytorch_utils
+    except Exception:  # pragma: no cover - transformers not installed / module renamed
+        return
+    _attach_apply_chunking_to_forward(transformers.modeling_utils, transformers.pytorch_utils)
+
+
+# transformers 5.x moved the ``all_tied_weights_keys`` bookkeeping into
+# ``PreTrainedModel.post_init`` (which computes it and then calls
+# init_weights), and its loaders read it during ``from_pretrained``:
+# ``_move_missing_keys_from_meta_to_device`` does
+# ``missing_keys - self.all_tied_weights_keys.keys()``. The existing
+# bookkeeping rung bridges remote 4.x classes that end ``__init__`` with the
+# bare ``self.init_weights()`` entry. The rung below bridges the remaining
+# no-entry shape -- remote classes whose ``__init__`` ends with NEITHER
+# ``post_init()`` NOR ``init_weights()`` (the bare ``Caduceus`` backbone of
+# kuleshov-group/PlantCaduceus_l32, modeling_caduceus.py line 344-367, whose
+# census load evidence of 2026-10-27 is
+# ``AttributeError: 'Caduceus' object has no attribute
+# 'all_tied_weights_keys'`` at _finalize_model_loading). It wraps
+# ``_finalize_model_loading`` -- the boundary transformers itself calls
+# between weight loading and the first bookkeeping consumer -- so a
+# receiver missing the attribute receives exactly the post_init
+# computation (its own expanded map merged with each child's map, NO
+# weight re-initialization) before the original finalize runs. Compliant
+# receivers are untouched (absence-gated per instance); the probe gate and
+# the ``_finalize_model_loading`` existence gate keep it a no-op on
+# transformers 4.x, where nothing reads the attribute.
+
+
+def _resolve_load_boundary_receiver(args: tuple, kwargs: dict, binds_class: bool) -> object | None:
+    """Resolve the model receiver of a ``_finalize_model_loading`` call.
+
+    Shared by the load-boundary rungs (tied-weights bookkeeping, remote
+    author-defect repairs). Callers may pass the model by keyword
+    (``model=``/``self=``) instead of positionally; a kwargs receiver always
+    wins -- when the wrapped original binds as a classmethod the wrapper
+    injects ``cls`` into ``args``, so positional-only resolution could select
+    the CLASS and apply model-instance repairs onto it (27.1 IN-04).
+    Positional resolution is the fallback (skipping a bound ``cls`` first
+    argument); no receiver at all returns None, and the caller must delegate
+    unchanged (never guess).
+
+    Args:
+        args: The wrapper's positional arguments.
+        kwargs: The wrapper's keyword arguments.
+        binds_class: True when the captured original's first parameter is
+            ``cls`` or ``self`` (its binding consumes the first positional).
+
+    Returns:
+        The resolved model receiver, or None when no plausible receiver
+        exists in the call.
+    """
+    for name in ("model", "self"):
+        candidate = kwargs.get(name)
+        if candidate is not None:
+            return candidate
+    if args:
+        return args[1] if binds_class and len(args) > 1 else args[0]
+    return None
+
+
+_tied_bookkeeping_original_finalize = None
+
+
+def _materialize_tied_weights_bookkeeping(model: PreTrainedModel) -> None:
+    """Set the 5.x tied-weights bookkeeping on *model* when missing.
+
+    Computes exactly what ``PreTrainedModel.post_init`` computes -- the
+    model's own expanded tied-weights map (``all_submodels=False``) merged
+    with each child's already-computed map -- WITHOUT re-running weight
+    initialization, then assigns it. A receiver that already carries
+    ``all_tied_weights_keys`` is left untouched (absence-gated, never
+    overwrite).
+    """
+    if hasattr(model, "all_tied_weights_keys"):
+        return
+    mapping = dict(model.get_expanded_tied_weights_keys(all_submodels=False))
+    for name, module in model.named_children():
+        tied_keys = getattr(module, "all_tied_weights_keys", None)
+        if tied_keys:
+            mapping.update({f"{name}.{k}": f"{name}.{v}" for k, v in tied_keys.copy().items()})
+    model.all_tied_weights_keys = mapping  # deliberate instance patch
+
+
+def _patch_tied_weights_bookkeeping_on_load():
+    """Wrap ``_finalize_model_loading`` to materialize the 5.x bookkeeping.
+
+    Install is gated on the :func:`_post_init_computes_tied_weights_keys`
+    probe (no-op on transformers 4.x), on ``_finalize_model_loading``
+    existing on the class, and on a class sentinel for idempotency; the
+    captured original is kept in the module-level
+    ``_tied_bookkeeping_original_finalize`` so repeat installs and tests can
+    compare identity, and the wrapper reads it at call time.
+    """
+    global _tied_bookkeeping_original_finalize
+
+    try:
+        import transformers.modeling_utils
+    except Exception:  # pragma: no cover - transformers not installed
+        return
+
+    model_cls = transformers.modeling_utils.PreTrainedModel
+
+    if getattr(model_cls, "_dnallm_tied_bookkeeping_patch", False):
+        return
+
+    if not hasattr(model_cls, "_finalize_model_loading"):
+        return
+
+    if not _post_init_computes_tied_weights_keys():
+        return
+
+    original = model_cls.__dict__.get("_finalize_model_loading")
+    if original is None:
+        return
+    _tied_bookkeeping_original_finalize = (
+        original.__func__ if isinstance(original, (classmethod, staticmethod)) else original
+    )
+
+    # transformers 5.17 ships ``_finalize_model_loading`` as a STATIC method
+    # ``(model, load_config, loading_info)``; a different binding (class- or
+    # instance-shaped first parameter) is adapted to, so the wrapper works
+    # across the supported 5.x series without assuming one descriptor form.
+    import inspect
+
+    first_param = next(
+        iter(inspect.signature(_tied_bookkeeping_original_finalize).parameters), None
+    )
+    binds_class = first_param in ("cls", "self")
+
+    def _finalize_model_loading(*args, **kwargs):
+        # Receiver resolution (27.1 IN-04) is shared with the remote-defects
+        # rung below through _resolve_load_boundary_receiver.
+        receiver = _resolve_load_boundary_receiver(args, kwargs, binds_class)
+        if receiver is not None:
+            _materialize_tied_weights_bookkeeping(receiver)
+            # The same skipped-entry receivers never ran the init_weights
+            # wrapper that installs the legacy tie_weights arity bridge, and
+            # 5.x from_pretrained calls model.tie_weights(missing_keys=...,
+            # recompute_mapping=False) after loading -- bridge it here too
+            # (measured live on the bare remote Caduceus backbone of
+            # PlantCaduceus_l32; the bridge self-guards per signature).
+            _bridge_legacy_tie_weights(receiver)
+        return _tied_bookkeeping_original_finalize(*args, **kwargs)
+
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        model_cls,
+        "_finalize_model_loading",
+        classmethod(_finalize_model_loading)
+        if binds_class
+        else staticmethod(_finalize_model_loading),
+    )
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        model_cls,
+        "_dnallm_tied_bookkeeping_patch",
+        True,
+    )
+
+
+# transformers 5.x dropped the ``'default'`` entry from
+# ``transformers.modeling_rope_utils.ROPE_INIT_FUNCTIONS`` (verified live on
+# 5.17: the table carries only the scaling variants -- dynamic, linear,
+# llama3, longrope, proportional, yarn -- and ``_compute_default_rope_parameters``
+# is gone from the module entirely), while 4.x-era trust_remote_code
+# checkpoints still index the table under ``"default"``: the remote
+# ``GenerannoRotaryEmbedding.__init__`` of lgq12697/GENERanno-eukaryote-0.5b-base
+# (modeling_generanno.py line 126, ms commit 0ae1f40f) sets
+# ``self.rope_type = "default"`` when ``config.rope_scaling`` is None and then
+# runs ``ROPE_INIT_FUNCTIONS[self.rope_type]`` -- the first MEASURED instance
+# of the ROPE failure class the Phase 27 research predicted (27.2-01, D-04).
+# Stock 5.x models never index the table for ``"default"`` (the canonical 5.x
+# shape assigns a per-model staticmethod and only consults the table when
+# ``rope_type != "default"``, e.g. transformers/models/gemma/modeling_gemma.py
+# lines 110-113), so re-adding the key is inert for them. The initializer
+# below is vendored with semantics and docstring kept verbatim from the
+# upstream transformers reference implementation: tag v4.49.0, file
+# src/transformers/modeling_rope_utils.py
+# (_compute_default_rope_parameters). The only adaptations are import
+# locality into this module and modern builtin-generic annotations; behavior
+# is unchanged.
+
+
+def _compute_default_rope_parameters(
+    config, device: torch.device | None = None, seq_len: int | None = None, **kwargs
+) -> tuple[torch.Tensor, float]:
+    """
+    Computes the inverse frequencies according to the original RoPE implementation
+    Args:
+        config ([`~transformers.PretrainedConfig`]):
+            The model configuration.
+        device (`torch.device`):
+            The device to use for initialization of the inverse frequencies.
+        seq_len (`int`, *optional*):
+            The current sequence length. Unused for this RoPE version.
+        kwargs (`Dict`, *optional*):
+            Unused for this RoPE version.
+    Returns:
+        Tuple of (`inv_freq`, `attention_factor`). The attention factor is set to 1.0 for most RoPE variants.
+    """
+    base = config.rope_theta
+    partial_rotary_factor = (
+        config.partial_rotary_factor if hasattr(config, "partial_rotary_factor") else 1.0
+    )
+    head_dim = getattr(config, "head_dim", None)
+    if head_dim is None:
+        head_dim = config.hidden_size // config.num_attention_heads
+
+    attention_factor = 1.0  # Unused in this type of RoPE
+
+    inv_freq = 1.0 / (
+        base
+        ** (
+            torch.arange(0, int(head_dim * partial_rotary_factor), 2, dtype=torch.int64).to(
+                device=device, dtype=torch.float
+            )
+            / int(head_dim * partial_rotary_factor)
+        )
+    )
+    return inv_freq, attention_factor
+
+
+def _patch_rope_default_init():
+    """Restore the 4.x ``'default'`` ROPE initializer table entry removed by 5.x.
+
+    transformers 5.x removed the ``'default'`` key from
+    ``transformers.modeling_rope_utils.ROPE_INIT_FUNCTIONS``, but 4.x-era
+    trust_remote_code checkpoints index the table under that key (the remote
+    ``GenerannoRotaryEmbedding`` of lgq12697/GENERanno-eukaryote-0.5b-base,
+    measured 2026-10-29 as ``KeyError: 'default'`` during construction). The
+    patch registers the vendored v4.49.0 default initializer under its
+    upstream key by MUTATING THE LIVE DICT IN PLACE (``setdefault``): the
+    remote code holds a bound reference to the same dict object, so a
+    reassignment would leave it seeing the old table. Dict membership doubles
+    as the absence gate and the idempotency sentinel -- transformers 4.x,
+    which ships the key natively, is never touched.
+    """
+    try:
+        import transformers.modeling_rope_utils
+    except Exception:  # pragma: no cover - transformers not installed / module renamed
+        return
+    rope_table = transformers.modeling_rope_utils.ROPE_INIT_FUNCTIONS
+    if "default" in rope_table:  # 4.x native, or already patched
+        return
+    rope_table.setdefault("default", _compute_default_rope_parameters)
+
+
+# GENA-LM (AIRI-Institute/gena-lm-bert-base) repair, 27.2-01 Task 2 (D-06).
+# The remote modeling_bert.py registers a NON-PERSISTENT token_type_ids
+# buffer with constructor semantics torch.zeros(position_ids.size(),
+# dtype=torch.long) (modeling_bert.py lines 198-203, snapshot 416f055). The
+# published checkpoint carries no such key (209-key state-dict enumeration;
+# the only token_type entry is the embedding weight), so nothing overwrites
+# it -- but transformers 5 constructs models under a meta-device context and
+# materializes non-persistent buffers from meta with uninitialized memory:
+# the runtime value changes on every load (3901475131392 on 2026-10-27,
+# 6001647030272 and 6489494917120 measured 2026-10-29 -- constants do not
+# change between runs, uninitialized memory does). The buffer-default
+# forward (token_type_ids=None slices the buffer) then crashes with
+# IndexError on cpu and a device-side assert on cuda. The defect is a
+# transformers-5 construction-path defect in the materialized buffer, NOT
+# damaged published files -- the reset restores the constructor's own
+# zeros, exactly the values 4.x loads always had. Per D-08 the guard is
+# DEFECT DETECTION (any buffer value outside [0, config.type_vocab_size)),
+# not a transformers-version gate: it simply never fires where the
+# constructor zeros survive.
+
+
+def _repair_gena_token_type_ids(model) -> bool:
+    """Reset a defective GENA-LM token_type_ids buffer to constructor zeros.
+
+    Detects only a receiver exposing ``bert.embeddings.token_type_ids``,
+    ``bert.embeddings.position_ids`` (the shape reference) and
+    ``config.type_vocab_size`` whose buffer contains a value outside the
+    valid token-type range; the repair is ``torch.zeros(position_ids.size(),
+    dtype=torch.long)`` on the buffer's existing device. Healthy buffers,
+    absent receivers, and shapes the detection cannot answer (missing
+    position_ids, missing/invalid type_vocab_size, non-tensor buffer) are
+    never touched -- the repair never acts blind.
+
+    Args:
+        model: The freshly loaded model (any receiver; non-matching shapes
+            are a no-op).
+
+    Returns:
+        True when a defective buffer was repaired, False otherwise.
+    """
+    embeddings = getattr(getattr(model, "bert", None), "embeddings", None)
+    if embeddings is None:
+        return False
+    buffer = getattr(embeddings, "token_type_ids", None)
+    position_ids = getattr(embeddings, "position_ids", None)
+    if not isinstance(buffer, torch.Tensor) or not isinstance(position_ids, torch.Tensor):
+        return False
+    type_vocab_size = getattr(getattr(model, "config", None), "type_vocab_size", None)
+    if not isinstance(type_vocab_size, int) or isinstance(type_vocab_size, bool):
+        return False
+    if type_vocab_size <= 0:
+        return False
+    try:
+        out_of_range = bool((buffer < 0).any()) or bool((buffer >= type_vocab_size).any())
+    except (RuntimeError, TypeError):
+        # A dtype/shape the range comparison cannot evaluate reads as
+        # "unreadable shape": never repair blind.
+        return False
+    if not out_of_range:
+        return False
+    repaired = torch.zeros(position_ids.size(), dtype=torch.long, device=buffer.device)
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic buffer replacement (checker-agnostic)
+        embeddings,
+        "token_type_ids",
+        repaired,
+    )
+    return True
+
+
+# Shared load-boundary host for remote author-defect repairs (27.2-01): each
+# entry is called with the resolved model receiver at
+# ``_finalize_model_loading`` time, AFTER weight materialization (the buffer
+# is real by then -- measured seam probe 2026-10-29: the garbage value at
+# finalize time equals the post-from_pretrained value). Repairs self-guard
+# (defect detection, D-08) and report ``bool`` (defect repaired or not); the
+# MutBERT forward wrap registers here in 27.2-02.
+_REMOTE_DEFECT_REPAIRS: list[Callable[[object], bool]] = []
+
+_remote_defects_original_finalize = None
+
+
+def _install_remote_defects_on_load():
+    """Wrap ``_finalize_model_loading`` to run the remote author-defect repairs.
+
+    The wrapper resolves the model receiver exactly like the tied-weights
+    bookkeeping rung (:func:`_resolve_load_boundary_receiver` -- kwargs
+    ``model``/``self`` first, positional fallback, no receiver delegates
+    unchanged), delegates to the captured original with identical arguments,
+    and applies every registered repair AFTER the original returns:
+    transformers 5's own ``_finalize_model_loading`` is what materializes
+    the non-persistent buffers from meta
+    (``_move_missing_keys_from_meta_to_device`` inside it), so a repair
+    running before delegation would see the constructor-time meta tensor,
+    not the materialized garbage (measured 2026-10-29: pre-delegation the
+    buffer raises ``NotImplementedError: Cannot copy out of meta tensor``,
+    post-delegation it holds the uninitialized value the forward crashes
+    on). Install is gated on ``_finalize_model_loading`` existing on the
+    class (absent on transformers 4.x, where the construction-path defect
+    cannot occur either -- a natural no-op) and on a class sentinel for
+    idempotency; the captured original is kept in the module-level
+    ``_remote_defects_original_finalize`` so repeat installs and tests can
+    compare identity, and the wrapper reads it at call time.
+    """
+    global _remote_defects_original_finalize
+
+    try:
+        import transformers.modeling_utils
+    except Exception:  # pragma: no cover - transformers not installed
+        return
+
+    model_cls = transformers.modeling_utils.PreTrainedModel
+
+    if getattr(model_cls, "_dnallm_remote_defects_patch", False):
+        return
+
+    if not hasattr(model_cls, "_finalize_model_loading"):
+        return
+
+    original = model_cls.__dict__.get("_finalize_model_loading")
+    if original is None:
+        return
+    _remote_defects_original_finalize = (
+        original.__func__ if isinstance(original, (classmethod, staticmethod)) else original
+    )
+
+    import inspect
+
+    first_param = next(iter(inspect.signature(_remote_defects_original_finalize).parameters), None)
+    binds_class = first_param in ("cls", "self")
+
+    def _finalize_model_loading(*args, **kwargs):
+        receiver = _resolve_load_boundary_receiver(args, kwargs, binds_class)
+        result = _remote_defects_original_finalize(*args, **kwargs)
+        if receiver is not None:
+            # Repairs run POST-delegation, measured on transformers 5.17: the
+            # original _finalize_model_loading itself materializes the
+            # non-persistent buffers from meta
+            # (_move_missing_keys_from_meta_to_device inside it), so before
+            # delegation the GENA-LM buffer is still a meta tensor the range
+            # comparison cannot read -- the garbage appears exactly when the
+            # original returns. The MutBERT source-marker detection (27.2-02)
+            # is equally valid post-load.
+            for repair in _REMOTE_DEFECT_REPAIRS:
+                repair(receiver)
+        return result
+
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        model_cls,
+        "_finalize_model_loading",
+        classmethod(_finalize_model_loading)
+        if binds_class
+        else staticmethod(_finalize_model_loading),
+    )
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        model_cls,
+        "_dnallm_remote_defects_patch",
+        True,
+    )
+
+
+def _patch_gena_token_type_ids_on_load():
+    """Ensure the GENA-LM token_type_ids repair runs at the load boundary (D-06).
+
+    Registers :func:`_repair_gena_token_type_ids` in the shared
+    remote-defects repair list (per-name idempotent -- a repeat call neither
+    duplicates the entry nor re-wraps the class) and installs the shared
+    ``_finalize_model_loading`` wrapper through
+    :func:`_install_remote_defects_on_load`. The repair itself is
+    defect-detection gated (D-08): it fires only when the buffer actually
+    holds a value outside the valid token-type range, on any transformers
+    version whose load path materializes it with garbage (measured on
+    transformers 5's meta-device construction path; on 4.x the constructor
+    zeros survive and the repair never fires).
+    """
+    if _repair_gena_token_type_ids not in _REMOTE_DEFECT_REPAIRS:
+        _REMOTE_DEFECT_REPAIRS.append(_repair_gena_token_type_ids)
+    _install_remote_defects_on_load()
+
+
+# MutBERT (JadenLong/MutBERT-Human-Ref) repair, 27.2-02 Task 1 (D-07). The
+# remote RoPEBertModel.forward computes
+# ``input_shape = input_ids.size()[:-1]`` -- the authors' own ``# modified``
+# line at modeling_mutbert.py line 808, snapshot fe04deaf -- dropping the
+# sequence dimension for every two-dimensional input, so the unpack
+# ``batch_size, seq_length = input_shape`` at line 817 dies with
+# ``ValueError: not enough values to unpack (expected 2, got 1)`` (census
+# forward evidence 2026-10-27; the defect fails identically on transformers
+# 4.x -- no removed transformers API is involved). The RoPEBertForMaskedLM
+# head's own forward computes the shape correctly and delegates to
+# ``self.bert``, so the repair targets the nested model class wherever it
+# sits inside the loaded model. Per D-08 the guard is DEFECT DETECTION (the
+# exact source marker on the class's forward, unreadable source reads as no
+# defect), never a transformers-version gate: the wrapper routes
+# two-dimensional ``input_ids`` through the ``inputs_embeds`` branch -- the
+# remote code's own correct path for that shape -- by computing
+# ``self.embeddings.word_embeddings(input_ids)`` and delegating with
+# ``input_ids=None`` and every other argument unchanged. One-dimensional
+# inputs, explicit ``inputs_embeds``, and marker-free classes keep the
+# original behavior and identity; the LM head is never touched.
+
+
+_MUTBERT_DEFECT_MARKER = "input_ids.size()[:-1]"
+
+
+def _mutbert_forward_is_defective(module) -> bool:
+    """Return True when the module's class forward carries the defect marker.
+
+    Detection is source-based (D-08): the exact marker string in the class's
+    own ``forward`` source. A forward without readable source (exec'd code
+    raises OSError, builtins raise TypeError -- Pitfall 5) reads as no
+    defect: the repair never acts blind.
+    """
+    import inspect
+
+    forward = getattr(type(module), "forward", None)
+    if not callable(forward):
+        return False
+    try:
+        source = inspect.getsource(forward)
+    except (OSError, TypeError):
+        return False
+    return _MUTBERT_DEFECT_MARKER in source
+
+
+def _repair_mutbert_forward(model) -> bool:
+    """Wrap each defective MutBERT-shaped nested module's forward.
+
+    Scans ``model.modules()`` for modules whose class forward carries the
+    measured defect marker AND exposes ``embeddings.word_embeddings`` (the
+    delegation target the remote code itself uses); each match receives
+    exactly one guarded forward (a per-instance sentinel keeps repeated
+    load-boundary calls from double-wrapping). The guard only rewrites a
+    two-dimensional ``input_ids`` call with no explicit ``inputs_embeds``
+    into the remote code's own correct branch; everything else delegates to
+    the captured original with identical arguments.
+
+    Args:
+        model: The freshly loaded model (any receiver; non-matching shapes
+            are a no-op).
+
+    Returns:
+        True when at least one defective module was wrapped, False otherwise.
+    """
+    modules_walker = getattr(model, "modules", None)
+    if not callable(modules_walker):
+        return False
+    repaired = False
+    for module in modules_walker():
+        if getattr(module, "_dnallm_mutbert_forward_guard", False):
+            continue
+        if not _mutbert_forward_is_defective(module):
+            continue
+        original = getattr(module, "forward", None)
+        if not callable(original):
+            continue
+
+        def _guarded_mutbert_forward(
+            input_ids=None, *, _original=original, _module=module, **kwargs
+        ):
+            if (
+                isinstance(input_ids, torch.Tensor)
+                and input_ids.dim() == 2
+                and kwargs.get("inputs_embeds") is None
+            ):
+                word_embeddings = getattr(
+                    getattr(_module, "embeddings", None), "word_embeddings", None
+                )
+                if callable(word_embeddings):
+                    kwargs["inputs_embeds"] = word_embeddings(input_ids)
+                    input_ids = None
+            return _original(input_ids=input_ids, **kwargs)
+
+        setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch (checker-agnostic)
+            module,
+            "forward",
+            _guarded_mutbert_forward,
+        )
+        setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch (checker-agnostic)
+            module,
+            "_dnallm_mutbert_forward_guard",
+            True,
+        )
+        repaired = True
+    return repaired
+
+
+def _patch_mutbert_forward_on_load():
+    """Ensure the MutBERT forward repair runs at the load boundary (D-07).
+
+    Registers :func:`_repair_mutbert_forward` in the shared remote-defects
+    repair list (per-name idempotent -- a repeat call neither duplicates the
+    entry nor re-wraps the class) and installs the shared
+    ``_finalize_model_loading`` wrapper through
+    :func:`_install_remote_defects_on_load`. The repair itself is
+    defect-detection gated (D-08): it fires only when a nested module's
+    class forward actually carries the measured source marker, on any
+    transformers version (the author defect fails identically on 4.x).
+    """
+    if _repair_mutbert_forward not in _REMOTE_DEFECT_REPAIRS:
+        _REMOTE_DEFECT_REPAIRS.append(_repair_mutbert_forward)
+    _install_remote_defects_on_load()
+
+
 def apply_patches():
     """Apply all compatibility patches. Safe to call multiple times.
 
@@ -1392,6 +2119,11 @@ def apply_patches():
     _patch_legacy_init_weights_bookkeeping()
     _patch_legacy_tie_weights_arity()
     _patch_numpy_fromstring()
+    _patch_apply_chunking_to_forward()
+    _patch_tied_weights_bookkeeping_on_load()
+    _patch_rope_default_init()
+    _patch_gena_token_type_ids_on_load()
+    _patch_mutbert_forward_on_load()
 
 
 # Apply patches on module import so they are active before any

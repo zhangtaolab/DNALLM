@@ -73,6 +73,8 @@ from ..inference.vep import (
     _resolve_chromosome,
     evaluate_vcf,
 )
+from ..models.registry import all_entries, is_lab_model, sort_key_lab_first, try_resolve
+from ..models.support import support_word
 
 #: Documented fallback bind address when neither the CLI nor any YAML block
 #: supplies one. Unified in Phase 12 (REV-11): the argparse default used to
@@ -816,16 +818,73 @@ class DNALLMMCPServer:
             }
 
     async def _get_all_available_models(self) -> dict[str, Any]:
-        """Get information about all available models."""
+        """Get the full packaged registry listing with configured/enabled/loaded overlay.
+
+        Every catalogued model is listed — the menu is honest about what
+        exists — and each row says whether it is configured on this server,
+        enabled, or loaded right now, so a client knows what is callable.
+        Each row also carries the shared plain-language support word (D-16),
+        derived through :func:`dnallm.models.support.support_word`; the text
+        line ends with it so a reader sees it without parsing the row.
+        """
         try:
-            # This would integrate with model_info.yaml
-            # For now, return configured models
-            all_models = self.model_manager.get_all_models_info()
+            server_config = self.config_manager.get_server_config()
+            overlay: dict[str, dict[str, Any]] = {}
+            unmatched: list[str] = []
+            for key, entry in (server_config.models if server_config else {}).items():
+                registry_entry = None
+                model_config = self.config_manager.model_configs.get(key)
+                if model_config is not None:
+                    registry_entry = try_resolve(model_config.model.path)
+                if registry_entry is None:
+                    registry_entry = try_resolve(entry.model_name)
+                if registry_entry is None:
+                    unmatched.append(key)
+                else:
+                    overlay[registry_entry.name] = {
+                        "server_config_key": key,
+                        "enabled": entry.enabled,
+                    }
+
+            loaded_keys = set(self.model_manager.get_loaded_models())
+            models: dict[str, dict[str, Any]] = {}
+            lines: list[str] = []
+            loaded_count = 0
+            for entry in sorted(all_entries(), key=sort_key_lab_first):
+                state = overlay.get(entry.name)
+                row: dict[str, Any] = {
+                    "repo_id": entry.model,
+                    "task_type": entry.task.task_type,
+                    "is_lab": is_lab_model(entry),
+                    "configured": state is not None,
+                    "enabled": bool(state and state["enabled"]),
+                    "loaded": state is not None and state["server_config_key"] in loaded_keys,
+                    "support": support_word(entry),
+                }
+                if state is not None:
+                    row["server_config_key"] = state["server_config_key"]
+                if row["loaded"]:
+                    status = "loaded"
+                    loaded_count += 1
+                elif row["enabled"]:
+                    status = "enabled"
+                elif state is not None:
+                    status = "disabled"
+                else:
+                    status = "available"
+                models[entry.name] = row
+                lines.append(
+                    f"{entry.name} | {entry.model} | {entry.task.task_type} | "
+                    f"{status} | {row['support']}"
+                )
 
             return {
-                "content": [{"type": "text", "text": str(all_models)}],
-                "total_models": len(all_models),
-                "models": all_models,
+                "content": [{"type": "text", "text": "\n".join(lines)}],
+                "total_models": len(models),
+                "models": models,
+                "configured_count": len(overlay),
+                "loaded_count": loaded_count,
+                "unmatched_configured": unmatched,
             }
         except Exception as e:
             logger.error(f"Error in get_all_available_models: {e}", exc_info=True)

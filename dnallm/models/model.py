@@ -6,6 +6,16 @@ from various sources including Hugging Face Hub, ModelScope, and local storage.
 """
 # pyright: reportAttributeAccessIssue=false, reportMissingImports=false
 
+# Ordering guarantee (see dnallm/models/__init__.py): the compatibility shims
+# must install before the module-level torch/transformers imports below resolve
+# any modeling symbol. transformers_compat runs apply_patches() at import time
+# (transformers >= 5.19 queries the accelerator while it imports
+# modeling_utils and raises on CUDA-built torch without a visible GPU -- the
+# test-cuda CI legs); cuda_compat registers the CUDA 13 SONAMEs that
+# bitsandbytes loads through this module for 4-bit models.
+from ..utils import transformers_compat as _transformers_compat  # ruff: ignore[unused-import]
+from ..utils import cuda_compat as _cuda_compat  # ruff: ignore[unused-import]
+
 import hashlib
 import os
 import time
@@ -33,6 +43,7 @@ from .special import (
     _handle_basenji2_tokenizer,
     _handle_crossdna_models,
 )
+from .special.crossdna import _DNALLM_MISSING_EXTRA_GUIDANCE_ATTR
 from .head import (
     BasicMLPHead,
     BasicCNNHead,
@@ -42,6 +53,7 @@ from .head import (
     EVOForSeqClsHead,
 )
 from .losses import FocalLoss
+from .registry import RegistryEntry, try_resolve
 
 
 logger = get_logger("dnallm.models.model")
@@ -1194,6 +1206,60 @@ def _load_random_init_model(
     return model, tokenizer
 
 
+# The optional-dependency guide every missing-extra error points at (D-17).
+_EXTRA_GUIDE_URL = "https://zhangtaolab.github.io/DNALLM/user_guide/optional_dependencies/"
+
+
+def _raise_missing_extra_import_error(error: BaseException, model_name: str) -> None:
+    """Turn a missing-deepspeed failure into actionable install guidance (D-17).
+
+    The GENA-LM-BigBird remote code imports ``deepspeed.ops.sparse_attention``
+    at construction time, so a default install fails deep inside
+    ``from_pretrained`` with a ``ModuleNotFoundError`` that resurfaces wrapped
+    under unrelated exception types. This helper traverses the current
+    exception's ``__cause__`` / ``__context__`` chain (cycle-safe by object
+    identity) and, when a direct or nested ``ModuleNotFoundError`` names
+    ``deepspeed`` or one of its submodules, raises a plain-language
+    ``ImportError`` naming the model, the exact ``pip install 'dnallm[deepspeed]'``
+    command, the mandatory stay-below-0.19.7 caveat, and the optional
+    dependency guide - chained from the triggering error so the original
+    technical cause survives. An error already carrying the CrossDNA
+    flash-attn guidance marker is re-raised unchanged so the specific
+    guidance survives the generic ``ValueError`` wrap. Every other exception
+    is left alone: the caller falls through to its existing wrap behavior.
+
+    Args:
+        error: The exception currently being handled at a load-chain wrap site.
+        model_name: Model name or path for the error message.
+
+    Raises:
+        ImportError: The deepspeed install guidance (chained from the matching
+            ``ModuleNotFoundError``), or *error* itself when it is already a
+            guided CrossDNA error. Returns without raising otherwise.
+    """
+    if getattr(error, _DNALLM_MISSING_EXTRA_GUIDANCE_ATTR, False):
+        raise error
+    pending = [error]
+    seen = {id(error)}
+    while pending:
+        node = pending.pop()
+        if isinstance(node, ModuleNotFoundError):
+            name = getattr(node, "name", None)
+            if name == "deepspeed" or (isinstance(name, str) and name.startswith("deepspeed.")):
+                raise ImportError(
+                    f"deepspeed package is required for {model_name} but not installed. "
+                    "Install it with: pip install 'dnallm[deepspeed]' "
+                    "(deepspeed 0.19.7 removed the sparse-attention module this "
+                    "model's code imports, so a version below 0.19.7 is required - "
+                    "the dnallm[deepspeed] extra pins it). "
+                    f"See {_EXTRA_GUIDE_URL}"
+                ) from node
+        for adjacent in (node.__cause__, node.__context__):
+            if adjacent is not None and id(adjacent) not in seen:
+                seen.add(id(adjacent))
+                pending.append(adjacent)
+
+
 def load_model_and_tokenizer(
     model_name: str,
     task_config: TaskConfig,
@@ -1355,6 +1421,7 @@ def load_model_and_tokenizer(
             if "basenji2" in model_name.lower():
                 tokenizer = _handle_basenji2_tokenizer(tokenizer)
         except Exception as e:
+            _raise_missing_extra_import_error(e, model_name)
             raise ValueError(f"Failed to load model: {e}") from e
         model._model_path = model_name
         model.source = source
@@ -1425,6 +1492,7 @@ def load_model_and_tokenizer(
         model._model_path = downloaded_model_path  # ty: ignore[invalid-assignment]
         model.source = source  # ty: ignore[invalid-assignment]
     except Exception as e:
+        _raise_missing_extra_import_error(e, model_name)
         raise ValueError(f"Failed to load model: {e}") from e
 
     # Configure model padding
@@ -1564,50 +1632,123 @@ def clear_model_cache(source: str = "huggingface"):
         logger.info(f"No cache directory found at {cache_dir}. Nothing to clear.")
 
 
+_TASK_TYPE_ALIASES = {
+    "binary_classification": "binary",
+    "multi_class_classification": "multiclass",
+    "multi_label_classification": "multilabel",
+    "token_classification": "token",
+}
+
+_PATCH_FIELDS = ("num_labels", "label_names", "threshold")
+
+
+def _check_task_type(entry: RegistryEntry, task_config: TaskConfig) -> None:
+    """Validate that the configured task type matches the entry's registered one.
+
+    The configured side is normalized through the long-form aliases (mirroring
+    ``TaskConfig.model_post_init``); the registered side is compared verbatim.
+
+    Args:
+        entry: The resolved registry entry.
+        task_config: The caller's task configuration.
+
+    Raises:
+        ValueError: If the normalized configured task type differs from the
+            entry's registered task type.
+    """
+    configured = _TASK_TYPE_ALIASES.get(task_config.task_type, task_config.task_type)
+    registered = entry.task.task_type
+    if configured != registered:
+        raise ValueError(
+            f"Model '{entry.name}' was trained for '{registered}' tasks, but your "
+            f"configuration says '{configured}'. These do not match — check the "
+            "task_type setting in your config."
+        )
+
+
+def _patched_task_config(task_config: TaskConfig, entry: RegistryEntry) -> TaskConfig:
+    """Copy the caller's TaskConfig with registry values patched in.
+
+    Only fields whose registry value is present and differs from the configured
+    value are patched, each announced by one info log. The caller's object is
+    never mutated, and the copy is built with ``model_copy`` so
+    ``model_post_init`` never re-runs — a revalidation round-trip would clobber
+    registry ``label_names`` back to the regression default.
+
+    Args:
+        task_config: The caller's task configuration.
+        entry: The resolved registry entry.
+
+    Returns:
+        A patched copy of ``task_config``, or the caller's object itself when
+        nothing differs.
+    """
+    update = {}
+    for field in _PATCH_FIELDS:
+        entry_value = getattr(entry.task, field)
+        if entry_value is None:
+            continue
+        configured_value = getattr(task_config, field)
+        if configured_value == entry_value:
+            continue
+        logger.info(
+            f"Registry preset overrides {field}: "
+            f"configured {configured_value} -> registry {entry_value}"
+        )
+        update[field] = entry_value
+    if not update:
+        return task_config
+    return task_config.model_copy(update=update)
+
+
 def load_preset_model(model_name: str, task_config: TaskConfig) -> tuple[Any, Any] | int:
     """Load a preset model and tokenizer based on the task configuration.
 
-    This function loads models from the preset model registry, which contains
-    pre-configured models for various DNA analysis tasks.
+    A lookup name is resolved in two tiers: the packaged model registry first
+    (exact entry-name match, then exact repo-id match), then the legacy
+    ``MODEL_INFO`` family table. When a name is both a registry entry and a
+    family key, the registry entry wins. A name found in neither tier returns 0.
+
+    For a resolved registry entry, ``task_type`` is validated (never patched):
+    a mismatch raises ``ValueError``. The remaining head fields (``num_labels``,
+    ``label_names``, ``threshold``) are copied verbatim from the entry into a
+    copy of ``task_config`` — the caller's object is never mutated.
 
     Args:
-        model_name: Name or path of the model
-                task_config: Task configuration object containing task type and
-            label information
+        model_name: Entry name, repo id, or family name of the preset model.
+        task_config: Task configuration object containing task type and
+            label information.
 
     Returns:
-        Tuple containing (model, tokenizer) if successful, 0 if model not found
+        Tuple containing (model, tokenizer) if successful, 0 if the model is
+        not found.
 
-    Note:
-                If the model is not found in preset models,
-            the function will print a warning
-                and
-            return 0. Use `load_model_and_tokenizer` function for custom model
-            loading.
+    Raises:
+        ValueError: If a resolved registry entry was trained for a task type
+            that does not match the configured one.
     """
     from .modeling_auto import MODEL_INFO
 
     source = "modelscope"
     use_mirror = False
 
-    # Load model and tokenizer
-    try:
-        preset_models = [
-            preset
-            for model in MODEL_INFO
-            for preset in MODEL_INFO[model].get("preset", [])  # type: ignore
-        ]
-    except (KeyError, TypeError):
-        preset_models = []
+    # Registry first: exact entry name, then repo id.
+    entry = try_resolve(model_name)
+    if entry is not None:
+        _check_task_type(entry, task_config)
+        patched = _patched_task_config(task_config, entry)
+        if entry.kind == "finetuned" and entry.base_model:
+            logger.info(f"Loading preset model '{entry.name}' trained on base {entry.base_model}")
+        return load_model_and_tokenizer(entry.model, patched, source, use_mirror)
+
+    # Family-table fallback: use the family's default repo id.
     if model_name in MODEL_INFO:
         model_info = MODEL_INFO[model_name]
         model_name = model_info["default"]  # ty: ignore[invalid-assignment]
-    elif model_name in preset_models:
-        pass
     else:
         logger.debug(
-            f"Model {model_name} not found in preset models. "
-            "Please check the model name or use "
+            f"Model {model_name} not found in the packaged model registry or the "
+            "preset model family table. Please check the model name or use "
             "`load_model_and_tokenizer` function."
         )
         return 0

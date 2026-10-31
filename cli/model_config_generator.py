@@ -1080,7 +1080,7 @@ class ConfigGenerator:
         benchmark_config["description"] = click.prompt(
             "Benchmark description",
             type=str,
-            default="Comparing DNA language models on various tasks",
+            default="Comparing DNA large language models on various tasks",
         )
 
         return benchmark_config

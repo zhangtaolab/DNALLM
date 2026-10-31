@@ -18,11 +18,15 @@ from __future__ import annotations
 
 import asyncio
 import json
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
+from dnallm.mcp.config_validators import ModelEntryConfig
 from dnallm.mcp.server import DNALLMMCPServer
+from dnallm.models.registry import all_entries, sort_key_lab_first, try_resolve
+from dnallm.models.support import support_word
 
 
 @pytest.fixture
@@ -601,23 +605,79 @@ class TestBasicToolBodies:
         )
 
     @pytest.mark.asyncio
-    async def test_get_all_available_models(self, mock_server):
-        """get_all_available_models reports every configured model."""
+    async def test_get_all_available_models_lists_full_registry(self, mock_server):
+        """With no server config at all, the listing still serves every registry entry."""
+        mock_server.config_manager = MagicMock()
+        mock_server.config_manager.get_server_config.return_value = None
         mock_server.model_manager = MagicMock()
-        mock_server.model_manager.get_all_models_info.return_value = {"m1": {"task_type": "binary"}}
+        mock_server.model_manager.get_loaded_models.return_value = []
         result = await mock_server._get_all_available_models()
-        assert result["total_models"] == 1
-        assert result["models"] == {"m1": {"task_type": "binary"}}
+        entries = sorted(all_entries(), key=sort_key_lab_first)
+        assert "isError" not in result
+        assert result["total_models"] == len(all_entries())
+        assert result["total_models"] > 200
+        assert set(result["models"]) == {entry.name for entry in all_entries()}
+        assert all(
+            not row["configured"] and not row["enabled"] and not row["loaded"]
+            for row in result["models"].values()
+        )
+        first_name, first_row = next(iter(result["models"].items()))
+        assert first_name == entries[0].name
+        assert first_row["is_lab"] is True
+        first_line = result["content"][0]["text"].splitlines()[0]
+        assert first_line.startswith(f"{first_name} | ")
+
+    @pytest.mark.asyncio
+    async def test_get_all_available_models_overlay_configured_enabled(self, mock_server):
+        """A configured enabled model carries its overlay flags and server key."""
+        mock_server.config_manager = MagicMock()
+        mock_server.config_manager.get_server_config.return_value = SimpleNamespace(
+            models={
+                "promoter_model": ModelEntryConfig(
+                    name="promoter_model",
+                    model_name="Plant DNABERT BPE promoter",
+                    config_path="./promoter_inference_config.yaml",
+                    enabled=True,
+                    priority=1,
+                )
+            }
+        )
+        mock_server.config_manager.model_configs = {
+            "promoter_model": SimpleNamespace(
+                model=SimpleNamespace(path="zhangtaolab/plant-dnabert-BPE-promoter")
+            )
+        }
+        mock_server.model_manager = MagicMock()
+        mock_server.model_manager.get_loaded_models.return_value = []
+        result = await mock_server._get_all_available_models()
+        row = result["models"]["Plant DNABERT BPE promoter"]
+        assert row["configured"] is True
+        assert row["enabled"] is True
+        assert row["loaded"] is False
+        assert row["server_config_key"] == "promoter_model"
+        assert result["configured_count"] == 1
+        assert result["loaded_count"] == 0
+        assert result["unmatched_configured"] == []
+        assert result["total_models"] == len(all_entries())
+        line = next(
+            line
+            for line in result["content"][0]["text"].splitlines()
+            if line.startswith("Plant DNABERT BPE promoter | ")
+        )
+        assert line.endswith("| enabled | " + row["support"])
 
     @pytest.mark.asyncio
     async def test_get_all_available_models_exception_returns_error_dict(self, mock_server):
-        """A raised inventory error is caught with the verbatim message."""
+        """A raised listing error is caught with the verbatim message."""
+        mock_server.config_manager = MagicMock()
+        mock_server.config_manager.get_server_config.return_value = None
         mock_server.model_manager = MagicMock()
-        mock_server.model_manager.get_all_models_info.side_effect = RuntimeError("x")
+        mock_server.model_manager.get_loaded_models.side_effect = RuntimeError("x")
         result = await mock_server._get_all_available_models()
         assert result["content"][0]["text"] == (
             "Failed to get available models. See server logs for details."
         )
+        assert result["isError"] is True
 
     @pytest.mark.asyncio
     async def test_health_check_reports_counts(self, mock_server):
@@ -638,3 +698,289 @@ class TestBasicToolBodies:
         mock_server.model_manager.get_loaded_models.side_effect = RuntimeError("x")
         result = await mock_server._health_check()
         assert result["content"][0]["text"] == ("Health check failed. See server logs for details.")
+
+
+def _stub_listing_state(server, models_map, *, model_configs=None, loaded=()):
+    """Point a mock server's config/model managers at a stubbed listing state."""
+    server.config_manager = MagicMock()
+    server.config_manager.get_server_config.return_value = SimpleNamespace(models=models_map)
+    server.config_manager.model_configs = model_configs if model_configs is not None else {}
+    server.model_manager = MagicMock()
+    server.model_manager.get_loaded_models.return_value = list(loaded)
+    return server
+
+
+class TestGetAllAvailableModelsOverlay:
+    """Overlay matrix for the registry-full listing (configured/enabled/loaded)."""
+
+    @pytest.mark.asyncio
+    async def test_disabled_configured_model_stays_listed(self, mock_server):
+        """D-15: a configured-but-disabled model is listed with enabled=False, never dropped."""
+        models_map = {
+            "h3k27me3_model": ModelEntryConfig(
+                name="h3k27me3_model",
+                model_name="Plant DNAMamba BPE H3K27me3",
+                config_path="./h3k27me3_inference_config.yaml",
+                enabled=False,
+                priority=4,
+            )
+        }
+        # Not in model_configs: the normal disabled state (disabled configs are never loaded).
+        _stub_listing_state(mock_server, models_map)
+        result = await mock_server._get_all_available_models()
+        row = result["models"]["Plant DNAMamba BPE H3K27me3"]
+        assert row["configured"] is True
+        assert row["enabled"] is False
+        assert row["loaded"] is False
+        assert row["server_config_key"] == "h3k27me3_model"
+        assert result["configured_count"] == 1
+        line = next(
+            line
+            for line in result["content"][0]["text"].splitlines()
+            if line.startswith("Plant DNAMamba BPE H3K27me3 | ")
+        )
+        assert line.endswith("| disabled | " + row["support"])
+
+    @pytest.mark.asyncio
+    async def test_entry_name_route_resolves_disabled_rows(self, mock_server):
+        """A disabled row not in model_configs resolves via its model_name alone."""
+        models_map = {
+            "conservation_model": ModelEntryConfig(
+                name="conservation_model",
+                model_name="Plant DNABERT BPE conservation",
+                config_path="./conservation_inference_config.yaml",
+                enabled=False,
+                priority=2,
+            )
+        }
+        _stub_listing_state(mock_server, models_map)
+        result = await mock_server._get_all_available_models()
+        row = result["models"]["Plant DNABERT BPE conservation"]
+        assert row["configured"] is True
+        assert row["enabled"] is False
+        assert row["server_config_key"] == "conservation_model"
+
+    @pytest.mark.asyncio
+    async def test_unmatched_configured_key_never_creates_phantom_row(self, mock_server):
+        """A configured key resolving to no registry entry surfaces in unmatched_configured."""
+        models_map = {
+            "ghost_model": ModelEntryConfig(
+                name="ghost_model",
+                model_name="Ghost Model",
+                config_path="./ghost_inference_config.yaml",
+                enabled=True,
+                priority=1,
+            )
+        }
+        _stub_listing_state(mock_server, models_map)
+        result = await mock_server._get_all_available_models()
+        assert "Ghost Model" not in result["models"]
+        assert "ghost_model" not in result["models"]
+        assert result["unmatched_configured"] == ["ghost_model"]
+        assert result["configured_count"] == 0
+        assert result["total_models"] == len(all_entries())
+
+    @pytest.mark.asyncio
+    async def test_loaded_engine_flips_status_word(self, mock_server):
+        """A loaded configured model reports loaded=True and the 'loaded' status word."""
+        models_map = {
+            "promoter_model": ModelEntryConfig(
+                name="promoter_model",
+                model_name="Plant DNABERT BPE promoter",
+                config_path="./promoter_inference_config.yaml",
+                enabled=True,
+                priority=1,
+            )
+        }
+        model_configs = {
+            "promoter_model": SimpleNamespace(
+                model=SimpleNamespace(path="zhangtaolab/plant-dnabert-BPE-promoter")
+            )
+        }
+        _stub_listing_state(
+            mock_server, models_map, model_configs=model_configs, loaded=["promoter_model"]
+        )
+        result = await mock_server._get_all_available_models()
+        row = result["models"]["Plant DNABERT BPE promoter"]
+        assert row["loaded"] is True
+        assert result["loaded_count"] == 1
+        line = next(
+            line
+            for line in result["content"][0]["text"].splitlines()
+            if line.startswith("Plant DNABERT BPE promoter | ")
+        )
+        assert line.endswith("| loaded | " + row["support"])
+
+    @pytest.mark.asyncio
+    async def test_empty_models_map_lists_all_unconfigured(self, mock_server):
+        """An empty models map yields the full registry with zero configured rows."""
+        _stub_listing_state(mock_server, {})
+        result = await mock_server._get_all_available_models()
+        assert result["total_models"] == len(all_entries())
+        assert result["configured_count"] == 0
+        assert result["loaded_count"] == 0
+        assert result["unmatched_configured"] == []
+        assert all(not row["configured"] for row in result["models"].values())
+
+    @pytest.mark.asyncio
+    async def test_entry_names_case_sensitive_no_normalization(self, mock_server):
+        """Two entries differing only by case stay two distinct rows."""
+        stub_entries = [
+            SimpleNamespace(
+                name="Model X",
+                model="z/model-x",
+                task=SimpleNamespace(task_type="binary"),
+                tf_compat_status=None,
+                base_model=None,
+            ),
+            SimpleNamespace(
+                name="model x",
+                model="z/model-x-2",
+                task=SimpleNamespace(task_type="binary"),
+                tf_compat_status=None,
+                base_model=None,
+            ),
+        ]
+        _stub_listing_state(mock_server, {})
+        with patch("dnallm.mcp.server.all_entries", return_value=stub_entries):
+            result = await mock_server._get_all_available_models()
+        assert set(result["models"]) == {"Model X", "model x"}
+        assert result["total_models"] == 2
+
+    @pytest.mark.asyncio
+    async def test_text_format_lab_first_one_line_per_model(self, mock_server):
+        """The text block is exactly one pipe-formatted line per entry, lab-first."""
+        stub_entries = [
+            SimpleNamespace(
+                name="Lab B",
+                model="z/lab-b",
+                task=SimpleNamespace(task_type="multiclass"),
+                tf_compat_status=None,
+                base_model=None,
+            ),
+            SimpleNamespace(
+                name="Third C",
+                model="org/third-c",
+                task=SimpleNamespace(task_type="mask"),
+                tf_compat_status=None,
+                base_model=None,
+            ),
+            SimpleNamespace(
+                name="Lab A",
+                model="z/lab-a",
+                task=SimpleNamespace(task_type="binary"),
+                tf_compat_status=None,
+                base_model=None,
+            ),
+        ]
+        _stub_listing_state(mock_server, {})
+        with patch("dnallm.mcp.server.all_entries", return_value=stub_entries):
+            result = await mock_server._get_all_available_models()
+        lines = result["content"][0]["text"].splitlines()
+        assert len(lines) == 3
+        assert all(len(line.split(" | ")) == 5 for line in lines)
+        assert [line.split(" | ")[0] for line in lines] == ["Lab A", "Lab B", "Third C"]
+        assert lines[0] == "Lab A | z/lab-a | binary | available | untested"
+        assert list(result["models"]) == ["Lab A", "Lab B", "Third C"]
+
+    def test_stale_comment_deleted_and_docstring_describes_listing(self):
+        """D-17: the under-promising comments are gone and the docstring is honest."""
+        from pathlib import Path
+
+        import dnallm.mcp.server as server_module
+
+        source = Path(server_module.__file__).read_text(encoding="utf-8")
+        assert "This would integrate with model_info.yaml" not in source
+        assert "For now, return configured models" not in source
+        assert "registry listing" in source
+
+
+class TestGetAllAvailableModelsSupport:
+    """Every MCP listing row and text line carries the shared support word (D-16)."""
+
+    @pytest.mark.asyncio
+    async def test_every_row_and_text_line_carry_support(self, mock_server):
+        """All registry rows gain a support key; each line ends with that same word."""
+        _stub_listing_state(mock_server, {})
+        result = await mock_server._get_all_available_models()
+        entries = {entry.name: entry for entry in all_entries()}
+        assert set(result["models"]) == set(entries)
+        for name, row in result["models"].items():
+            assert row["support"] == support_word(entries[name]), name
+            assert row["support"]
+        lines = result["content"][0]["text"].splitlines()
+        assert len(lines) == len(entries)
+        for line in lines:
+            segments = line.split(" | ")
+            assert segments[-1] == result["models"][segments[0]]["support"], line
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("repo", "word"),
+        [
+            pytest.param("zhangtaolab/plant-dnabert-BPE", "works", id="native"),
+            pytest.param("zhihan1996/DNABERT-2-117M", "works with built-in fixes", id="shim"),
+            pytest.param("songlab/gpn-brassicales", "needs pip install gpn", id="gpn"),
+            pytest.param("zehui127/Omni-DNA-116M", "needs pip install ai2-olmo", id="omni-dna"),
+            pytest.param(
+                "AIRI-Institute/gena-lm-bigbird-base-sparse", "needs deepspeed", id="bigbird"
+            ),
+        ],
+    )
+    async def test_documented_categories_use_the_shared_words(self, mock_server, repo, word):
+        """The five documented categories render their exact shared word."""
+        _stub_listing_state(mock_server, {})
+        result = await mock_server._get_all_available_models()
+        name = try_resolve(repo).name
+        assert result["models"][name]["support"] == word
+        line = next(
+            line
+            for line in result["content"][0]["text"].splitlines()
+            if line.startswith(f"{name} | ")
+        )
+        assert line.split(" | ")[-1] == word
+
+    @pytest.mark.asyncio
+    async def test_finetuned_row_inherits_its_base_support(self, mock_server):
+        """A finetuned entry shows the word its base model's verdict produces."""
+        _stub_listing_state(mock_server, {})
+        result = await mock_server._get_all_available_models()
+        row = result["models"]["DNABERT-2 promoter"]
+        assert row["support"] == "works with built-in fixes"
+
+    @pytest.mark.asyncio
+    async def test_a_statusless_row_reports_untested(self, mock_server):
+        """A row with no census verdict says untested — the honest degradation."""
+        stub_entries = [
+            SimpleNamespace(
+                name="No Verdict",
+                model="org/no-verdict",
+                task=SimpleNamespace(task_type="mask"),
+                tf_compat_status=None,
+                base_model=None,
+            )
+        ]
+        _stub_listing_state(mock_server, {})
+        with patch("dnallm.mcp.server.all_entries", return_value=stub_entries):
+            result = await mock_server._get_all_available_models()
+        assert result["models"]["No Verdict"]["support"] == "untested"
+        assert result["content"][0]["text"] == (
+            "No Verdict | org/no-verdict | mask | available | untested"
+        )
+
+    @pytest.mark.asyncio
+    async def test_existing_row_keys_survive_additively(self, mock_server):
+        """The support key is additive: every prior key is still present."""
+        _stub_listing_state(mock_server, {})
+        result = await mock_server._get_all_available_models()
+        row = result["models"]["Plant DNABERT"]
+        assert set(row) >= {"repo_id", "task_type", "is_lab", "configured", "enabled", "loaded"}
+        assert row["repo_id"] == "zhangtaolab/plant-dnabert-BPE"
+        assert set(result) >= {
+            "content",
+            "total_models",
+            "models",
+            "configured_count",
+            "loaded_count",
+            "unmatched_configured",
+        }

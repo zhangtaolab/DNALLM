@@ -1,48 +1,12 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v1.3 — Platform Reach & Packaging Honesty",
-  "phases": [
-    {
-      "number": "13",
-      "name": "Ollama Surface Disposition",
-      "status": "complete"
-    },
-    {
-      "number": "14",
-      "name": "GAP-1 Transformers 5.x Disposition",
-      "status": "complete"
-    },
-    {
-      "number": "15",
-      "name": "Windows Parity Core — Numpy Interval Evaluators",
-      "status": "complete"
-    },
-    {
-      "number": "16",
-      "name": "Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity",
-      "status": "complete"
-    },
-    {
-      "number": "17",
-      "name": "Publish Chain Robustness",
-      "status": "complete"
-    },
-    {
-      "number": "18",
-      "name": "Packaging & Install Honesty — Atomic Extras Surgery",
-      "status": "complete"
-    },
-    {
-      "number": "19",
-      "name": "Docs Accuracy Sweep & Milestone Closeout",
-      "status": "complete"
-    }
-  ],
+  "milestone": "v1.4",
+  "phases": [],
   "next": {
     "command": "/gsd-progress",
     "label": "Show progress",
     "reason": "Unsure of state — showing progress"
   },
-  "updated_at": "2026-10-16T05:46:19.282Z"
+  "updated_at": "2026-10-30T13:18:35.202Z"
 }

@@ -56,6 +56,15 @@ EXPECTED_NOTEBOOK_MEMBERS = frozenset({
     "pygenometracks>=3.9; platform_system != 'Windows'",
 })
 
+# The tui extra's exact members (TUI-01, v1.4): the terminal pre-flight wizard
+# layer. Exact-string equality both directions -- the extra must never be
+# empty, diluted, or gain an unpinned member, and the platformdirs band must
+# stay textual's own declared >=3.6,<5 range so the resolver has one answer.
+EXPECTED_TUI_MEMBERS = frozenset({
+    "textual>=8.2,<9",
+    "platformdirs>=3.6,<5",
+})
+
 # The full extra's exact members after the 18-01 atomic rename (base -> full,
 # owner decision 2026-10-14): the rename must carry the former base surface
 # verbatim -- nothing lost, nothing added.
@@ -65,15 +74,20 @@ EXPECTED_FULL_MEMBERS = frozenset({
 })  # types-transformers removed 2026-10-17: mypy-only stub (ty bundles its
 # own typeshed and never reads installed stub packages) — D-09 flip
 
-# The deprecated one-cycle alias: a pure self-reference to the full extra.
-# An EMPTY extra is the forbidden shape -- live-probed 2026-10-14 (18-RESEARCH
-# "Deprecated-Alias Mechanism"), pip AND uv both install nothing and print no
-# warning for an empty extra: the exact silent under-install hazard.
-EXPECTED_BASE_ALIAS = ["dnallm[full]"]
-
-# WPAR-07 declaration: the exact marker-gated triton-windows spec in the fla
-# extra (exact-string assertion; any drift in the band or marker fails).
+# WPAR-07 declaration: the exact marker-gated triton-windows spec in the base
+# [project] dependencies (exact-string assertion; any drift in the band or
+# marker fails). Promoted from the retired fla extra with the dependency in
+# 28-01 (D-09).
 EXPECTED_TRITON_WINDOWS_SPEC = "triton-windows>=3.7.1.post27,<3.8; platform_system == 'Windows'"
+
+# The exact flash-linear-attention band that must ride the base install
+# (D-09, 28-01): PlantHelixSeek works out-of-the-box on a default install.
+EXPECTED_FLA_BASE_SPEC = "flash-linear-attention>=0.5.2,<0.6"
+
+# The curated external-package extras (28-01, D-10..D-13): exact single-member
+# bands, no platform markers, never members of all/full.
+EXPECTED_DEEPSPEED_EXTRA = ["deepspeed>=0.19.6,<0.19.7"]
+EXPECTED_FLASH_ATTN_EXTRA = ["flash-attn>=2.8.3.post2,<2.9"]
 
 
 def _load_mcp_extra() -> list[str]:
@@ -135,15 +149,72 @@ class TestNotebookExtraMembers:
         assert not missing, f"notebook extra lost pre-existing members: {sorted(missing)}"
 
 
-class TestFullExtraAndBaseAlias:
-    """18-01 atomic extras surgery guards: full rename, one-cycle alias, retirements.
+class TestTuiExtraMembers:
+    """Bracket-member assertions over project.optional-dependencies["tui"] (TUI-01).
 
-    The rename base -> full (owner decision 2026-10-14) must land with the
-    full extra carrying the former base members verbatim, the deprecated
-    base alias a pure self-reference (never an empty extra -- live-probed
-    silent under-install under pip AND uv), the triton-windows declaration
-    marker-gated to Windows in fla (WPAR-07), and cuda121/rocm absent from
-    both the extras table and the uv index/sources machinery.
+    The ``tui`` extra is the only install gate for the terminal pre-flight
+    wizard; ``test`` carries it so every pytest CI leg (which installs a
+    ``.[full...]`` variant) resolves textual transitively, and ``all`` names
+    it explicitly. Membership is asserted, never position -- reordering any
+    of these lists can neither fake a pass nor drop a member.
+    """
+
+    def test_tui_extra_members_exact(self) -> None:
+        """tui is exactly the two owner-pinned members -- nothing lost, nothing extra."""
+        tui = set(_load_extras().get("tui", []))
+        missing = EXPECTED_TUI_MEMBERS - tui
+        assert not missing, (
+            f"tui extra lost pinned members (TUI-01): {sorted(missing)} -- "
+            f"textual drives the wizard and platformdirs is its own "
+            f">=3.6,<5 constraint made explicit"
+        )
+        extra_members = tui - EXPECTED_TUI_MEMBERS
+        assert not extra_members, (
+            f"tui extra gained members beyond the pinned pair (TUI-01): "
+            f"{sorted(extra_members)} -- every tui dependency must be an "
+            f"owner-reviewed exact range"
+        )
+
+    def test_test_extra_rides_tui(self) -> None:
+        """dnallm[tui] is a member of the test extra, so every CI pytest leg installs textual."""
+        test_extra = _load_extras().get("test", [])
+        assert "dnallm[tui]" in test_extra, (
+            f"the test extra must carry dnallm[tui] (TUI-01): measured {test_extra} "
+            f"-- without it, a .[full] install reaches textual only by accident, "
+            f"and the TUI pytest lane fails on a clean runner"
+        )
+
+    def test_all_extra_includes_tui(self) -> None:
+        """tui appears in the comma-split bracket list parsed out of all[0]."""
+        all_extra = _load_extras().get("all", [])
+        assert all_extra, "the all extra must declare its bracket list"
+        bracket = all_extra[0]
+        assert bracket.startswith("dnallm["), (
+            f"the all extra's first member must stay a dnallm[...] bracket "
+            f"list (measured: {bracket!r})"
+        )
+        assert bracket.endswith("]"), (
+            f"the all extra's first member must stay a dnallm[...] bracket "
+            f"list (measured: {bracket!r})"
+        )
+        members = [item.strip() for item in bracket[len("dnallm[") : -1].split(",")]
+        assert "tui" in members, (
+            f"the all extra must include tui (TUI-01): measured members {members} from {bracket!r}"
+        )
+
+
+class TestFullExtraAndBaseAlias:
+    """18-01 atomic extras surgery guards: full rename, alias retirement, retirements.
+
+    The rename base -> full (owner decision 2026-10-14) landed with the full
+    extra carrying the former base members verbatim. The one-cycle alias
+    lived through v1.3 and is retired at v1.4 (PKG-01, pre-committed at v1.3
+    close): the extras table must carry no ``base`` key at all, so the
+    deprecation cannot silently outlive its announced removal. The
+    triton-windows declaration stays marker-gated to Windows in the base
+    [project] dependencies (WPAR-07, moved there with the fla promotion in
+    28-01), and cuda121/rocm stay absent from both the extras table and
+    the uv index/sources machinery.
     """
 
     def test_full_extra_members_preserved(self) -> None:
@@ -156,28 +227,33 @@ class TestFullExtraAndBaseAlias:
             f"full extra gained members beyond the former base set: {sorted(extra_members)}"
         )
 
-    def test_base_alias_is_pure_self_reference(self) -> None:
-        """base == ["dnallm[full]"] exactly -- one self-referential member, never empty."""
-        base = _load_extras().get("base")
-        assert base is not None, (
-            "the deprecated base alias is missing from optional-dependencies "
-            "(18-01: hard removal without the one-cycle alias exposes "
-            "pip/uv warn-and-exit-0 silent under-install)"
-        )
-        assert base == EXPECTED_BASE_ALIAS, (
-            f"the base alias must be the pure self-reference ['dnallm[full]'] "
-            f"(one-cycle deprecated alias, remove in v1.4); measured: {base} -- "
-            f"an EMPTY or diluted alias is the live-probed silent "
-            f"under-install hazard (18-RESEARCH 'Deprecated-Alias Mechanism')"
+    def test_base_alias_is_removed(self) -> None:
+        """The extras table carries no `base` key (PKG-01, the v1.4 cycle).
+
+        The alias's announced lifetime ended at v1.4. Keeping it would keep
+        masking the missing-extra case: without it pip/uv warn that the extra
+        does not exist and exit 0 on a core-only under-install, which is the
+        honest (if unhelpful) outcome the alias was created to defer, never
+        to hide permanently.
+        """
+        extras = _load_extras()
+        assert "base" not in extras, (
+            "the deprecated one-cycle base alias reappeared in "
+            f"optional-dependencies (PKG-01: removed at v1.4, pre-committed "
+            f"at v1.3 close); measured {extras.get('base')!r} -- the alias "
+            "silently resolves the full set and so masks the core-only "
+            "under-install that a missing extra produces"
         )
 
-    def test_triton_windows_marker_declared_in_fla(self) -> None:
-        """fla carries the exact marker-gated triton-windows spec (WPAR-07)."""
-        fla = _load_extras().get("fla", [])
-        assert EXPECTED_TRITON_WINDOWS_SPEC in fla, (
-            f"fla extra lost the exact triton-windows Windows-marker declaration "
-            f"(WPAR-07): expected {EXPECTED_TRITON_WINDOWS_SPEC!r} among {fla} -- "
-            f"exact band, no floating, Windows-only marker"
+    def test_triton_windows_marker_declared_in_base_deps(self) -> None:
+        """[project] dependencies carries the exact marker-gated triton-windows spec (WPAR-07, D-09)."""
+        with PYPROJECT.open("rb") as fh:
+            data = tomllib.load(fh)
+        deps = data["project"]["dependencies"]
+        assert EXPECTED_TRITON_WINDOWS_SPEC in deps, (
+            f"base dependencies lost the exact triton-windows Windows-marker "
+            f"declaration (WPAR-07/D-09): expected {EXPECTED_TRITON_WINDOWS_SPEC!r} "
+            f"among {deps} -- exact band, no floating, Windows-only marker"
         )
 
     def test_cuda121_and_rocm_extras_absent(self) -> None:
@@ -204,6 +280,83 @@ class TestFullExtraAndBaseAlias:
             )
 
 
+class TestCuratedExtras:
+    """Guards for the deepspeed / flash-attn curated extras and the fla
+    promotion (28-01, D-09..D-13).
+
+    The two external-package extras are exact single-member bands measured on
+    the runner-class GB10 box: ``deepspeed>=0.19.6,<0.19.7`` (0.19.7 removed
+    ``ops.sparse_attention``, the only thing GENA-LM-BigBird's remote code
+    imports) and ``flash-attn>=2.8.3.post2,<2.9``. Neither carries a platform
+    marker (D-11: pip fails loudly where the compile cannot run rather than
+    silently installing an empty extra) and neither joins ``all``/``full``
+    (D-13: heavy compile packages stay separately installed). The retired
+    ``fla`` extra must stay deleted; its two dependency strings ride the base
+    install (D-09).
+    """
+
+    def test_deepspeed_extra_is_the_exact_band(self) -> None:
+        """deepspeed is exactly the 0.19.6/0.19.7 single-member band (T-28-02)."""
+        deepspeed = _load_extras().get("deepspeed")
+        assert deepspeed == EXPECTED_DEEPSPEED_EXTRA, (
+            f"the deepspeed extra must be exactly {EXPECTED_DEEPSPEED_EXTRA} "
+            f"(D-10/D-11): measured {deepspeed!r} -- deepspeed.ops.sparse_attention "
+            f"was removed upstream in 0.19.7, so the ceiling is load-bearing"
+        )
+
+    def test_flash_attn_extra_is_the_exact_band(self) -> None:
+        """flash-attn is exactly the 2.8.3.post2/2.9 single-member band."""
+        flash_attn = _load_extras().get("flash-attn")
+        assert flash_attn == EXPECTED_FLASH_ATTN_EXTRA, (
+            f"the flash-attn extra must be exactly {EXPECTED_FLASH_ATTN_EXTRA} "
+            f"(D-10/D-11): measured {flash_attn!r} -- the floor is the version "
+            f"measured on the runner replica (sha256-pinned sdist build)"
+        )
+
+    def test_curated_extras_carry_no_platform_markers(self) -> None:
+        """Neither curated extra member carries an environment marker (D-11)."""
+        for name in ("deepspeed", "flash-attn"):
+            for member in _load_extras()[name]:
+                assert ";" not in member, (
+                    f"the {name} extra must carry no platform marker (D-11): "
+                    f"{member!r} -- pip fails loudly on unsupported platforms "
+                    f"instead of silently installing an empty extra"
+                )
+
+    def test_retired_fla_extra_stays_deleted(self) -> None:
+        """The extras table carries no fla key (D-09: promoted to base)."""
+        extras = _load_extras()
+        assert "fla" not in extras, (
+            "the retired fla extra reappeared in optional-dependencies "
+            f"(D-09: fla is a base dependency since 28-01): {extras.get('fla')!r}"
+        )
+
+    def test_fla_band_rides_base_dependencies(self) -> None:
+        """The exact flash-linear-attention 0.5.x band is a base dependency."""
+        with PYPROJECT.open("rb") as fh:
+            data = tomllib.load(fh)
+        deps = data["project"]["dependencies"]
+        assert EXPECTED_FLA_BASE_SPEC in deps, (
+            f"base dependencies lost the exact fla band (D-09): expected "
+            f"{EXPECTED_FLA_BASE_SPEC!r} among {deps} -- chunk_kda semantics "
+            f"are not guaranteed stable across fla minor versions"
+        )
+
+    def test_curated_and_retired_extras_absent_from_meta_extras(self) -> None:
+        """all/full bracket lists carry none of fla, deepspeed, flash-attn (D-13)."""
+        extras = _load_extras()
+        for meta_name in ("all", "full"):
+            bracket = extras.get(meta_name, [])
+            for member in bracket:
+                banned = ("fla", "deepspeed", "flash-attn")
+                hit = next((name for name in banned if name in member), None)
+                assert hit is None, (
+                    f"the {meta_name} meta-extra must not name {hit!r} "
+                    f"(D-09/D-13: curated compile extras stay separately "
+                    f"installed): {member!r}"
+                )
+
+
 class TestExtrasSurgeryResidueGates:
     """Repo-scan residue gates over the 18-01 surgery surface (phase-13 verbatim discipline).
 
@@ -217,42 +370,16 @@ class TestExtrasSurgeryResidueGates:
     """
 
     # Pattern 1: bracket install forms of base (.[base...] / dnallm[base...]).
-    # The alias declaration itself (base = ["dnallm[full]"]) does NOT match.
-    # Sanctioned: the two v1.3 deprecation notes (README + installation) plus,
-    # since 18-02, the two dnallm[base] rows of the cross-installer honesty
-    # matrix page (the during-alias-cycle row and the post-v1.4-removal row —
-    # the page exists precisely to document those two commands honestly).
+    # The alias declaration itself (base = ["dnallm[full]"]) never matched.
+    # Sanctioned: exactly ONE row -- the post-v1.4-removal row of the
+    # cross-installer honesty matrix page, which documents the missing-extra
+    # outcome honestly. The README/installation deprecation notes and the
+    # during-alias-cycle honesty row were deleted with the alias (PKG-01).
     BASE_BRACKET_PATTERN = r"\.\[base|dnallm\[base"
     SANCTIONED_BASE_BRACKET_RESIDUE = frozenset({
         (
-            "README.md",
-            "> **Deprecation note (v1.3):** the `base` extra was renamed to "
-            "`full` (same members: `dev` + `test` + `notebook` + `mcp` + isort). "
-            "The old `.[base]` spelling still resolves "
-            "the full member set through a one-cycle alias and will be removed "
-            "in v1.4 — after that removal pip/uv only print a warning that the "
-            "extra does not exist and exit 0, leaving a core-only under-install "
-            "(the silent hazard the alias exists to prevent). Use `.[full]`.",
-        ),
-        (
-            "docs/getting_started/installation.md",
-            "> **Deprecation note (v1.3):** the `base` group was renamed to "
-            "`full` (same members: `dev` + `test` + `notebook` + `mcp` + isort). "
-            "The `.[base]` alias still installs the full "
-            "set and will be removed in v1.4 — after removal pip/uv only print "
-            "a warning that the extra does not exist and exit 0, leaving a "
-            "core-only under-install. Use `.[full]` in new environments.",
-        ),
-        (
             "docs/getting_started/install_honesty.md",
-            "| `dnallm[base]` — during the v1.3 alias cycle | resolves the "
-            "alias → the **full member set**, exit 0, **no warning** | "
-            "identical — full set, exit 0, **no warning** | live probe "
-            "2026-10-14 |",
-        ),
-        (
-            "docs/getting_started/install_honesty.md",
-            "| `dnallm[base]` — after the v1.4 alias removal | `warning: The "
+            "| `dnallm[base]` — since the v1.4 alias removal | `warning: The "
             "package ... does not have an extra named 'base'`; installs "
             "**core only**; exit 0 | `WARNING: dnallm X.Y.Z does not provide "
             "the extra 'base'`; installs **core only**; exit 0 | live probe "
@@ -263,34 +390,40 @@ class TestExtrasSurgeryResidueGates:
     # Pattern 2: cuda121 (any form), torch-rocm (uv index name), bracket-rocm.
     # Sanctioned: exactly the three flash-linear-attention UPSTREAM-vocabulary
     # lines (Pitfall 4: fla's own [cuda]/[rocm] backend extras, never dnallm's
-    # retired rocm extra) -- README:255, docs/faq/models_troubleshooting.md:13,
-    # and the pyproject fla comment kept verbatim per the same rule.
+    # retired rocm extra) -- README:260, docs/faq/models_troubleshooting.md:13,
+    # and the pyproject comment kept verbatim per the same rule. The pyproject
+    # line moved with the D-09 (28-01) fla promotion from the retired extra
+    # block (column 0) into the indented base [project] dependencies list, so
+    # its sanctioned form carries the list's 4-space indentation; the README
+    # and troubleshooting lines were reworded by 28-05 (D-09) to name the base
+    # dependency set instead of the retired extra, keeping the upstream
+    # [cuda]/[rocm] vocabulary intact.
     CUDA121_ROCM_PATTERN = r"cuda121|torch-rocm|\[rocm\]"
     SANCTIONED_CUDA121_ROCM_RESIDUE = frozenset({
         (
             "pyproject.toml",
-            "# ([cuda]/[rocm]), they pin their own torch and would downgrade this environment.",
+            "    # ([cuda]/[rocm]), they pin their own torch and would downgrade this environment.",
         ),
         (
             "README.md",
-            "Three install notes: install the package **bare** "
-            "(`flash-linear-attention`, not its `[cuda]`/`[rocm]` extras) — "
-            "since v0.5 the backend extras pin their own torch and would "
-            "downgrade your environment; keep the version within `0.5.x` "
-            "(`>=0.5.2,<0.6`) — `chunk_kda` semantics are not guaranteed "
-            "stable across minor versions; and on **Windows** the `fla` extra "
-            "declares `triton-windows` behind a `platform_system == 'Windows'` "
-            "marker, so the Triton kernels work there without a separate "
-            "Triton install.",
+            "Three dependency notes: the base dependency is the **bare** "
+            "package (`flash-linear-attention`, not its `[cuda]`/`[rocm]` "
+            "extras) — since v0.5 the backend extras pin their own torch and "
+            "would downgrade your environment; the version is kept within "
+            "`0.5.x` (`>=0.5.2,<0.6`) — `chunk_kda` semantics are not "
+            "guaranteed stable across minor versions; and on **Windows** the "
+            "base dependency set pulls `triton-windows` behind a "
+            "`platform_system == 'Windows'` marker, so the Triton kernels "
+            "work there without a separate Triton install.",
         ),
         (
             "docs/faq/models_troubleshooting.md",
             "With the kernels installed the same checkpoints separate cleanly "
-            "(p(CRE) 0.77 in-DHS vs 0.22 non-DHS on the probe set). Install "
-            "the package **bare** — the `[cuda]`/`[rocm]` extras it shipped "
-            "since v0.5 are legacy names no longer on the current install "
-            "surface (they pin their own torch and would downgrade your "
-            "environment) — and keep the version within `0.5.x` "
+            "(p(CRE) 0.77 in-DHS vs 0.22 non-DHS on the probe set). DNALLM "
+            "installs the package **bare** — the `[cuda]`/`[rocm]` extras it "
+            "shipped since v0.5 are legacy names no longer on the current "
+            "install surface (they pin their own torch and would downgrade "
+            "your environment) — and keeps the version within `0.5.x` "
             "(`chunk_kda` semantics are not stable across minor versions). "
             "For current GPU installation lanes see the "
             "[GPU Support Matrix](../getting_started/gpu_support.md).",
@@ -338,10 +471,9 @@ class TestExtrasSurgeryResidueGates:
         extra = measured - sanctioned
         missing = sanctioned - measured
         assert not extra, (
-            f"unsanctioned base bracket-install residue (18-01 gate): "
+            f"unsanctioned base bracket-install residue (18-01 gate, PKG-01): "
             f"{sorted(extra)} -- every install command must use .[full]; only "
-            f"the two v1.3 deprecation notes and the two honesty-matrix rows "
-            f"carry the old spelling"
+            f"the post-removal honesty-matrix row may carry the old spelling"
         )
         assert not missing, (
             f"sanctioned base deprecation-note residue missing (18-01 gate, "

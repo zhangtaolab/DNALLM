@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "batch_id": "261028-vgm",
+  "created_at": "2026-10-28T14:39:09.988Z",
+  "options": {},
+  "base_revision": "9b13fb8bea5dea3de436967792b731ce72fc4ae6",
+  "items": [
+    {
+      "quick_id": "261028-vgn",
+      "client_id": null,
+      "description": "Fix all 18 ty@0.0.84 diagnostics in dnallm/tui/workers.py: 16x error[unresolved-attribute] \"Self@<worker> has no attribute post_message\" across collect_env/validate_data/generate_config/edit_config/check_compatibility/local_availability_batch/probe_availability/download workers, plus 1x warning[unsupported-base] tqdm-union class base at line 258 and its fallout; repo rule: real fixes or line-level \"# ty: ignore[code]\" pragmas for library dynamics only, no severity overrides, no [tool.ty] excludes",
+      "status": "complete",
+      "depends_on": [],
+      "planned_files": [
+        "dnallm/tui/workers.py",
+        "tests/tui/test_workers.py"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 0,
+      "commit": "aeb34fa",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261028-vgo",
+      "client_id": null,
+      "description": "Fix 7 ty@0.0.84 error[invalid-assignment] diagnostics at dnallm/preflight/config_gen.py:190 (union-typed values assigned to DNALLMConfig TypedDict keys task/inference/finetune/lora/ia3/sweep/vep); single root cause, prefer a typed construction over per-line ignores",
+      "status": "complete",
+      "depends_on": [],
+      "planned_files": [
+        "dnallm/preflight/config_gen.py",
+        "tests/preflight/test_config_gen.py"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 0,
+      "commit": "b37017a",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261028-vgp",
+      "client_id": null,
+      "description": "Fix 3 ty@0.0.84 diagnostics in dnallm/utils/transformers_compat.py lines 1597-1601: error[unresolved-attribute] named_children and error[invalid-assignment] all_tied_weights_keys on a Protocol-with-one-member model type, plus warning[unused-ignore-comment] on the stale pragma at 1601; these lines are 27.1-02 (IN-04) load-boundary code, keep behavior identical",
+      "status": "complete",
+      "depends_on": [],
+      "planned_files": [
+        "dnallm/utils/transformers_compat.py"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 0,
+      "commit": "e93f067",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261028-vgq",
+      "client_id": null,
+      "description": "Fix 1 ty@0.0.84 error[invalid-assignment] at dnallm/tui/screens/download.py:291: DownloadOperation assigned to attribute _worker typed Worker[Any] | None; align the declared type with what is actually stored",
+      "status": "complete",
+      "depends_on": [],
+      "planned_files": [
+        "dnallm/tui/screens/download.py"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 0,
+      "commit": "379d525",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261028-vgr",
+      "client_id": null,
+      "description": "Fix 1 ty@0.0.84 error[invalid-argument-type] at dnallm/preflight/availability.py:485: int() called on int | None; guard or narrow per actual runtime contract",
+      "status": "complete",
+      "depends_on": [],
+      "planned_files": [
+        "dnallm/preflight/availability.py"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 0,
+      "commit": "55d5d3f",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261028-vgs",
+      "client_id": null,
+      "description": "Add v1.4 to .github/workflows/ci.yml on.push.branches following the documented v1.3 entry pattern (2026-10-07 first-exposure lesson comment block) so the matrix legs incl. the ty hard gate run on v1.4 pushes before the v1.4-to-main merge",
+      "status": "complete",
+      "depends_on": [],
+      "planned_files": [
+        ".github/workflows/ci.yml"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 0,
+      "commit": "c96bbb1",
+      "failure_reason": null
+    }
+  ]
+}

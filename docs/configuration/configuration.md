@@ -80,6 +80,12 @@ Behavior to rely on:
 - The absolute path of the file is injected into the raw dict as `config_path` before
   validation (consumed by `BenchmarkConfig`; documented in the `DNALLMConfig` docstring
   as *not* being one of the section keys).
+- Section construction is factored into `validate_sections`, the shared validation
+  path: `load_config` calls it after reading the YAML file, and the pre-flight config
+  generator (`dnallm.preflight.config_gen`) calls the same function for validated
+  emission and round-trip revalidation.
+- A file whose top level is not a YAML mapping (empty, comment-only, list root, or
+  scalar root) raises a `ValueError` naming the offending type.
 - Unknown keys inside a validated section raise Pydantic validation errors at load time;
   only `model` accepts arbitrary keys.
 - The CLI commands (`dnallm train`, `dnallm-inference`, `dnallm-train`) require
@@ -114,9 +120,10 @@ Where `task_type` takes effect:
 
 - **Trainer branching** — `dnallm/finetune/trainer.py` switches metric computation and
   data handling on `regression` vs `mask`/`generation`/`embedding`.
-- **Task heads and metrics** — `dnallm/tasks/task.py` (`TaskType` enum, `TaskHead`,
-  `compute_metrics`: binary → accuracy/F1, multiclass → accuracy/macro-F1/weighted-F1,
-  regression → MSE/R²).
+- **Task heads and metrics** — `dnallm/tasks/task.py` (`TaskType` enum and the
+  `compute_metrics` dispatch: binary → accuracy/F1, multiclass → accuracy/macro-F1/weighted-F1,
+  regression → MSE/R²). The prediction heads themselves (`BasicMLPHead`, `BasicCNNHead`,
+  `BasicLSTMHead`, `BasicUNet1DHead`, family-specific heads) live in `dnallm/models/head.py`.
 - **Benchmark datasets** — each `DatasetConfig` in a benchmark YAML carries its own
   `task` string (e.g. `binary_classification`); see the
   [Benchmark Configuration Guide](../user_guide/benchmark/configuration.md).
@@ -193,6 +200,7 @@ The MCP server does not use `load_config`. `MCPConfigManager`
 YAML (the `task`/`inference`/`model` layout with stricter MCP validation). Relative
 `config_path` entries resolve against the config directory. Shipped defaults live in
 [`dnallm/mcp/configs/`](https://github.com/zhangtaolab/DNALLM/blob/main/dnallm/mcp/configs/)
+— `mcp_server_config.yaml` plus the multi-model showcase `mcp_server_config_2.yaml` —
 and are the default `--config` for `dnallm mcp-server`. The manager supports hot
 reloading (`reload_configurations`) and reference validation
 (`validate_model_references` cross-checks multi-model groups). Full field tables and
@@ -215,6 +223,8 @@ writes these:
 
 Settings that fail at **load time** (Pydantic validation), not at runtime:
 
+- A YAML file whose top level is not a mapping (empty, comment-only, list root, or
+  scalar root) raises `ValueError` from `load_config`.
 - `benchmark` files: missing `benchmark`, `models`, `datasets`, or `output` sections
   raise validation errors.
 - `task.task_type` outside the accepted pattern (see above) raises immediately.
@@ -256,10 +266,10 @@ Selected defaults defined in `dnallm/configuration/configs.py`:
 | `configs/` (repo root) | Starter configs: `finetune_config.yaml`, `inference_config.yaml`, `lora_config.yaml`, `ner_config.yaml` |
 | `example/notebooks/**` | One YAML per example workflow (binary, NER, multi-label, custom head, generation, mutagenesis, benchmark, LoRA fine-tune + inference, data prep) |
 | `example/marimo/{inference,finetune,benchmark}/` | Configs used by the marimo example apps |
-| `dnallm/mcp/configs/` | MCP server config plus per-model inference configs (promoter, conservation, open chromatin, H3K27ac, H3K27me3) |
+| `dnallm/mcp/configs/` | MCP server configs (`mcp_server_config.yaml` and the multi-model `mcp_server_config_2.yaml`) plus per-model inference configs (promoter, conservation, open chromatin, H3K27ac, H3K27me3) |
 | `dnallm/configuration/presets/lora_targets.yaml` | Packaged PEFT target-module presets (ships with the wheel via package data) |
 | `dnallm/configuration/evo/` | Evo 1 / Evo 2 model architecture YAMLs consumed by the model loader, not by `load_config` |
-| `dnallm/models/model_info.yaml` | Model registry (pretrained/finetuned entries) used by the config generator |
+| `dnallm/models/model_info.yaml` | Model registry (49 pretrained + 187 finetuned entries), parsed only by `dnallm/models/registry.py`; pretrained entries carry the transformers-5 compatibility census fields (`tf_compat_status` / `tf_compat_evidence` / `tf_compat_tested`). Feeds the config generator, pre-flight compatibility checks, and preset loading; the rendered verdict table is [Model Compatibility](../user_guide/model_compatibility.md) |
 
 ## Generating configurations
 
@@ -273,6 +283,23 @@ dnallm-model-config-generator --output config.yaml --non-interactive
 ```
 
 Details: [Config Generator](../user_guide/cli/config_generator.md).
+
+The pre-flight wizard is the second interactive path — it starts from *your data*
+instead of a model list: `dnallm preflight` (needs `pip install "dnallm[tui]"`)
+validates the data (`dnallm.preflight.validate_data`), checks model compatibility
+against the registry (`check_compatibility`), then builds and live-validates a config
+before saving it (the exact file is previewed first, and the save is refused while
+validation errors remain). `dnallm preflight --config existing.yaml` jumps straight
+to editing an existing file. The same capability exists as pure functions:
+`dnallm.preflight.generate_config(model)` and `edit_config(path)` return a
+`GeneratedConfig` carrying the config document (and field-level `SectionError`
+records instead of tracebacks when something is invalid), and `render_yaml` returns
+the exact text that would be written — nothing touches disk unless you pass
+`output_path`. Model-derived defaults (task prefill for finetuned registry entries,
+the effective context length) come from `dnallm.models.registry` via the non-raising
+`try_resolve` lookup and `effective_max_length`, so generated configs match the
+registry rather than hand-typed guesses. Walkthrough with screenshots:
+[Pre-flight Wizard](../user_guide/tui/preflight_wizard.md).
 
 ## Per-environment overrides
 
@@ -297,12 +324,19 @@ From `[project.optional-dependencies]` in `pyproject.toml`:
 | Extra | Config relevance |
 |---|---|
 | `mcp` | Required for `dnallm-mcp-server` and the MCP configuration subsystem |
+| `tui` | Terminal pre-flight wizard (`dnallm preflight`); Textual only — adds no config keys |
 | `mamba` | Mamba-family models (`mamba-ssm`, `causal_conv1d`) referenced by model configs |
-| `fla` | flash-linear-attention kernels for PlantHelixSeek remote code |
+| `deepspeed` | `deepspeed` (pinned band) for GENA-LM-BigBird; Linux + CUDA compile package, never a member of `all`/`full` |
+| `flash-attn` | `flash-attn` (pinned band) for CrossDNA; Linux + CUDA only — end-user source installs need `--no-build-isolation`, never a member of `all`/`full` |
 | `cuda124`–`cuda130`, `cpu` | torch build selection (see above) |
 | `full` | `dev + test + notebook + mcp` |
-| `base` | Deprecated one-cycle alias for `full` (installs the full set; removal planned for v1.4) |
-| `all` | `full + dev + test + notebook + docs + ui + mcp + fla` |
+| `all` | `full + dev + test + notebook + docs + ui + mcp + tui` |
+
+The former `base` extra (a one-cycle alias for `full`) and the former `fla` extra were
+retired in v1.4: flash-linear-attention (and its Windows triton wheel) moved into the
+base dependencies so PlantHelixSeek works on a default install. Measured install and
+usage guides for the two compile extras:
+[Optional Dependencies](../user_guide/optional_dependencies.md).
 
 Everything the YAML schema itself needs (bitsandbytes, optuna, peft, tensorboardx,
 wandb, pyyaml) is in the core dependencies — no extra is required to load any section.
@@ -315,6 +349,10 @@ wandb, pyyaml) is in the core dependencies — no extra is required to load any 
   YAML schema, model/dataset/metric/output references
 - [MCP Server Configuration](../user_guide/mcp/configuration.md) — server and per-model
   config references, command-line overrides, validation rules
+- [Model Compatibility](../user_guide/model_compatibility.md) — generated per-model
+  transformers-5 census table behind the registry's `tf_compat_status` fields
+- [Optional Dependencies](../user_guide/optional_dependencies.md) — what each compile
+  extra (`deepspeed`, `flash-attn`) is for and how to install it
 - [API: Configs](../api/configuration/configs.md) — mkdocstrings reference for every
   config class
 - [CLI Usage](../user_guide/cli/usage.md) — how each command consumes a config file

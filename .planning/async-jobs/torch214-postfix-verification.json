@@ -1,0 +1,22 @@
+{
+  "job_id": "torch214-postfix-verification",
+  "plan_id": "torch-214-postfix-verification",
+  "kind": "github_actions_dispatch",
+  "workflow": "ci.yml",
+  "run_id": 40169504816,
+  "run_url": "https://github.com/zhangtaolab/DNALLM/actions/runs/40169504816",
+  "repo": "zhangtaolab/DNALLM",
+  "ref": "v1.4",
+  "head_sha": "a520e8a",
+  "dispatched_at": "2026-10-25T06:33:24Z",
+  "dispatched_by": "resume-work session (owner-directed: prove the three fixes end-to-end on the box now)",
+  "status": "terminal — run 40169504816 concluded 2026-10-25T12:34Z. VERDICT: test-mamba SUCCESS — the patched pipeline's first full CI run: TUNA fetch -> sha256 verify -> 4-line c++20 patch -> wheel build (~90s) -> 3120 passed/1 skipped/70 deselected in 3:19 under torch 2.14.1. coverage-nightly: 3231 passed/1 failed/18 skipped (3:47) — the 1 = data_generation_and_inference.ipynb rice.uga.edu 7200s download timeout, the owner-accepted external-host flake class (phase-14 H.4 precedent); embedding_attention.ipynb GREEN (e4x facade fix proven at census level); test_sample_datasets timeout singleton did NOT recur (flake classification supported). example-nightly: Stage 0 patched-wheelhouse build PASSED; job red on D-03 census collection gate only — expected triple 216/217 (main-calibrated) vs measured 222/223 (v1.4 tree legitimately collects 6 more example tests) — first-exposure calibration item, not a product failure; Stage 4 fail-soft summary red downstream of the same. CONCLUSION: torch 2.14 + mamba compatibility question answered GREEN end-to-end; two reds are (a) known network flake, (b) D-03 gate recalibration (one ci.yml line) needed before v1.4->main merge.",
+  "purpose": "Post-fix end-to-end proof on the v1.4 tree containing quick-batch 261025-e4u: (1) test-mamba runs the NEW sha256-pinned c++20 patch pipeline under the raised ceiling — first full CI kernel build through scripts/install_mamba.sh, torch resolves 2.14.x implicitly; (2) coverage-nightly proves the e4x facade fix turns embedding_attention.ipynb green and classifies the test_sample_datasets timeout singleton; (3) example-nightly stage-0 builds the patched wheelhouse via the new pipeline.",
+  "pass_criteria": [
+    "test-mamba: patched-pipeline source build green under torch 2.14.x + mamba census green",
+    "coverage-nightly: embedding_attention.ipynb green; census otherwise green (timeout singleton classified)",
+    "example-nightly: stage-0 wheelhouse via patched pipeline + notebook census green"
+  ],
+  "verification_command": "gh run view 40169504816 --repo zhangtaolab/DNALLM --json status,conclusion,jobs",
+  "context": "Supersedes waiting for the 2026-10-26 03:00/05:30 UTC crons (this dispatch exercises the same lanes a day early; the crons still fire and serve as the fleet-jump observation per the e4w plan's owner watch). This run also doubles as the raise's first full-cycle evidence. codeload.github.com probe green at dispatch time (434KB in <45s) so floating-tag action downloads on v1.4's ci.yml (unlike the spike branch, v1.4 does NOT carry the SHA-pinning contingency) are expected to succeed. Rollback anchor: revert f00e90d alone if the raise proves unstable."
+}

@@ -1,0 +1,163 @@
+name: census_compat
+
+# Census re-verification lane (Phase 27, D-08): re-runs the transformers
+# compatibility census on the self-hosted GPU box and fails red the moment
+# the world (a transformers bump, a model-repo change) disagrees with the
+# committed tf_compat_* registry fields.
+#
+# Dispatch-ONLY by design, copying the feasibility.yml posture wholesale:
+# this job runs repo code on the self-hosted [self-hosted, dnallm-nightly]
+# GPU box, so it must never trigger on push/pull_request/schedule —
+# PR-authored code (including forks) never executes on that runner. The
+# owner triggers it manually on transformers bumps (operationalizing the
+# dependabot KNOWN RISK note) or whenever re-verification is needed:
+#   gh workflow run census_compat.yml --ref <branch>
+# No nightly residency (D-08): a committed, re-runnable commitment, not a
+# cron.
+on: workflow_dispatch
+
+# Least privilege (feasibility.yml convention): this workflow executes repo
+# code on the self-hosted GPU box, so its job must never inherit read/write
+# repo-default token scopes.
+permissions:
+  contents: read
+
+jobs:
+  census-compat:
+    # Same self-hosted posture as coverage-nightly / test-mamba: the nightly
+    # GPU box. The event gate below is the security boundary —
+    # workflow_dispatch is reachable only by users with write access.
+    runs-on: [self-hosted, dnallm-nightly]
+    if: github.event_name == 'workflow_dispatch'
+    # 49 model fetches plus family-representative loads/forwards (some
+    # multi-GB); 240min bounds a worst-case run without monopolizing the box
+    # that also serves coverage-nightly.
+    timeout-minutes: 240
+    steps:
+      - name: Check for GPU
+        id: gpu-check
+        # Fail-closed posture (feasibility WR-05 pattern): a silent skip
+        # would green the lane with zero evidence. On GPU absence, write a
+        # gpu_absent marker into the artifact directory and FAIL — the
+        # upload step below still runs (if: always()) so the marker reaches
+        # the owner.
+        run: |
+          mkdir -p census-artifacts
+          if command -v nvidia-smi &> /dev/null && nvidia-smi > /dev/null 2>&1; then
+            echo "has_gpu=true" >> $GITHUB_OUTPUT
+            echo "GPU detected, will run the compatibility census"
+          else
+            echo "has_gpu=false" >> $GITHUB_OUTPUT
+            echo "gpu_absent=$(date -u +%FT%TZ) nvidia-smi unavailable" > census-artifacts/gpu_absent.marker
+            echo "No GPU detected — failing: this lane's deliverable is fresh census evidence"
+            exit 1
+          fi
+
+      - name: Checkout code
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        # IN-05 (phase 27.1): this persistent box carries a runner-ops uv
+        # under ~/.local/bin with the TUNA mirror configured in
+        # ~/.config/uv/uv.toml. An unconditional curl|sh both fetches
+        # unpinned remote code and silently replaces that binary on every
+        # dispatch (the served installer embeds its own version; there is no
+        # UV_VERSION knob -- refuted in 27.1-RESEARCH.md). Skip when uv
+        # already resolves; the installer pipeline remains the wiped-box
+        # fallback only, and that fallback stays unpinned (accepted residual
+        # supply-chain exposure, T-27.1-06).
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          if command -v uv >/dev/null 2>&1; then
+            echo "uv already provisioned: $(uv --version)"
+            # Persist the path for later steps: the curl installer this guard
+            # replaces wrote GITHUB_PATH, and every later step calls bare `uv`.
+            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          else
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+          fi
+
+      - name: Create virtual environment and install dependencies
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        # .[full] resolves green on this exact box (feasibility /
+        # coverage-nightly precedent); no spike-only packages involved.
+        run: |
+          uv venv
+          uv pip install -e ".[full]"
+          # Census prerequisites, not optional extras (UAT G-27-1): the
+          # mamba-family remote code (kuleshov-group caduceus, PlantCAD2,
+          # lgq12697/PlantBiMoE) imports mamba_ssm at import-probe time, so
+          # without the kernels the fresh census reports those entries as
+          # unmappable and the lane exits 1 deterministically (red-run
+          # replica evidence: 45 matched / 4 disagreeing, all
+          # ModuleNotFoundError: mamba_ssm). The kernels go through the
+          # sha256-pinned c++20 patch pipeline (scripts/install_mamba.sh),
+          # NEVER the plain .[mamba] extra: the uv source build of that
+          # extra fails on this box (verified) — torch's ATen headers set
+          # a C++20 floor while mamba-ssm 2.3.2.post1's setup.py hardcodes
+          # c++17, and the release wheel matrix stops at torch 2.10, so no
+          # prebuilt wheel can serve this box either. TUNA is this box's
+          # working PyPI route (owner-approved 2026-10-24); the script's
+          # sha256 pin enforces byte integrity regardless of route. The
+          # venv is uv-created, so pip must be bootstrapped first (the
+          # installer aborts without it, naming this exact command). NO
+          # masking: a failed kernel build must redden this lane.
+          uv pip install --python .venv/bin/python pip
+          bash scripts/install_mamba.sh --python .venv/bin/python --index-url https://pypi.tuna.tsinghua.edu.cn/simple
+
+      - name: Record runner identity
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        run: |
+          nvidia-smi --query-gpu=name,compute_cap,driver_version --format=csv,noheader
+
+      - name: Re-run the census and verify against the committed registry
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        # Fresh census (imports + family-representative load/forward) then
+        # the fail-closed diff against the committed tf_compat_* fields: any
+        # verdict disagreement, any roster gap, or a transformers version
+        # drift exits non-zero. NO `|| true` masking — a red step means real
+        # drift or infrastructure failure, and both must surface (the upload
+        # below still runs via its if: always()).
+        #
+        # The fresh artifact is SEEDED from the committed census (CR-01):
+        # the hand-authored 27-02 dispositions (skip/fix judgments) exist
+        # only there, and merge_records carries them onto unchanged
+        # verdicts, so the fresh run can map every record and this lane can
+        # be green when the world agrees. A genuine verdict change drops its
+        # stale disposition and disagrees with the committed field — exactly
+        # the drift this lane exists to catch. Unreachable repos are census
+        # evidence, not a lane failure by themselves: they surface as loud
+        # census-blocked records and are gated by the verdict diff (a
+        # committed-known unreachable entry matches its committed
+        # census-blocked field; a newly unreachable one does not).
+        # The runner cannot reach the default Hugging Face endpoint: the
+        # census tool hard-codes ModelScope-first + the hf-mirror endpoint;
+        # no hub URL is added here.
+        #
+        # Re-create census-artifacts AFTER checkout (phase-27 review CR-01,
+        # 2026-10-28): the persistent shared workspace always carries a repo
+        # at dispatch (the nightly lanes check out into it), so
+        # actions/checkout's default clean (`git clean -ffdx`) removes the
+        # untracked directory the pre-checkout mkdir created — without this
+        # line the cp below fails on every live dispatch. The pre-checkout
+        # mkdir stays: it serves the GPU-absent marker path, where checkout
+        # is skipped so nothing removes it (feasibility.yml §Feasibility).
+        run: |
+          source .venv/bin/activate
+          mkdir -p census-artifacts
+          cp tests/models/compat_census.json census-artifacts/census-fresh.json
+          python scripts/census_compat.py --run --with-loads --verify --artifact census-artifacts/census-fresh.json
+
+      - name: Upload fresh census evidence
+        # Unconditional: the artifact is the deliverable, especially on
+        # failure — a red run with evidence beats a green run without it.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: census-fresh-evidence
+          path: |
+            census-artifacts/census-fresh.json
+            census-artifacts/gpu_absent.marker
+          if-no-files-found: warn

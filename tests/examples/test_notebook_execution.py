@@ -29,6 +29,7 @@ import inspect
 import os
 import json
 import re
+import shutil
 import socket
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import sys
@@ -124,11 +125,86 @@ def _rice_cache_extras(cache_dir: Path = RICE_CACHE_DIR) -> list[tuple[Path, str
     ]
 
 
+# Documented input-download URLs (provenance pinned by the example tree;
+# mirrors RICE_INPUT_URLS in the sibling script lane).
+RICE_INPUT_URLS: dict[str, str] = {
+    "osa1_r7.asm.fa.gz": "https://rice.uga.edu/osa1r7_download/osa1_r7.asm.fa.gz",
+    "osa1_r7.all_models.gff3.gz": (
+        "https://rice.uga.edu/osa1r7_download/osa1_r7.all_models.gff3.gz"
+    ),
+}
+RICE_NOTEBOOK = "notebooks/finetune_NER_task/data_generation_and_inference.ipynb"
+
+
+def _download_rice(url: str, dest: Path, timeout_s: int = 600) -> None:
+    """Stream *url* into the census cache (never the repo tree)."""
+    # ruff: ignore[suspicious-url-open-usage]  # callers pass hardcoded https constants only
+    with urllib.request.urlopen(url, timeout=timeout_s) as response, open(dest, "wb") as out:
+        shutil.copyfileobj(response, out)
+
+
+def _rice_extras_or_skip(cache_dir: Path = RICE_CACHE_DIR) -> list[tuple[Path, str]]:
+    """Seed tuples for the rice notebook, warming a cold census cache first.
+
+    261022-sl7: the nightly runner's cache was cold while rice.uga.edu
+    stalled mid-read, so the notebook's own ``wget -c`` cell burned its
+    full 3600s cell budget and failed the run (CI 39746765123, 1 failed /
+    2540 passed). Mirrors the sibling script lane (:func:`_seed_rice_input`
+    in test_script_execution.py): census cache first; a cold cache
+    downloads from the documented URLs (self-refreshing mirror, per-run
+    provenance for CI/fresh checkouts); a permanent 4xx re-raises (WR-04);
+    an outage type-skips ``network-unavailable:`` instead of hanging a
+    kernel for an hour. Never half-seeds: both inputs must be in hand,
+    else the in-notebook wget would hang on the missing one anyway.
+
+    Args:
+        cache_dir: census cache dir (repo-root .scratch/, gitignored).
+
+    Returns:
+        One (cached-file, sandbox-name) tuple per complete rice input.
+
+    Raises:
+        urllib.error.HTTPError: a permanent 4xx on a cold cache -- a broken
+            input contract is never converted into a typed skip (WR-04).
+    """
+    extras = _rice_cache_extras(cache_dir)
+    if len(extras) == len(RICE_CACHE_NAMES):
+        return extras
+    outages: list[str] = []
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    for name, url in RICE_INPUT_URLS.items():
+        cached = cache_dir / name
+        if cached.is_file() and cached.stat().st_size > 0:
+            continue
+        try:
+            _download_rice(url, cached)
+        except urllib.error.HTTPError as exc:
+            if exc.code < 500:
+                raise  # WR-04: permanent 4xx is a broken input contract
+            outages.append(f"{name}: HTTP {exc.code}")
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            # Never cache a partial stream: wget -c on a truncated file
+            # would resume it live in-notebook and re-hang the cell.
+            cached.unlink(missing_ok=True)
+            outages.append(f"{name}: {type(exc).__name__}: {exc}")
+    extras = _rice_cache_extras(cache_dir)
+    if len(extras) < len(RICE_CACHE_NAMES):
+        pytest.skip(
+            f"network-unavailable: rice.uga.edu fetch for {RICE_NOTEBOOK} "
+            f"({'; '.join(outages) or 'no new download succeeded'}); "
+            f"census cache cold at {cache_dir}"
+        )
+    return extras
+
+
 _NOTEBOOK_EXTRA_INPUTS: dict[str, list[tuple[Path, str]]] = {
     "notebooks/benchmark/benchmark.ipynb": [
         (EXAMPLE_DIR / "notebooks" / "inference" / "test.csv", "../inference/test.csv"),
     ],
-    "notebooks/finetune_NER_task/data_generation_and_inference.ipynb": _rice_cache_extras(),
+    # The rice notebook resolves at fixture time via _rice_extras_or_skip
+    # (261022-sl7), not through this import-time table: its inputs need the
+    # cold-cache warm-up / outage skip that the table's static snapshot
+    # cannot express (import-time cache state can also go stale mid-session).
 }
 
 
@@ -146,10 +222,17 @@ def notebook_sandbox(tmp_path: Path, request: pytest.FixtureRequest) -> Iterator
     (05-05): the seeded directory follows ``nb_path`` from the test's
     parametrization, so every census notebook gets a faithful sandbox.
     Cross-directory inputs ride along through the per-notebook
-    :data:`_NOTEBOOK_EXTRA_INPUTS` table (261002-sl7).
+    :data:`_NOTEBOOK_EXTRA_INPUTS` table (261002-sl7); the rice notebook
+    instead resolves through :func:`_rice_extras_or_skip` at fixture time
+    (261022-sl7), which warms a cold census cache or type-skips on a
+    rice.uga.edu outage.
     """
     nb_path = Path(request.node.callspec.params["nb_path"])
-    extras = _NOTEBOOK_EXTRA_INPUTS.get(nb_path.relative_to(EXAMPLE_DIR).as_posix(), [])
+    rel = nb_path.relative_to(EXAMPLE_DIR).as_posix()
+    if rel == RICE_NOTEBOOK:
+        extras = _rice_extras_or_skip()
+    else:
+        extras = _NOTEBOOK_EXTRA_INPUTS.get(rel, [])
     # Mirror gated_sandbox (D-05, 09-02): forward any spec-driven yaml_patch
     # so a future cut on an ACTIVE notebook is never silently ignored --
     # specs without a yaml_patch key seed unchanged (None).
@@ -590,6 +673,127 @@ class TestRiceCacheExtras:
         (tmp_path / RICE_CACHE_NAMES[1]).write_bytes(b"full")
         extras = _rice_cache_extras(tmp_path)
         assert [src.name for src, _dest in extras] == [RICE_CACHE_NAMES[1]]
+
+
+class _FakeUrlStream:
+    """Minimal urllib response double: read() + headers + context manager."""
+
+    def __init__(self, chunks: list[bytes], headers: dict[str, str] | None = None):
+        self._iter = iter(chunks)
+        self.headers = headers or {}
+
+    def read(self, n: int = -1) -> bytes:  # urllib API shape (n unused here)
+        return next(self._iter, b"")
+
+    def __enter__(self) -> _FakeUrlStream:
+        return self
+
+    def __exit__(self, *exc: object) -> bool:
+        return False
+
+
+class TestRiceExtrasOrSkip:
+    """Contract for :func:`_rice_extras_or_skip` (261022 rice.uga.edu stall).
+
+    Warm cache -> seeds without touching the network; cold cache ->
+    documented-URL downloads warm the cache and seed; outage on a cold
+    cache -> typed ``network-unavailable:`` skip (never the 3600s wget
+    hang, CI 39746765123); permanent 4xx re-raises (WR-04); a half-warmed
+    cache never half-seeds.
+    """
+
+    def test_warm_cache_short_circuits_without_network(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Both cached files present -> seeds return, no download attempted."""
+
+        def _no_network(*args: object, **kwargs: object) -> object:
+            raise AssertionError("warm cache must not touch the network")
+
+        monkeypatch.setattr(urllib.request, "urlopen", _no_network)
+        for name in RICE_CACHE_NAMES:
+            (tmp_path / name).write_bytes(b"x" * 16)
+        extras = _rice_extras_or_skip(tmp_path)
+        assert [src.name for src, _dest in extras] == list(RICE_CACHE_NAMES)
+
+    def test_cold_cache_downloads_warm_and_seed(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A cold cache downloads both documented URLs and returns both seeds."""
+
+        def _fake_urlopen(url: str, timeout: int = 600) -> _FakeUrlStream:
+            return _FakeUrlStream([f"payload:{url.split('/')[-1]}".encode()])
+
+        monkeypatch.setattr(urllib.request, "urlopen", _fake_urlopen)
+        extras = _rice_extras_or_skip(tmp_path)
+        assert [src.name for src, _dest in extras] == list(RICE_CACHE_NAMES)
+        assert (tmp_path / RICE_CACHE_NAMES[0]).read_bytes() == b"payload:osa1_r7.asm.fa.gz"
+
+    def test_outage_on_cold_cache_type_skips(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A stalled host turns into the typed skip, not the 3600s hang."""
+
+        def _stalled(url: str, timeout: int = 600) -> object:
+            raise urllib.error.URLError("read timed out")
+
+        monkeypatch.setattr(urllib.request, "urlopen", _stalled)
+        with pytest.raises(pytest.skip.Exception, match=r"network-unavailable: rice.uga.edu"):
+            _rice_extras_or_skip(tmp_path)
+
+    def test_outage_leaves_no_partial_cache_entry(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A stream cut mid-download must not leave a partial file in the cache."""
+
+        class _CutMidStream:
+            """Serves one chunk, then times out mid-transfer (stream cut)."""
+
+            def __init__(self) -> None:
+                self.headers: dict[str, str] = {}
+                self._first = True
+
+            def read(self, n: int = -1) -> bytes:
+                if self._first:
+                    self._first = False
+                    return b"partial-"
+                raise TimeoutError("read timed out")
+
+            def __enter__(self) -> _CutMidStream:
+                return self
+
+            def __exit__(self, *exc: object) -> bool:
+                return False
+
+        monkeypatch.setattr(urllib.request, "urlopen", lambda url, timeout: _CutMidStream())
+        with pytest.raises(pytest.skip.Exception, match=r"network-unavailable: rice.uga.edu"):
+            _rice_extras_or_skip(tmp_path)
+        assert list(tmp_path.iterdir()) == [], "partial streams must not be cached"
+
+    def test_half_warm_cache_never_half_seeds(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """One cached file + a stalled host -> skip (the missing wget would hang)."""
+        (tmp_path / RICE_CACHE_NAMES[0]).write_bytes(b"x" * 16)
+
+        def _stalled(url: str, timeout: int = 600) -> object:
+            raise urllib.error.URLError("connection reset")
+
+        monkeypatch.setattr(urllib.request, "urlopen", _stalled)
+        with pytest.raises(pytest.skip.Exception, match=r"network-unavailable: rice.uga.edu"):
+            _rice_extras_or_skip(tmp_path)
+
+    def test_permanent_4xx_reraises_never_skips(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """WR-04: a 404 (gone dataset) must fail loud, not become a typed skip."""
+
+        def _gone(url: str, timeout: int = 600) -> object:
+            raise urllib.error.HTTPError(url, 404, "Not Found", None, None)
+
+        monkeypatch.setattr(urllib.request, "urlopen", _gone)
+        with pytest.raises(urllib.error.HTTPError):
+            _rice_extras_or_skip(tmp_path)
 
 
 class TestProbeHonesty:

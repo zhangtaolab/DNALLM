@@ -152,7 +152,7 @@ Two rules to avoid the most common pitfalls:
    dnallm`) FIRST, then install torch from the index above. The editable
    install re-resolves `torch` from PyPI, whose default Windows wheel is the
    CPU build (`+cpu`) — it will silently replace a GPU torch installed
-   earlier. Respect the `torch<2.12` pin from `pyproject.toml`, e.g.:
+   earlier. Respect the `torch<2.15` pin from `pyproject.toml`, e.g.:
 
    ```bash
    # [pip lane]
@@ -170,10 +170,10 @@ Two rules to avoid the most common pitfalls:
    # Wrong:     2.11.0+cpu  None False  <-- pip fell back to the CPU wheel
    ```
 
-> **Note:** The `torch==2.11.0` pin above is the newest release satisfying
-> DNALLM's `torch<2.12` requirement. The PyTorch indexes also ship newer
-> versions (2.12+), which must NOT be used with the current DNALLM release.
-> Check the exact pins in `pyproject.toml` for your version.
+> **Note:** The `torch==2.11.0` pin above satisfies DNALLM's
+> `torch>=2.4.0,<2.15` requirement. The PyTorch indexes also ship newer
+> versions; torch 2.15 or above must NOT be used with the current DNALLM
+> release. Check the exact pins in `pyproject.toml` for your version.
 
 #### Windows with CUDA 13.0
 
@@ -239,7 +239,7 @@ lane matches your GPU generation, the [GPU Support Matrix](gpu_support.md).
 
 | Group | Purpose | Includes |
 |-------|---------|----------|
-| **all** | Install all optional dependencies | `full` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` |
+| **all** | Install all optional dependencies | `full` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `tui` |
 | **full** | Full development environment | `dev` + `test` + `notebook` + `mcp` + extra tools (isort) |
 | **dev** | Complete development environment | `test` + `notebook` + linting/typing (ruff, pre-commit) + analysis tools (logomaker, pybedtools, pyfastx, seaborn) |
 | **test** | Testing environment only | pytest and plugins |
@@ -247,27 +247,28 @@ lane matches your GPU generation, the [GPU Support Matrix](gpu_support.md).
 | **docs** | Documentation building | mkdocs-material, mkdocstrings, mkdocs-jupyter |
 | **ui** | Gradio web interface | Gradio |
 | **mcp** | MCP server + LLM agent examples | `langchain`, `langchain-mcp-adapters`, `langchain-ollama`, `nest-asyncio`, `pydantic-ai` (server core `mcp`/`starlette`/`uvicorn`/`websockets` is already in the core dependencies) |
+| **tui** | Terminal pre-flight wizard (`dnallm preflight`) | Textual — optional; the rest of the toolkit works without it |
 
 > **Note:** The MCP server itself runs entirely on core dependencies (`mcp`, `starlette`, `uvicorn`, `websockets`), so server-only deployments need no extra install (see Scenario 8). The `mcp` extra adds the LLM-agent client libraries used by the bundled agent examples: `langchain`, `langchain-mcp-adapters`, `langchain-ollama`, `nest-asyncio`, and `pydantic-ai`.
+
+> **Note:** [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) — PlantHelixSeek's KDA kernels — is a **base dependency**: it installs with the core package on every lane, and its Windows companion `triton-windows` rides a `platform_system == 'Windows'` marker in the same base dependency set. The former `fla` optional group was retired when the dependency was promoted; `all` no longer lists it.
 
 ### Hardware-Specific Groups
 
 > **Warning:** The `cpu` and `cuda*` groups are mutually exclusive (enforced by uv's `conflicts` list in `pyproject.toml`) — you MUST choose exactly one of them. `mamba` declares no conflicts: it is designed to be combined with a CUDA group (e.g., `.[cuda130,mamba]`, see Scenario 6).
 
-> **Deprecation note (v1.3):** the `base` group was renamed to `full` (same members: `dev` + `test` + `notebook` + `mcp` + isort). The `.[base]` alias still installs the full set and will be removed in v1.4 — after removal pip/uv only print a warning that the extra does not exist and exit 0, leaving a core-only under-install. Use `.[full]` in new environments.
-
 | Group | PyTorch Version | GPU Type | When to Use |
 |-------|----------------|----------|-------------|
-| **cpu** | 2.4.0-2.12 | CPU only | Development without GPU |
-| **cuda124** | 2.4.0-2.12 | NVIDIA | Most modern GPUs |
-| **cuda126** | 2.6.0-2.12 | NVIDIA (latest) | Ada/Hopper with Flash Attention |
-| **cuda128** | 2.6.0-2.12 | NVIDIA (cutting-edge) | RTX 5090 and latest hardware |
-| **cuda130** | 2.9.0-2.12 | NVIDIA (CUDA 13.0, Windows & Linux) — recommended | Newest driver / RTX 50-series, Windows with driver >= 580 |
-| **mamba** | 2.6.0-2.12 | NVIDIA + Mamba | Native Mamba architecture (requires CUDA) |
+| **cpu** | 2.4.0-2.15 | CPU only | Development without GPU |
+| **cuda124** | 2.4.0-2.15 | NVIDIA | Most modern GPUs |
+| **cuda126** | 2.6.0-2.15 | NVIDIA (latest) | Ada/Hopper with Flash Attention |
+| **cuda128** | 2.6.0-2.15 | NVIDIA (cutting-edge) | RTX 5090 and latest hardware |
+| **cuda130** | 2.9.0-2.15 | NVIDIA (CUDA 13.0, Windows & Linux) — recommended | Newest driver / RTX 50-series, Windows with driver >= 580 |
+| **mamba** | 2.6.0-2.15 | NVIDIA + Mamba | Native Mamba architecture (requires CUDA) |
 
-> **Note:** the cu121 lane was retired in v1.3. The `https://download.pytorch.org/whl/cu121` wheel index is FROZEN at torch 2.5.1 (re-verified 2026-10-14) — the retired extra's torch spec (`>=2.2.0,<2.12`) could never resolve past 2.5.1 on its own index, a dead lane under the core `torch>=2.4.0,<2.12` floor. Turing (20xx) GPUs are served by `cuda124`–`cuda128`.
+> **Note:** the cu121 lane was retired in v1.3. The `https://download.pytorch.org/whl/cu121` wheel index is FROZEN at torch 2.5.1 (re-verified 2026-10-14) — the retired extra's torch spec (`>=2.2.0,<2.12`) could never resolve past 2.5.1 on its own index, a dead lane under the core `torch>=2.4.0,<2.15` floor. Turing (20xx) GPUs are served by `cuda124`–`cuda128`.
 
-> **Note:** ROCm is not offered as an extra — the lane was never execution-tested on AMD hardware. AMD MI-series users can manually install torch from AMD's wheel lane — modern: `uv pip install torch --index-url https://download.pytorch.org/whl/rocm7.1` (torch 2.10/2.11, Linux x86_64 only, resolution-tested-only); older series: the rocm6.4 index tops out at torch 2.9.1. ROCm 7.2+ requires torch >=2.12, above dnallm's cap. This is a manual lane — dnallm makes no AMD claim.
+> **Note:** ROCm is not offered as an extra — the lane was never execution-tested on AMD hardware. AMD MI-series users can manually install torch from AMD's wheel lane — modern: `uv pip install torch --index-url https://download.pytorch.org/whl/rocm7.1` (torch 2.10/2.11, Linux x86_64 only, resolution-tested-only); older series: the rocm6.4 index tops out at torch 2.9.1. ROCm 7.2+ requires torch >=2.12 — within dnallm's `<2.15` pin range but untested. This is a manual lane — dnallm makes no AMD claim.
 
 > **Note:** Hardware groups are NOT included in `all` because the `cpu`/`cuda*` groups conflict with each other. Always combine a hardware group with your chosen feature group: e.g., `.[all,cuda124]`
 
@@ -666,11 +667,11 @@ source .venv/bin/activate  # Linux/MacOS
 # [uv lane] Install Mamba support
 uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation
 
-# If encounter network or compile issue, using the special install script for mamba (optional)
-sh scripts/install_mamba.sh  # select github proxy
+# If you hit a build error, build the kernels from source with this script (optional)
+sh scripts/install_mamba.sh  # checks the downloaded source against a fixed checksum; --index-url https://pypi.tuna.tsinghua.edu.cn/simple switches to the TUNA mirror
 ```
 
-Please ensure your machine can connect to GitHub, otherwise Mamba dependencies may fail to download.
+The script downloads the mamba source package from PyPI (or the mirror flag shown above), so your machine does not need to reach GitHub.
 
 ## Additional Model Dependencies
 

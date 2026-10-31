@@ -1,275 +1,221 @@
 # Feature Research
 
-**Domain:** Platform parity, packaging honesty, publish-chain robustness, and docs accuracy for a distributed DNA-LM toolkit (dnallm v1.3 "Platform Reach & Packaging Honesty")
-**Researched:** 2026-10-11
-**Confidence:** HIGH for internal repo facts (pyproject extras inventory, publish.yml, WINDOWS ledger #11/#12/#18/#19/#20, parity-spike verdicts — read directly); MEDIUM for ecosystem claims cross-verified across ≥2 independent sources (official docs + secondary); individually noted LOW where only single/indirect sources exist
+**Domain:** Pre-flight UX (data validation → model-suitability → config generation/validation → download) + registry-as-truth-source for DNALLM v1.4
+**Researched:** 2026-10-20
+**Confidence:** HIGH for internal repo facts (registry schema, `DNADataset` surface, `download_model` signature, config validation, device chain — read directly in this checkout); MEDIUM for ecosystem UX patterns (cross-verified across official docs + independent secondary sources); the one ModelScope metadata-API finding rests on thinner sourcing and is flagged MEDIUM-LOW inline
 
-"Features" here are the v1.3 target capabilities from PROJECT.md §Current Milestone. "Users" are (a) Windows-local researchers running the example tree natively, (b) pip/uv installers choosing an install lane, (c) PyPI consumers of the published wheel, (d) maintainers operating the release chain, and (e) the paper/benchmark pipeline needing the frozen metrics (jaccard=0.3247, exon_f1=0.7522) to keep meaning the same thing on every platform. Every section answers: how do comparable mature packages implement this behavior, what is table stakes vs differentiator vs anti-feature, how complex is it, and which existing dnallm machinery does it sit on — so REQUIREMENTS.md can scope each item testable and atomic.
+"Features" here are the v1.4 Track A target capabilities from PROJECT.md §Current Milestone. "Users" are plant/animal/microbe genomics researchers who bring their own data, fine-tune or run DNA LLMs over SSH on GPU servers, and today hit raw Pydantic tracebacks, silent tokenizer/charset mismatches, and multi-GB downloads that precede a compatibility failure. This file answers: how do comparable mature tools (bioinformatics workflow engines, docker/uv-style init wizards, ML experiment trackers, Textual apps, the sibling dnallmmark TUI) shape each stage of the pre-flight flow, and what is table stakes vs differentiator vs anti-feature for a v1 — so REQUIREMENTS.md can scope REQ-IDs that are testable and atomic.
 
----
-
-## 1 · Windows platform parity (numpy evaluators, platform dispatch, #18, GAP-1 #11/#12)
-
-### How established tools do it
-
-**The pybedtools/bedtools ecosystem has no native Windows story at all.** Official pybedtools docs state plainly: "Windows: may work with conda compilers or Cygwin but this is untested. Windows is not supported" ([pybedtools installation docs](https://daler.github.io/pybedtools/main.html)); Bioconda has no Windows channel, so `conda install -c bioconda pybedtools` fails with `PackagesNotFoundError` on Windows ([Stack Overflow 48441023](https://stackoverflow.com/questions/48441023/unable-to-install-bioconda-packages-in-conda-environments)), and downstream packages simply inherit the gap ([GLUE issue #95](https://github.com/gao-lab/GLUE/issues/95)). The canonical ecosystem answers are WSL or Docker — i.e., "don't run natively." A genuine native-Windows execution path is therefore already above the bar pybedtools itself sets.
-
-**The dominant precedent for pure-Python interval engines is bioframe** (open2c): interval operations implemented directly on numpy/pandas — chromosome `groupby`, `numpy.lexsort` sorting, `numpy.searchsorted` bisection for overlap detection — with no compiled extension and no subprocess ([bioframe paper, bioRxiv](https://www.biorxiv.org/content/10.1101/2022.02.16.480748v1.full.pdf), [PMC](https://pmc.ncbi.nlm.nih.gov/articles/PMC10903647/)). Crucially, bioframe treats bedtools equivalence as a *documented contract*, not an accident: the ["Bioframe for bedtools users" guide](https://bioframe.readthedocs.io/en/latest/guide-bedtools.html) maps each bedtools command to its bioframe call, including exactly the operation dnallm needs: `bedtools intersect -loj` → `bf.overlap(A, B, how='left')` (and `intersect -wa -wb` → `how='inner'`, `-c` → `count_overlaps`, `-v` → `setdiff`). dnallm's chosen direction — a numpy evaluator used where bedtools cannot install, with the loj join semantics given their own parity check — is the bioframe pattern applied narrowly (jaccard + loj-intersect only) instead of as a full engine. Note bioframe's trade data: it is ~2× pybedtools memory (64-bit coords) and roughly PyRanges-speed — irrelevant at showcase scale (≤200kb loci), so no performance concern gates this feature.
-
-**Parity verification as a continuous contract, not a one-time spike.** bioframe grounds equivalence in documented mappings + property tests; dnallm already went further with measured cross-implementation spikes (261010-wx2: numpy vs bedtools v2.31.1 jaccard on the frozen selection pair 0.324727 + randomized property cases — VERDICT PARITY; 261011-0a3: loj-intersect — VERDICT PARITY). The ecosystem norm for float-producing dual implementations is tolerance-bounded comparison (`pytest.approx` / `math.isclose` with documented absolute tolerance), never exact equality across arithmetic orders — exactly the trailing-delta class dnallm observed (0.3247270000001). Platform detection idioms are settled: `platform.system()` / `sys.platform` at runtime in example code, `platform_system != "Windows"` environment markers in packaging (dnallm already uses these for pybedtools and pygenometracks), `pytest.mark.skipif` in gates.
-
-**GAP-1 (#11/#12) is a known, named ecosystem failure class.** transformers v5 refactored config classes to dataclasses (v5.3→v5.4: keyword-only, re-based on a huggingface_hub validated dataclass) and undeclared kwargs now raise `TypeError: ...__post_init__() got an unexpected keyword argument ...` in old remote code — the [OpenELM discussion](https://huggingface.co/apple/OpenELM-1_1B-Instruct/discussions/8) is the canonical instance: works on transformers 4.57.1, fails on 5.x; `from_legacy_cache`/`to_legacy_cache`/`seen_tokens` also removed ([MIGRATION_GUIDE_V5.md](https://raw.githubusercontent.com/huggingface/transformers/c472755e79aac54d675845bff5e5c821c21260af/MIGRATION_GUIDE_V5.md)). The NT-promoter and plant-Nucleotide-Transformer-BPE checkpoints are this exact class. Resolution paths observed in the wild: (a) pin a transformers 4.x ceiling (contradicts dnallm's 4.49–5.x span invariant), (b) wait for/patch upstream remote code, (c) drop the checkpoint, or (d) shim the removed defaults — dnallm already owns the shim precedent in `dnallm/utils/transformers_compat.py` (spanning 4.49–5.x).
-
-**#18 triton-windows.** Upstream triton ships no win_amd64 wheels. The community fork `triton-windows` (woct0rdho; development now hosted under the [triton-lang/triton-windows](https://github.com/triton-lang/triton-windows) org) provides prebuilt wheels; Blackwell sm_120 needs triton≥3.3 + torch≥2.7 + CUDA 12.8, and wheels bundle a minimal CUDA toolchain since 3.2.0.post11 ([README](https://raw.githubusercontent.com/woct0rdho/triton-windows/master/README.md)). unsloth's official install scripts recommend the fork ([unsloth README](https://raw.githubusercontent.com/unslothai/unsloth/refs/tags/September-2025-v3/README.md)) — but as a documented install step, not a declared package dependency. Declaring a third-party compiler fork in package metadata is a trust decision each project makes individually; the mainstream pattern is documentation + optional marker-gated extra.
-
-### Categories
-
-| Kind | Feature | Grounding | Complexity | Depends on (dnallm) |
-|------|---------|-----------|------------|---------------------|
-| Table stakes | Runtime platform dispatch in `generate_bpe_dataset.py` + `data_generation_and_inference.ipynb` (Linux keeps `pybedtools.BedTool.intersect(loj=True)`, Windows dispatches to numpy equivalent; install cell skips pybedtools on Windows) | owner directive 2026-10-10; #19 change-surface inventory is exhaustive (2 files, one code path + cell 0 install) | LOW-MED | spike 261011-0a3 numpy loj code; `dnallm.utils.genomic_coords` precedent |
-| Table stakes | numpy jaccard evaluator behind the CRE notebook's bedtools call on Windows | spike 261010-wx2 | LOW | spike code; `tests/examples/test_plant_helixseek_showcase.py` band harness |
-| Table stakes | Continuous parity tests (numpy vs bedtools/pybedtools) executed on **Linux** CI where the reference binary exists — parity is re-proven every run, not asserted from the spike | bioframe documented-equivalence norm; owner precondition "ships only under parity" | MED | bedtools on Linux runners; property-case generators from spikes |
-| Table stakes | Frozen-value tolerance pins: band assertions compare with documented absolute tolerance (trailing-delta class), bands parsed from selection.md unchanged | numeric-testing norm (`pytest.approx`); D-05/D-06 single-source-of-truth rule | LOW | existing `_parse_floors`/`_parse_bands` |
-| Table stakes | Platform-aware test gates: the three fail-loud gates (`test_script_execution.py:128`, `test_notebook_execution.py:1397`, `test_plant_helixseek_showcase.py:523`) become platform-conditional — pass via numpy path on Windows, bedtools path on Linux | skipif/platform-conditional idiom; #19 inventory | LOW-MED | typed-skip machinery unchanged (these are gates, not skips) |
-| Table stakes | test-windows CI leg executes the numpy path end-to-end and asserts exon_f1=0.7522 in band on both paths | owner directive; Windows leg already exists in matrix | MED | test-windows leg; example-nightly census discipline (re-pin counts) |
-| Table stakes | Docs mirrors byte-synced with the platform-split example code | check_docs_sync.py invariant | LOW | existing byte-identity gate |
-| Table stakes | GAP-1 disposition decided and executed: compat-shim (confined to `transformers_compat.py`, regression-tested, revives #11+#12) **or** removal of the NT checkpoint/script leg with typed-skip retired | OpenELM-class ecosystem norm: decide, don't leave owner-pending forever | MED (shim) / LOW (removal) | `transformers_compat.py`; `example/notebooks/benchmark/benchmark.ipynb` third model; `tests/examples/test_script_execution.py` |
-| Table stakes | #18 decided: either declare `triton-windows; sys_platform == 'win32'` in the fla extra (owner approves third-party fork) **or** document the manual step and make the fla test typed-skip honest on Windows | unsloth documents rather than declares; current state (silent breakage) is the only unacceptable option | LOW either way | pyproject fla extra; fla import test |
-| Differentiator | Dual-engine evaluators with the frozen truth chain staying bedtools-computed (no re-freeze) — provenance preserved while adding reach | bioframe has equivalence docs but no frozen-value contracts | — | selection.md frozen contract |
-| Differentiator | Native-Windows bio-ML example execution where the pybedtools ecosystem's official answer is "use WSL" | pybedtools docs | — | whole v1.1 example-nightly investment |
-| Anti-feature | Replacing bedtools/pybedtools on Linux/macOS (re-freezing the truth chain on numpy) | destroys frozen-metric provenance; owner explicitly rejected | — | — |
-| Anti-feature | Platform-split logic inside library `dnallm/` evaluator code | the bedtools dependence lives in example code; the library is already platform-neutral (scikit-allel Windows-verified); moving logic in widens the audited surface for zero user gain | — | — |
-| Anti-feature | Third interval engine (pyranges/ruranges) | rejected 2026-10-10: no win_amd64 wheels, py≥3.12, zero Windows gain | — | — |
-| Anti-feature | Exact float equality across evaluator paths | trailing-delta class makes it permanently flaky; tolerance is the norm | — | — |
-| Anti-feature | Global monkeypatch of `PretrainedConfig.__init__` for GAP-1 (shim applied at package import to all models) | OpenELM-class shims must be scoped to the affected remote-code load path only; a global patch perturbs every unrelated model load and contradicts the facade-stability discipline | — | — |
-| Anti-feature | Pinning the whole project to transformers<5 for GAP-1 | contradicts the 4.49–5.x compat span; strands the suite on an aging major | — | — |
-
-**#18 decision input (owner):** declaring the fork makes `pip install dnallm[fla]` self-healing on Windows at the cost of a third-party compiler fork in declared metadata and a maintenance exposure if the fork stalls; documenting keeps metadata clean but leaves the silent-breakage failure mode one forgotten README away. Ecosystem weight (unsloth, Wan2GP guides) treats the fork as the de-facto standard — the trust question is real but the fork is now under the triton-lang org umbrella.
+Builds directly on `.planning/quick/261020-gk4-tui-dnallmmark-home-forrest-github-dnall/261020-gk4-TUI-SURVEY.md` Part 3 R4 and Part 5 §5.3 (the four-capability pipeline table: 数据整理/数据规范/适配检测/配置生成校验 → one wizard). Owner scope pins: Track A only, ModelScope-first, lab models (`zhangtaolab/*`) first, API-first core (`validate_data` / `check_compatibility` / `generate_config` as pure functions).
 
 ---
 
-## 2 · Packaging & install honesty (extras hygiene, install lanes, GPU matrix)
+## How comparable tools shape this flow (evidence base)
 
-### How established tools do it
+Confidence: MEDIUM (each pattern cross-verified across ≥2 sources; links in §Sources).
 
-**The uv/pip lane asymmetry is the load-bearing fact.** `[tool.uv.sources]` and `[tool.uv] conflicts` are project metadata applied only by uv when resolving from source — they are **not part of the published wheel metadata, so pip ignores them entirely** ([dataeval-flow docs](https://pypi.org/project/dataeval-flow/0.2.3/#2) document exactly this pattern and its fix). Consequence for dnallm today: `pip install dnallm[cuda128]` does not route to the cu128 index — it installs whatever torch PyPI serves by default (Linux: bundled-CUDA default; Windows: CPU-only). The cudaXXX extras are honest only under uv-from-source. This is precisely why "uv-vs-pip lane docs" is table stakes and not polish. uv's own answer for pip-style installs is `--torch-backend=auto` (infers the PyTorch index from the GPU/driver; `uv pip` CLI only, ignored by `uv add`/`uv sync`) — adopted in install docs by [vLLM](https://app.semanticdiff.com/gh/vllm-project/vllm/pull/39511/overview) and unsloth; known pitfalls: multi-GPU driver parse failures, WSL lacking `/sys/module/nvidia/version`, and PEP 440 ignoring `+cpu`/`+cuXXX` local version labels so a stale CPU torch can silently persist ([pydevtools handbook](https://pydevtools.com/handbook/explanation/installing-cuda-python-packages.md)).
-
-**How torch communicates the matrix.** The [Get Started selector](https://docs.pytorch.org/get-started/locally/) exposes OS × package manager × compute platform (CUDA 12.6/12.8/13.0/13.2, ROCm, CPU) and emits the exact lane command (`pip3 install torch --index-url https://download.pytorch.org/whl/cu128`, or `uv add torch --default-index .../cu128`). Lane EOLs are announced publicly — e.g., [CUDA 12.6 wheels stop with PyTorch 2.15 (drops Maxwell/Pascal/Volta)](https://dev-discuss.pytorch.org/t/notice-cuda-12-6-wheels-will-no-longer-be-published-from-pytorch-2-15-drops-maxwell-pascal-volta/3432) — and the runtime itself warns users on dropped architectures ([PR #158478](https://github.com/pytorch/pytorch/pull/158478): sm_50/sm_60 removed from cu128 builds in 2.8). Support facts that bracket dnallm's pre-verified matrix: cu121 wheels are no longer built (last ≈torch 2.5, the standard refuge for Maxwell/Pascal/Volta per [compatibility cheat sheets](http://llmlaba.com/articles/cuda-pytorch-compatibility.html) and the [CUDA wheel matrix](https://pozzettiandrea.github.io/cuda-wheels/matrix/)); CUDA 13 drops everything below Turing sm_75 ([NVIDIA blog](https://developer.nvidia.com/blog/navigating-gpu-architecture-support-a-guide-for-nvidia-cuda-developers/)); plain-Linux `pip install torch` now defaults to a CUDA 13.0 wheel supporting CC 7.5+. dnallm's pre-verified boundaries (Pascal→cpu-only, 20xx→cu128, 30/40xx→all extras, 50xx→cu128+) sit exactly on these ecosystem facts — the docs just have to say so.
-
-**Honest GPU extras under pip exist — when the wheels live on PyPI.** spaCy ships `cuda11x`/`cuda12x`/`cuda-autodetect` extras that genuinely work under plain pip because they pull `cupy-cuda12x`/`cupy-wheel` from PyPI ([spaCy install setup](https://deepwiki.com/explosion/spaCy/1.2-installation-and-setup)) — and notably spaCy **removed** its overly-specific `cuda121`/`cuda122` extras, breaking users who asked for them ([discussion #13567](https://github.com/explosion/spaCy/discussions/13567)) — a direct precedent for retiring a frozen minor-version CUDA extra rather than keeping it undead. jax is the gold standard: `jax[cuda12]`/`jax[cuda13]` pull plugin wheels (`jax-cuda12-plugin` + NVIDIA runtime wheels) that live on PyPI, so the extra is honest under every installer; the old `jax[cuda12_pip]` was removed and names dash-normalized per [PEP 685](https://peps.python.org/pep-0685/) ([jax v0.6.0 notes](https://www.gitclear.com/open_repos/google/jax/release/jax-v0.6.0)). dnallm cannot fully reach the jax shape (torch CUDA wheels are not on PyPI), so the honest intermediate is: keep the uv extras machinery as the primary lane, retire the undead lane, and document the pip `--index-url` lane explicitly.
-
-**On `base` (and meta-extras generally).** No PEP or PyPA spec blesses or bans extra *names* like `base`/`all` — PEP 685 only fixes normalization; the criticism found in standards discussions targets default/meta extras generally (dependency bloat, "you may also like" UX — [PEP 771 discussion](https://discuss.python.org/t/pep-771-default-extras-for-python-software-packages-round-2/94905/14)). The dishonesty in dnallm's `base` is semantic, not syntactic: `Provides-Extra: base` is public on PyPI, and a user reasonably reads "base" as the minimal runtime when it actually installs dev+test+notebook+mcp plus isort and stubs (pyproject lines 145-149). The fix direction (fold into `dev`, or re-scope `base` to mean the actual runtime default) is a LOW-complexity rename with a one-release deprecation note; spaCy's cuda-extra removal shows users survive extra renames at 0.x/1.x.
-
-### Categories
-
-| Kind | Feature | Grounding | Complexity | Depends on (dnallm) |
-|------|---------|-----------|------------|---------------------|
-| Table stakes | `cuda121` extra retired (or explicitly frozen-and-labeled legacy) | cu121 wheels stopped ≈torch 2.5 — the lane resolves to an EOL torch while `<2.12` pretends otherwise; spaCy removed its cuda121-class extras | LOW | pyproject + uv index/sources/conflicts cleanup |
-| Table stakes | rocm pin decision: restore the commented-out `torch-rocm` index/conflict rows **or** remove the `rocm` extra entirely — a declared extra that resolves to plain PyPI torch on every installer is dishonest | same uv/pip asymmetry fact | LOW | pyproject |
-| Table stakes | Install-lane documentation: one page/table stating, per extra, what pip actually installs vs what uv installs, with the explicit pip `--index-url https://download.pytorch.org/whl/cuXXX` lane commands | dataeval-flow pattern; torch get-started is the reference shape | LOW-MED | docs pipeline |
-| Table stakes | cuda130 as the documented default recommendation | torch's own Linux default is now the cu130 wheel (CC 7.5+); project runs torch 2.11 cu130 in dev | LOW | docs |
-| Table stakes | Published GPU support matrix (Pascal cpu-only, 20xx→cu128, 30/40xx all extras, 50xx cu128+) with the pre-verification evidence linked | torch/bitsandbytes-class packages publish matrices; boundaries pre-verified 2026-10-11 | MED (writing + evidence chain; verification done) | docs; pre-verification records |
-| Table stakes | `base` extra rename/re-scope so no PyPI-visible extra misdescribes its contents | PyPA surface-visibility fact; meta-extra bloat criticism | LOW | pyproject; publish smoke proves no consumer breakage |
-| Table stakes | Extra-name hygiene check (PEP 685 normalized, no near-collisions) after the rename | PEP 685 | LOW | — |
-| Differentiator | Cross-installer honesty matrix: a table of "command × installer → what you actually get" | rare; most projects document only their blessed lane | LOW | same lane docs, phrased comparatively |
-| Differentiator | Per-GPU-generation **verified** matrix (each row backed by a live install/execution proof on the actual hardware classes, not vendor charts) | torch publishes vendor-level support; nobody publishes tested-on-our-matrix evidence at small-project scale | — | GB10 box + RTX 5080 Windows env |
-| Differentiator | Runtime lane warning (torch 2.8-style): detect dropped-arch GPU at import and point at the right lane doc | torch PR #158478 precedent | MED | version/device probe utilities |
-| Anti-feature | Trying to make cudaXXX extras pip-routable via dependency tricks (torch local-version pins, sdists with dynamic deps) | PEP 440 local versions ignored by resolvers — the unsloth silent-CPU-training trap; complexity with zero honesty gain | — | — |
-| Anti-feature | Deleting the uv index machinery and going docs-only | the uv lane is the project's primary dev lane and works; jax-level pip-honest extras are unreachable for torch | — | — |
-| Anti-feature | Publishing matrix rows without verification provenance | turns the honesty milestone into its own violation; every row cites its proof | — | — |
-| Anti-feature | Keeping `cuda121` "for legacy users" while the torch floor has moved | undead lane = the exact dishonesty being fixed | — | — |
+| Tool | Pre-flight pattern | What DNALLM should copy |
+|------|--------------------|-------------------------|
+| `docker init` | Detects platform via signature files (pyproject.toml, package.json…), falls back to manual pick; asks 3–6 questions **with defaults in parens**; generates artifacts; warns unrecoverably before overwriting existing files | Detect-first-then-ask (sniff the data file format/columns before prompting); every wizard question ships a pre-filled default; never overwrite an existing config without an explicit warning |
+| nf-core / nf-schema (Nextflow) | `validateParameters()` runs **before any process executes**; logs **all** failed parameters together, then throws once (collect-all-then-stop); explicit two-stage order: params validation → input-data validation → execute; knobs `lenientMode`, `failUnrecognisedParams` | Validate everything up front, report every problem in one pass, never the first-error-only traceback; keep params-level and data-level validation as distinct stages with distinct messaging |
+| pandera (data validation) | Default fail-fast `SchemaError`; opt-in `lazy=True` collects all failures into a plural `SchemaErrors` with a `failure_cases` summary table (reason code → count) | The lazy/collect-all mode is the model for `validate_data`'s return shape: structured issue list, not an exception; summary counts by reason category |
+| Snakemake `-n` dry-run | Builds the DAG, reports missing input files and execution reasons **before** spending compute; cannot catch everything — a green dry run is explicitly not a green run | Pre-flight's honesty contract: check everything checkable cheaply (existence, schema, sizes, metadata), and be explicit about what only the real run can prove |
+| `wandb init` | Interactive entity/project picker; explicit flags to skip the wizard entirely; first-run credentials prompt kept separate from config authoring | Wizard is optional and complements, never replaces, the flag/YAML path; keep auth/credentials out of the config wizard |
+| Ultralytics settings | Non-interactive persistent JSON settings (`yolo settings key=value`, `reset`); `yolo checks` prints a system/hardware snapshot as a separate verb | Pre-flight's environment panel is a read-only snapshot verb, not a settings manager; wizard state (last data file, last model) persisted separately from user configs |
+| Textual apps (terok wizard PR #797, workers guide) | Multi-step wizard = one `ModalScreen` per step with typed dismiss results + sentinel objects for Back-with-prefill; validation shown as inline per-field errors on submit; long work in `@work(thread=True, exclusive=True)` workers; workers are tied to DOM nodes — popping a screen cancels its downloads; `ProgressBar.update(progress=, total=)` + `call_from_thread` for thread→UI | The concrete TUI mechanics for all four panels; cancellation for free by scoping download workers to the screen |
+| Hugging Face Hub metadata | `model_info().safetensors.total` → param count → VRAM estimate; `model_info(files_metadata=True)` + sum of `sibling.size` → actual disk bytes; caveat: param×4 overstates disk ~6× for quantized checkpoints | Two distinct size numbers: disk-before-download (blob sizes) and VRAM-to-load (param count) — both belong in the suitability verdict |
+| ModelScope Hub | REST `GET /api/v1/models/{repo}/repo/files` returns per-file `Path`/`Size`; `GET /api/v1/models/{id}` returns `StorageSize` (often 0 in list responses — fetch detail per model). *Confidence MEDIUM-LOW: SDK-level per-file-size access via `HubApi` not confirmed by docs.* | Availability/size probing is possible ModelScope-first, but the size-probe seam needs a phase-level spike; treat "list returns StorageSize=0" as a known trap |
+| dnallmmark TUI (sibling, read-verified) | Persistent five-state download queue with progress parsing; env-check as an eight-row kernel table with CRITICAL-vs-ROUTING advisory gate; wizard framework with collect-all validation reports; selection screen with compat-verdict + download-state columns | These are the merge-or-build baseline (survey §5.4): Track A should build API-first and leave the full persistent queue/substrate to the Track B merge — do not re-implement what will be merged |
 
 ---
 
-## 3 · Publish chain robustness (smoke, OIDC, #20, mypy cap)
+## Feature Landscape
 
-### How established tools do it
+### Table Stakes (Users Expect These)
 
-**Trusted Publishing (OIDC) is the recommended modern flow; tokens still work.** PyPI introduced Trusted Publishing in April 2023 ([PyPI blog](https://blogpypiorg.readthedocs.io/posts/2023-04-20-introducing-trusted-publishers/)) — short-lived (≈15-min) OIDC tokens exchanged per-CI-run, no stored credentials. Setup: job-level `permissions: id-token: write` (workflow-level discouraged), publisher registered on PyPI with owner/repo/workflow-filename, and a GitHub **environment** binding which is optional but strongly recommended — it can require manual approval and blocks fork-originated publishes ([PyPI docs: using a publisher](https://docs.pypi.org/trusted-publishers/using-a-publisher/), [safeguard.sh adoption guide](https://safeguard.sh/resources/blog/pypi-trusted-publishing-adoption-guide)). `pypa/gh-action-pypi-publish` has produced PEP 740 attestations **by default** since v1.11 (Nov 2024) ([PyPI attestations docs](https://docs.pypi.org/attestations/producing-attestations/)). No API-token sunset has been announced (LOW confidence on any removal date), but 2FA has been mandatory for all uploading accounts since 2024-01-01 ([PyPI blog](https://blog.pypi.org/posts/2023-12-13-2fa-enforcement/)) and OIDC is the direction; staged publishing went GA 2026-05-22, enabling staging-only trusted publishers ([konishi note](https://hidekazu-konishi.com/entry/publishing_npm_and_pypi_packages_without_long_lived_tokens.html)) — relevant only if the smoke lane later wants server-side rehearsal. Since dnallm already builds with `uv build`, note `uv publish` natively supports `--trusted-publishing automatic|always|never` (auto-detects GitHub OIDC with `id-token: write`) plus `--dry-run` and `--index testpypi` ([uv publish reference](https://mintlify.wiki/astral-sh/uv/cli/publish), [uv PR #7475](https://github.com/astral-sh/uv/pull/7475)).
+Missing any of these and the pre-flight flow feels broken or dangerous. All are prerequisites for the milestone goal ("one terminal flow from own data to validated, model-compatible config").
 
-**Publish smoke is a recognized pre-publish validation chain.** The recurring pattern across release guides: `uv build` → `check-wheel-contents dist/*.whl` (wheel-contents lint) → `twine check dist/*` (metadata/README rendering) → **install the built wheel in a clean venv and import-smoke it** → optional TestPyPI rehearsal (`uv publish --index testpypi --dry-run`) → real publish; the publish job downloads already-validated artifacts rather than rebuilding ([PyKMP releasing guide](https://gertvdijk.github.io/PyKMP/releasing/), NVIDIA-NeMo and Ananke-Plexus release workflows). dnallm's current `publish.yml` post-hoc "Verify installation" (`pip install dnallm` from PyPI after upload) is the race-y inverted variant: propagation delays can serve a stale version, and it validates nothing before the artifact is public. The honest variant validates the built artifact in a clean venv *before* upload. A `workflow_dispatch`-triggered dry-run lane running this chain periodically (no credentials needed if it stops before upload) catches resolver/registry/toolchain drift between releases — rare in the ecosystem (most projects validate only at release time), which makes it a genuine differentiator rather than a borrowed norm.
+| # | Feature | Why Expected | Complexity | Notes & Existing Dependencies |
+|---|---------|--------------|------------|-------------------------------|
+| TS-1 | **Read-only data profile panel**: row count, sequence-length distribution (min / median / p95 / max, plus truncation-relevant histogram), charset census (count per character: ACGT, IUPAC ambiguity codes, N, digits, whitespace, junk), GC-content range, label cardinality / label-values census | Every data tool shows what it loaded before acting on it (docker init detects before asking; snakemake -n shows the DAG). Today `DNADataset` either mutates silently or shows 10 rows via `head()` | MEDIUM | **Gap:** `DNADataset.validate_sequences` (data.py:864) is a *mutating filter* (drops whole rows, prints one warning line) — there is no read-only scan. Build `validate_data()` as a pure profiling pass reusing `load_local_data` loaders (fasta/csv/tsv/json/parquet/txt/pkl — all exist), `check_sequence` + `calc_gc_content` (`utils/sequence.py`), `_extract_labels`, `get_split_lengths` (exist). Must run in a worker (large FASTA scans are slow) |
+| TS-2 | **Collect-all validation report, never a raw traceback**: every problem at once — file/format errors, empty/short/long sequences, charset violations, label problems (single-class labels, mismatched `num_labels`, bad multilabel separators) — each with a severity, a reason code, and row-count impact | nf-schema logs all failed params then throws once; pandera `lazy=True` is the established data-validation UX; TUI survey R4 documents today's failure mode (raw Pydantic traceback naming validator internals). Users over SSH cannot iterate one-error-per-run | MEDIUM | Depends on: TS-1's scan + iterating `pydantic.ValidationError.errors()` from `load_config` (exception already carries all field errors — DNALLM just dumps it as a traceback today). Issue list shape should mirror pandera's `failure_cases` (reason → count → sample rows). **Do not** build on top of `validate_sequences`'s drop-rows behavior — that destroys the evidence the panel needs to show |
+| TS-3 | **Explicit three-state verdicts with reasons**: every check reports OK / WARN / FAIL plus one human sentence (and a machine-readable reason code), never a bare boolean | dnallmmark's env_gate classifies CRITICAL (block) vs ROUTING (advise); nf-core separates errors from warnings (`lenientMode`). A 236-model registry guarantees partial-match situations that must render as "usable with caveats," not false FAILs | LOW | Pure judgment layer over TS-1/TS-2/TS-4 outputs. Enforce: WARN never blocks progression (see AF-7) |
+| TS-4 | **Model-suitability verdict: task × length × tokenizer/charset** (the milestone's `check_compatibility` core): (a) task_type match between user goal and registry entry (binary/multiclass/regression/multilabel/token/mask/generation); (b) user length distribution vs model max context (report *fraction of sequences truncated* at candidate `max_length`, not just min/max compare); (c) tokenizer family (BPE / k-mer / singlebase) vs data charset — incl. the documented 13 strict-charset families hazard (data.py docstring) and the case-sensitivity rules of `check_sequence` | The survey §5.2 ranks "silently wrong results from tokenizer/charset mismatch" and "12.3 GB download before a task/length incompatibility surfaces" as today's worst failure modes; no comparable DNA-LLM tool checks any of this — for DNALLM users this is the reason pre-flight exists | MEDIUM-HIGH | **Critical dependency — registry metadata gap:** `model_info.yaml` carries `task_type`/`num_labels`/`label_names`/`threshold`/`base_model` for finetuned entries (structured, 187/187 after 261020-kwt) but tokenizer type appears **only in free-text `describe` strings** ("…with 6mer tokenizer") and there is **no structured max_length/size field at all**. The verdict layer needs either (a) registry enrichment (adds `tokenizer_type`, `max_length` per entry — this is the registry-as-truth-source workstream's data-layer work) or (b) on-demand probing of the model's `config.json` (network-dependent, needs cache). Recommend (a) for the 236 known entries + (b) fallback for unknown repos. Length check consumes TS-1's distribution |
+| TS-5 | **Availability dimension: source / size / cache / revision, ModelScope-first**: per candidate model — already-cached-locally? (scan the HF/ModelScope cache dirs), repo reachable on ModelScope (HF fallback), download size **before** committing (blob-size sum, not param estimate), pinned/default revision | Milestone scope pins availability as an explicit `check_compatibility` dimension; wasted-download avoidance is the survey's top-ranked pre-flight pain; HF/ModelScope metadata APIs make size-before-download standard practice | MEDIUM | Depends on: registry repo ids (exist), local cache probing (new but trivial), ModelScope/HF metadata APIs. **Spike needed** on ModelScope per-file sizes via `HubApi` (REST documented; SDK path unconfirmed — MEDIUM-LOW). `download_model` (model.py:410) already takes `revision` + classifies failure reasons (network / not-found) — reuse its reason vocabulary in the UI. HF caveat from research: param_count×4 overstates disk ~6× for quantized checkpoints — use blob sizes for disk, params for VRAM |
+| TS-6 | **Device/environment panel**: GPU presence + VRAM, device selection order shown (CUDA→MPS→XPU→CPU already in `_get_device`, model.py:788), torch/transformers/numpy versions, disk free vs pending download size, optional-dependency presence (bitsandbytes, captum…) | First panel of the wizard (survey §5.4: env-check doubles as pre-flight's first panel); `yolo checks` establishes the snapshot-verb precedent; VRAM-vs-model-size is the cheapest FAIL to detect | LOW | All detection primitives exist (`_get_device`, `torch.cuda`, `importlib.metadata`). VRAM estimate needs TS-5's param count or registry size field. Render as a static table filled as probes complete (dnallmmark's eight-row pattern), not a blocking gauntlet |
+| TS-7 | **Config generation emitting *validated* YAML**: form fields pre-filled from registry metadata (finetuned entries contribute `num_labels`/`label_names`/`threshold` verbatim — that's registry-as-truth-source payoff), live collect-all validation against the same Pydantic models `load_config` uses, green-light gate before save, plus round-trip **load existing YAML → edit → revalidate** (the common case is tweaking last run's config, per survey R4) | The current numbered-menu generator authors-new-only with no validation preview; docker init generates artifacts with overwrite warnings; nf-core launch validates the params file it helps you write. Emitting a config that then tracebacks on `dnallm train` would reproduce the exact UX this milestone exists to kill | MEDIUM | Depends on: TS-2's error unwrapping + TS-4's metadata for defaults + the Pydantic section classes (`TaskConfig`, `TrainingConfig`, `InferenceConfig`, `LoraConfig`… all exist in `configuration/configs.py`). Save path must refuse when validation fails. Overwrite-existing-config requires an explicit warning (docker init precedent). Note `InferenceConfig.max_length=512` default interacts with TS-4b — the form should propose a data-derived value |
+| TS-8 | **Keyboard-complete navigation: Back/Next with prefill, resume state** | Users over SSH iterate (fix data → recheck → re-pick model); terok's sentinel-object Back-with-prefill pattern is the Textual idiom; every wizard studied supports revisiting earlier steps | LOW-MEDIUM | TUI mechanics only (ModalScreen stack + typed dismiss results). Wizard session state (last file, last verdicts) persisted via XDG state root (dnallmmark `settings.py` pattern) — but v1 can keep it in-memory if scope-pressured |
+| TS-9 | **Sequential download with progress + cancel** for the selected model: one model at a time, byte/file progress, cancellable, failure reason surfaced in the panel (reusing `download_model`'s reason classification) | A wizard that ends in "now go run `snapshot_download` yourself" fails the one-flow goal; queue *feedback* is in the milestone target list | MEDIUM | `download_model(model_name, downloader, revision, max_try=10, allow_patterns)` exists but is **blocking with no progress callback** — needs a thin progress-bridge wrapper (tqdm hook or xet/hf_transfer callback → Textual worker). Cancellation: scope the download worker to its screen so popping cancels it (Textual worker-DOM binding). ModelScope-first downloader selection already exists in the loading chain |
+| TS-10 | **API-first core consumable without the TUI**: `validate_data` / `check_compatibility` / `generate_config` as pure, pytest-coverable functions in `dnallm/` (no Textual imports at the core layer); TUI is one shell | Milestone goal verbatim ("one-core-many-shells"); the >90% coverage gate makes a TUI-entangled core untestable by house rules (every `dnallm/` change ships with pytest coverage — owner rule); future MCP tools + notebooks consume the same verdicts | LOW (design discipline, enforced continuously) | The dnallmmark architecture (screens presentation-only over services) is the proven local template. Keep `dnallm/tui/` behind the `tui` extra; core functions importable from base install |
 
-**#20 (local-venv `pytest --cov` crash)** is internal tooling: coverage 7.16.2 `source_pkgs` imports dnallm under the tracer, tripping numpy 2.5.x's load-once C-extension guard on the py3.13 local venv (CI legs on numpy 1.26.4/2.2.0 unaffected; WINDOWS #20). The feature framing is "dev-env reproducibility": either a documented numpy ceiling for the local lane or a coverage invocation that doesn't import-at-start. **mypy cap** for the dev extra follows the widespread practice of bounding type-checker versions in dev dependencies so a new mypy release cannot flip CI red overnight (MEDIUM confidence — consistent with how scipy/numpy pin mypy in dev requirements; not separately researched).
+### Differentiators (Competitive Advantage)
 
-### Categories
+None of these is required for the flow to function; each converts registry-as-truth-source from a data-layer chore into user-visible value. Aligned with PROJECT.md Core Value for v1.4.
 
-| Kind | Feature | Grounding | Complexity | Depends on (dnallm) |
-|------|---------|-----------|------------|---------------------|
-| Table stakes | workflow_dispatch publish-smoke: `uv build` → `check-wheel-contents` → `twine check` → clean-venv install-from-wheel + import/version smoke, exiting before any upload | PyKMP/NeMo/Ananke pattern | MED | existing uv build step in publish.yml |
-| Table stakes | Real publish path reuses the same validation steps (one reusable chain; publish downloads validated artifacts) | release-workflow norm | LOW-MED | publish.yml refactor |
-| Table stakes | Trusted Publishing migration (if chosen): job-level `id-token: write`, PyPI publisher registration + `pypi` environment, `PYPI_API_TOKEN` secret retired | PyPI docs; uv publish `--trusted-publishing automatic` | MED | publish.yml; PyPI-side registration (owner) |
-| Table stakes | mypy upper cap in dev extra (`mypy>=1.15.0,<X`) | dev-tool bounding practice | LOW | pyproject dev extra |
-| Table stakes | #20 fix or documented local-lane pin so `pytest --cov` works repo-wide in the dev venv | WINDOWS #20 | MED (debugging-heavy) | coverage config in pyproject |
-| Differentiator | *Periodic* (scheduled, not just pre-release) smoke dispatch — catches drift between releases | rare in ecosystem | LOW (once dry-run exists) | smoke workflow + cron |
-| Differentiator | PEP 740 attestations on published artifacts | free with OIDC; supply-chain credibility for a scientific package | — | rides the migration |
-| Anti-feature | Smoke that uploads anywhere real (PyPI or TestPyPI) without explicit promotion semantics | version-collision noise; dry-run exists precisely to avoid this | — | — |
-| Anti-feature | Post-upload PyPI install as the *only* install smoke (current shape) | propagation race validates the wrong artifact; clean-venv from the built wheel is the honest form | — | — |
-| Anti-feature | Keeping API token and OIDC both live long-term | two standing credential classes after migrating defeats the point | — | — |
-| Anti-feature | Full test suite inside the release job | release job bloat; the gate already ran on the exact commit — validate artifacts, not tests, at publish time | — | — |
+| # | Feature | Value Proposition | Complexity | Notes & Existing Dependencies |
+|---|---------|-------------------|------------|-------------------------------|
+| D-1 | **Truncation-fraction model ranking**: rank candidate models by what fraction of *the user's actual sequences* survive un-truncated (p95/p99 vs max context), shown as a per-model column in the suitability shortlist | Turns TS-4b from a per-model binary into a dataset-aware ranking — no comparable DNA-LLM or general ML tool ranks by *your* length distribution; this is only possible because the registry carries max-context metadata (registry-as-truth-source payoff) | LOW once TS-4 metadata exists | Pure arithmetic over TS-1's distribution + TS-4's registry field. Highest value-per-LOC item in this file |
+| D-2 | **Tokenizer dry-run on a sample**: empirically tokenize ~100 sampled sequences with the candidate's tokenizer; report actual truncation rate, unknown-token rate, and charset rejections (per strict-charset family) | Metadata checks (TS-4c) can lie or be stale; an empirical sample run catches k-mer/BPE/charset mismatches the registry can't express — the "silently wrong results" failure mode from survey §5.2 | MEDIUM-HIGH | Depends on tokenizer loading (`AutoTokenizer` → `PreTrainedTokenizerFast` → `DNAOneHotTokenizer` fallback chain exists in model.py:543-568). Cost: needs the tokenizer files (small download) — gate behind the availability check. Sample must be seeded/deterministic for reproducibility |
+| D-3 | **base↔finetuned lineage routing**: when the user's task/labels don't match any finetuned entry, suggest the matching *base* model for fine-tuning; when they do match, surface the finetuned head with its frozen `label_names`/`threshold` already wired into the config | The registry's unique asset (187 finetuned entries, `base_model` backfilled 261020-kwt); guides the fine-tune-vs-use-pretrained decision no other tool makes explicit; directly serves lab-models-first | MEDIUM | Depends on: registry `base_model` axis (exists, complete) + TS-4a task matching. Label-set comparison against `label_names` (exists per finetuned entry). Render as a two-branch suggestion in the suitability panel |
+| D-4 | **Lab-models-first presentation**: every model list ranks `zhangtaolab/*` entries first, with availability/size columns making "smallest lab model that passes" the path of least resistance | Owner constraint made systematic; the existing generator already sorts zhangtaolab-first (verified: `_sort_models_by_priority` in `cli/model_config_generator.py`) — extend the same policy to TUI lists with the new availability columns | LOW | Registry name prefixes + existing sort precedent. Combine with D-1 so the default sort is "lab model, passes, least truncation" |
+| D-5 | **Charset-compatibility matrix row per strict family**: in the data panel, show pass-rate of the user's sequences against each of the ~13 strict-charset families (and the common-subset warning) so cross-model choices are honest from the start | The `validate_sequences` docstring documents the cross-model comparability hazard ("each model silently evaluates a DIFFERENT subset"); pre-flight is the only place this can be shown *before* results diverge | LOW-MEDIUM | Depends on TS-1 charset census + a per-family charset table (derivable from the 236 registry entries' tokenizer types — same metadata work as TS-4c) |
+| D-6 | **Same core exposed as MCP tools / notebook functions** (post-TUI shells) | One-core-many-shells: `check_compatibility` as an MCP tool lets LLM agents pre-flight before `dna_predict`; notebooks get a validation cell | LOW if TS-10 holds | Pure additional consumers of the TS core; scope-guard: v1.4 Track A delivers the *seams* (stable signatures + docs), full MCP registration can trail |
+| D-7 | **Offline/degraded mode**: every network-dependent check (TS-5 availability, D-2 dry-run) individually skippable with an explicit "skipped — network" verdict state rather than an error | SSH users behind GFW/mirrors (HF_ENDPOINT=hf-mirror.com is already a first-class toggle in model.py:380-391) hit hub connectivity constantly; wizard must never dead-end on a probe | LOW | Design rule: availability checks return UNKNOWN state, never raise, when network fails; cache last-known results (dnallmmark env-check same-day cache pattern) |
 
-**OIDC decision input (owner, may subsume the smoke):** migration cost is workflow surgery + one PyPI registration; benefit is no stored token, environment-gated publishing, default attestations. The dry-run smoke is orthogonal and worth having regardless of which credential mechanism wins — the token flow can host the dry-run lane today.
+### Anti-Features (Commonly Requested, Often Problematic)
 
----
+Documented to prevent scope creep. Track A ends at: validated config + selected model downloaded.
 
-## 4 · Docs accuracy review (docs/ + example/ per-file sweep)
-
-### How established tools do it
-
-**Executable documentation is the ecosystem's strongest anti-drift tool, and dnallm already exceeds the norm.** The standard ladder: doctest / [pytest-doctestplus](https://github.com/scientific-python/pytest-doctestplus/) (numpy/astropy; FLOAT_CMP directives, rst support) → [sybil](https://skills.rest/skill/sybil) (executes prose-embedded code samples inside pytest — audeering's auglib [migrated to it](https://github.com/audeering/auglib/pull/51) to catch docs drift) → sphinx-gallery (scikit-learn/matplotlib: every example script executed at docs build) → notebook validation via nbval/nbpages ([LSST SQR-032](https://raw.githubusercontent.com/lsst-sqre/sqr-032/tickets/DM-20939/index.rst)). dnallm's example-nightly already executes the entire example tree and keeps docs mirrors byte-identical (`check_docs_sync.py`) — a stronger guarantee than sphinx-gallery gives its users. What the ecosystem adds on top is *periodic prose hygiene*: scheduled link checks and quarterly example reviews (e.g., [yt-cli docs gates](https://yt-cli.readthedocs.io/_/downloads/en/v0.13.5/pdf/)), and mkdocs `--strict` (warnings-are-errors) as the table-states build gate — dnallm carries 15 pre-existing `--strict` warnings as ledgered debt.
-
-**What "systematic review" means at mature projects:** a per-file pass with an explicit checklist (does every named API exist; does every install command still resolve; is every version claim current; is every number traceable), fixes landing in the same pass, and a regression mechanism so the fixed state stays fixed. For dnallm the regression mechanisms already exist (byte-sync gate, example-nightly, docs-validation.yml); the milestone feature is the *sweep itself* plus closing the warnings debt. The post-numpy2/py311 staleness class (old install commands, pre-float64-change idioms, removed-API references) is exactly what doctest/sybil-style execution catches mechanically — but only for code; prose claims need the per-file human-verifiable pass the milestone defines.
-
-### Categories
-
-| Kind | Feature | Grounding | Complexity | Depends on (dnallm) |
-|------|---------|-----------|------------|---------------------|
-| Table stakes | Per-file accuracy sweep of docs/ + example/ prose vs code, with same-pass fixes and per-file disposition records | milestone definition; periodic-review norm | MED-HIGH (breadth: full docs surface) | docs-validation.yml; check_docs_sync.py |
-| Table stakes | Install-command correctness re-verified **after** the packaging changes land (ordering dependency) | lane-honesty is the point of the matrix docs | LOW if sequenced after | packaging phase outputs |
-| Table stakes | mkdocs `--strict` zero-warnings (15 ledgered warnings dispositioned/fixed) | warnings-are-errors is the table-stakes gate | MED | mkdocs config |
-| Table stakes | Showcase/selection.md wording reconciled with the platform split (frozen-convention cells stay bedtools-worded; numpy path documented as parity-verified alternate) | #19 inventory classes the docs-only surface | LOW | selection.md contract |
-| Differentiator | Every repaired docs claim carries the executing test that proves it (accuracy with evidence chain) | matches the project's verification culture; no ecosystem norm demands it | — | example-nightly |
-| Differentiator | Recorded per-file review evidence (auditable "this doc was verified against this code on this date") | docs-audit trails are rare | LOW | planning artifacts |
-| Anti-feature | Restructuring docs (Diátaxis re-org, theme changes) inside the accuracy pass | accuracy ≠ reorganization; scope creep doubles the diff under review | — | — |
-| Anti-feature | LLM-bulk-rewritten docs without per-claim verification | hallucination risk; violates the truth→docs direction the project enforces elsewhere | — | — |
-| Anti-feature | Fixing drift by editing code to match stale docs | direction is truth → docs, always | — | — |
-
----
-
-## 5 · Ollama test-surface removal (~59 refs, remove-vs-skip per item)
-
-### How established tools do it
-
-**The consensus is unambiguous: permanently-skipped tests are dead code — delete them; git history is the archive.** PostHog's test-maintenance guidance is the crispest statement: "Delete expired tests. Do not leave them skipped," with deletion requiring that the covered behavior be nameable and no supported path needs it ([PostHog skill](https://github.com/PostHog/posthog/blob/master/.agents/skills/maintaining-python-tests/SKILL.md)). The middle-ground pattern (USGS [dataretrieval-python PR #259](https://github.com/DOI-USGS/dataretrieval-python/pull/259)) allows a module-level skip **only inside a bounded deprecation window** with a removal date, after which the file is deleted. The recurring pathology named across sources: skip lists monotonically grow because "a skipped test is indistinguishable from a deleted one after the first sprint" ([quarantine-pattern writeup](https://dev.to/multigrid/quarantining-a-flaky-llm-test-without-deleting-it-2k1j)). dnallm is better armed than most: typed-skip prefixes + `expected_skips.yaml` + `scripts/audit_skips.py` already make every skip enumerated and CI-enforced — the ledger prevents the invisible growth pathology by construction.
-
-Mapping to the directive: refs covering surface that will **not** be supported (dead integration paths, probes for services the runner will never host again) → delete per the PostHog rule; refs covering surface that **remains a supported feature** but is environment-gated (the two mcp_example client notebooks' live-ollama/MCP tests, WINDOWS #13) → the existing probe-then-execute typed skip with live evidence is the defensible state, since the feature is alive and the skip is self-healing by design. Per-item disposition at planning time is exactly the ecosystem-correct shape.
-
-### Categories
-
-| Kind | Feature | Grounding | Complexity | Depends on (dnallm) |
-|------|---------|-----------|------------|---------------------|
-| Table stakes | Every one of ~59 ollama refs dispositioned remove-or-skip with recorded rationale per item | owner directive 2026-10-11; PostHog/dataretrieval norms | MED (breadth: 5 test files + 2 notebooks) | typed-skip machinery; audit_skips gate |
-| Table stakes | `expected_skips.yaml` + census counts re-pinned after removal (audit exit 0, no unexpected skips) | existing CI gate discipline | LOW | audit_skips.py; D-03 census triple |
-| Table stakes | Removed-surface tests deleted outright (not zombie-skipped) | "permanently-skipped tests are dead code" consensus | LOW | — |
-| Differentiator | Disposition ledger documenting why each ref was removed vs kept — the audit-skips philosophy extended to deletions | matches project culture; not an ecosystem norm | LOW | WINDOWS ledger / planning artifacts |
-| Anti-feature | Blanket skip-everything "to be safe" | creates the forever-skipped zombie class the consensus warns about; the directive explicitly forbids it | — | — |
-| Anti-feature | Removing the ollama MCP-client *capability* from the library/MCP server | directive scope is pytest surface + notebooks, not the feature; library surface stays | — | — |
-| Anti-feature | Deleting live-probe evidence for the remaining supported mcp_example pair | the both-up green state (6 live-server probes) is v1.1-earned truth; keep unless the notebooks themselves go | — | — |
+| # | Anti-Feature | Why Requested | Why Problematic | Alternative |
+|---|--------------|---------------|-----------------|-------------|
+| AF-1 | **Mutating/“auto-fixing” user data from the wizard** (strip bad chars, drop rows, rewrite files in place) | "Just clean it for me" is the obvious ask once the panel shows the dirt | Destroys user data trust; recreates `validate_sequences`' silent-row-drop hazard at file level; makes validation results unreproducible (the data changed underneath the verdict) | Report issues + emit the *exact* suggested code/config (e.g., the `validate_sequences(valid_chars=…, minl=…)` call with drop counts) as a copyable artifact; user applies it deliberately. Pre-flight analysis is strictly read-only |
+| AF-2 | **Launching training/inference from the wizard** | "One flow" tempts "…and then run it" | That is Track C (R2 dashboard) territory; couples pre-flight validation state to run-lifecycle concerns; wizard would need to survive a hours-long training process | The wizard's terminal screen prints the exact `dnallm train --config <emitted.yaml>` command (and offers to copy it). Clean handoff, zero lifecycle coupling |
+| AF-3 | **Benchmark features** (multi-model × multi-dataset matrices, sweep composition) | Registry + shortlist looks like dnallmmark's selection screen | Explicitly out of owner scope (Track B/downstream); the matrix is a benchmark concept (survey §5.4 keeps it downstream) | Pre-flight shortlist is task-scoped and data-driven; benchmark browsing waits for the Track B merge decision |
+| AF-4 | **Full registry browser (all 236 entries, all metadata)** | "While you're in there, let me browse" | Duplicates the Track B merge target (dnallmmark selection screen) — building it fresh in Track A is the duplicate development the owner prohibited | Suitability shortlist only: entries filtered+ranked by the user's data/task (D-1/D-4); a bare "browse all" affordance can defer entirely |
+| AF-5 | **Building a YAML text editor** | "Let me hand-edit the YAML inside the TUI" | A from-scratch editor is a tar pit (syntax, undo, scrolling) and re-fights what structured forms + validation preview already solve; raw-editing hides validation state | Structured form fields + a **read-only rendered YAML preview pane** that live-updates (survey R4's split-pane, minus the editing half); real hand-edits happen in the user's editor, and TS-7's round-trip revalidates on load |
+| AF-6 | **Silent background network probes** (availability checks firing on every screen change) | Fresh data feels more accurate | Surprise hub traffic on metered/flaky SSH links; slow wizard stalls attributed to "it's hanging"; mirror-endpoint users get inconsistent results | Availability is an explicit user-triggered action with visible per-model results + D-7's cached/skipped states |
+| AF-7 | **Hard blocking on WARN verdicts** (wizard refuses to continue on CPU, or on a 5% truncation rate) | "Safety" | nf-core's CRITICAL-vs-ROUTING split exists precisely because over-gating trains users to bypass the tool; researchers legitimately run CPU-small-models and truncated-tail datasets | Three-state verdicts (TS-3): only FAIL blocks progression; WARN shows impact + continues; the user's informed choice is recorded in the emitted config (e.g., `max_length` set with a comment) |
+| AF-8 | **A persistent multi-download queue with retries/resume in Track A** | dnallmmark's five-state queue is impressive and mergeable | Track A needs one model downloaded with feedback; a persistent queue is substrate (Track B merge, survey §5.4 verdict MERGE) — building it fresh now is duplicate development | TS-9's sequential download now; adopt the merged queue later without API churn (keep `download_model` as the core seam) |
+| AF-9 | **Re-implementing validation logic inside the TUI layer** | Screens "just need a quick check" | Breaks TS-10 (one-core-many-shells), makes the coverage gate unmeetable for the logic, and forks truth between CLI/TUI/MCP futures | Every verdict displayed in the TUI is a return value of the API core; screens contain zero domain logic (dnallmmark's presentation-only screens rule) |
 
 ---
 
 ## Feature Dependencies
 
 ```
-[numpy evaluators (jaccard + loj)]
-    └──requires──> [parity tests on Linux CI]          (spikes proved it once; tests keep it true)
-                          └──gates──> [platform dispatch in example code]
-                                            └──requires──> [platform-aware test gates]
-                                                                  └──requires──> [test-windows numpy-path executor]
-                                                                                         └──asserts──> [exon_f1 band on BOTH paths]
+[TS-10 API-first core]  (design constraint over everything — core functions before/with any screen)
 
-[packaging extras hygiene (base/cuda121/rocm)]
-    └──orders──> [install-lane docs + GPU matrix docs]     (docs must describe the final extras shape)
-                       └──orders──> [docs accuracy sweep]  (install-command re-verification sequenced last)
+[TS-1 data profile] ──requires──> existing DNADataset loaders + check_sequence/calc_gc_content (exist)
+      │
+      ├──enables──> [TS-2 collect-all validation] ──requires──> pydantic ValidationError iteration (exists)
+      │                    │
+      │                    └──enables──> [TS-7 config gen+validate] ──requires──> Pydantic config classes (exist)
+      │                                      │                        registry metadata prefill
+      │                                      │
+      ├──enables──> [TS-4 suitability: task×length×tokenizer]
+      │                    │    └──requires──> registry enrichment: structured tokenizer_type + max_length
+      │                    │                    (MISSING today — registry-as-truth-source data-layer work,
+      │                    │                     with on-demand config.json probe as fallback)
+      │                    │
+      │                    └──enables──> [D-1 truncation ranking]  [D-3 lineage routing]  [D-5 charset matrix]
+      │                                     (D-3 also requires base_model axis — exists, complete)
+[TS-6 env panel] ──requires──> _get_device + importlib.metadata (exist)
+      │              └──enhances──> [TS-5 availability] (disk-free vs size; VRAM vs params)
+      │
+[TS-5 availability: source/size/cache/revision]
+      │    └──requires──> registry repo ids (exist) + ModelScope/HF metadata APIs (SPIKE: ModelScope per-file sizes)
+      │    └──enhances──> [D-2 tokenizer dry-run] (small tokenizer download gated on reachability)
+      │    └──enables──> [TS-9 download w/ progress]
+      │                      └──requires──> download_model (exists) + progress-callback bridge (NEW, thin)
+      │
+[TS-3 verdict states] ──requires──> outputs of TS-1/2/4/5 (pure judgment layer)
+[TS-8 wizard nav]     ──independent (TUI mechanics; composes with all panels)
+[D-7 offline mode]    ──cross-cuts──> TS-5, D-2 (UNKNOWN-not-raise rule)
 
-[publish smoke (dry-run chain)]
-    ├──independent of──> [OIDC migration]                  (either credential flow can host the dry-run)
-    └──proves──> [base-extra rename consumer safety]
-
-[ollama disposition] ──independent── (re-pins census counts consumed by CI gates)
-
-[GAP-1 shim-or-remove] ──independent── (touches benchmark notebook + script test only)
-[#18 triton-windows declaration] ──independent── (pyproject + one test + docs row)
+[AF-2 config handoff] means: no dependency edge from any pre-flight feature into training/inference run paths
 ```
 
 ### Dependency Notes
 
-- **Platform split requires continuous parity:** the owner precondition ("ships only under parity") is met by the spikes but must survive future bedtools/numpy releases — hence parity tests on Linux CI precede the split landing in the roadmap, and the Windows executor's band assertion is the end-to-end closure.
-- **Packaging precedes docs sweep:** install-lane/matrix docs describe the post-hygiene extras shape; the accuracy sweep re-verifies install commands last so it isn't done twice.
-- **Publish smoke enhances (does not require) the OIDC migration:** the dry-run chain is credential-free; the migration changes only the upload step's auth. The owner note "may subsume" means one workflow can carry both.
-- **Ollama disposition conflicts with nothing** but re-pins the census/gate counts other features assert against — land it early so later phases pin against the final counts.
-- **GAP-1 shim conflicts with facade stability if implemented globally** — hence the anti-feature row; a scoped shim inside the affected load path composes with the compat-span invariant instead.
+- **TS-4 requires registry enrichment — the critical-path gap.** The registry's structured fields stop at `task_type`/`num_labels`/`label_names`/`threshold`/`base_model`; tokenizer type lives only inside free-text `describe` strings and no entry carries max-context or size. Suitability verdicts on the 236 known entries therefore depend on the registry-as-truth-source workstream landing *structured* `tokenizer_type` + `max_length` (size desirable) first, or falling back to per-model `config.json` probes (network-bound, cache-mandatory). This ordering constraint should shape the roadmap: registry data layer before the verdict API's non-empirical paths.
+- **TS-1/TS-2 build only on existing loaders — no new data-layer work.** The new surface is a read-only scanner + structured issue list; the mutation-style `validate_sequences` is deliberately *not* the foundation (it drops the rows the panel must count).
+- **TS-9's only new code is a progress bridge.** `download_model` already handles retry/reason-classification/revision/allow_patterns; the bridge converts downloader progress (tqdm hook) into worker messages. Cancellation rides Textual's worker-DOM binding.
+- **D-3 is unlocked already.** The `base_model` axis is complete (187/187 after quick task 261020-kwt) — lineage routing needs no registry work beyond TS-4a's task matching.
+- **D-2 conflicts with nothing but costs network.** It is the only differentiator that downloads anything during validation; gate it behind TS-5's reachability result and D-7's skip affordance.
+- **TS-10 (AF-9's positive form) conflicts with any TUI-first implementation order:** if screens land before the core, the coverage gate and the future MCP/notebook shells both regress. Core functions must land in the same phase as or before their first screen.
+
+---
 
 ## MVP Definition
 
-### Launch With (v1.3 — all in scope; these are the P1 core)
+### Launch With (v1 — Track A)
 
-- [ ] Platform dispatch + numpy evaluators + parity tests + platform-aware gates + test-windows numpy executor + tolerance pins — the milestone's headline; exon_f1=0.7522 in band on both paths is the acceptance
-- [ ] Extras hygiene: `base` rename/re-scope, cuda121 retirement, rocm restore-or-remove — the dishonest metadata rows go first
-- [ ] Install-lane docs + GPU support matrix + cuda130 default recommendation
-- [ ] Publish smoke (workflow_dispatch dry-run chain with clean-venv install-from-wheel)
-- [ ] Ollama surface: per-item remove-vs-skip disposition executed, gates re-pinned
-- [ ] GAP-1 #11/#12 and #18 decided and executed (shim-or-remove; declare-or-document)
+Minimum to validate the milestone goal: *one terminal flow from own data to a validated, model-compatible config*.
 
-### Add After Validation (same milestone if capacity, else carry)
+- [ ] TS-10 API core: `validate_data()` / `check_compatibility()` / `generate_config()` pure functions, pytest-covered, no Textual imports — the milestone's testability and one-core-many-shells foundation
+- [ ] TS-1 read-only data profile (stats + charset census + length distribution) — the flow's first user-visible payoff and the input to every later verdict
+- [ ] TS-2 collect-all validation report with severities — kills the raw-traceback failure mode, the survey's #1 pre-flight pain
+- [ ] TS-4 suitability verdicts (task × length × tokenizer) over registry metadata — requires the registry enrichment (tokenizer_type/max_length) to land first; the flow's namesake capability
+- [ ] TS-5 availability dimension (cache/ModelScope-first reachability/size-before-download) — prevents the wasted-12.3-GB-download class; includes the ModelScope size-probe spike outcome
+- [ ] TS-7 config generation with live validation + edit-existing round-trip — the flow's output artifact; absorbs survey R4 verbatim
+- [ ] TS-3 three-state verdicts with WARN-never-blocks — the honesty contract the whole flow hangs on
+- [ ] TS-9 sequential download with progress + cancel (single-model; AF-8 defers the queue) — completes "select-to-download via ModelScope-first path"
+- [ ] TS-6 env panel (device/VRAM/versions/disk) — cheap, and the wizard's opening screen
+- [ ] Registry runtime consumption (`load_preset_model` resolving finetuned entries with heads/labels/threshold; base↔finetuned axis) — milestone goal verbatim; also supplies TS-7's prefill
+- [ ] D-4 lab-models-first ranking — owner constraint, near-zero cost on top of TS-4
 
-- [ ] OIDC Trusted Publishing migration — well-bounded workflow surgery; may subsume the smoke workflow per owner note
-- [ ] mkdocs `--strict` 15-warning cleanup — ledgered debt the docs sweep surfaces naturally
-- [ ] mypy cap, #20 cov-crash fix — dev-lane robustness items
-- [ ] Scheduled (periodic, not just dispatch) publish smoke cadence
+### Add After Validation (v1.x)
 
-### Future Consideration (post-v1.3)
+- [ ] D-1 truncation-fraction model ranking — once TS-4 metadata is proven stable; highest value-per-LOC
+- [ ] D-2 tokenizer dry-run on a sample — once TS-5 reachability gating is field-proven; converts metadata trust into empirical trust
+- [ ] D-3 base↔finetuned lineage routing — once task matching (TS-4a) has real-user feedback
+- [ ] D-5 strict-family charset matrix — once TS-1 census + TS-4c tokenizer table coexist
+- [ ] TS-8 persisted wizard resume state (in-memory Back/prefill ships in v1; cross-session resume trails)
+- [ ] D-6 MCP tools over the same core — after signatures stabilize through TUI usage
+- [ ] Track B merges (persistent queue, env-check gauntlet, wizard framework consolidation) — separate track, consumes this core
 
-- [ ] Runtime lane/architecture warning at import (torch 2.8-style) — nice reach, not honesty-critical
-- [ ] Staged publishing / TestPyPI rehearsal lane with promotion semantics — only if release frequency grows
-- [ ] pyranges/ruranges re-evaluation — only if win_amd64 wheels ever ship (owner trigger condition already recorded)
+### Future Consideration (v2+)
+
+- [ ] Dataset *download* management for preset datasets (ModelScope-hosted `PRESET_DATASETS`) — Track B split-merge territory; v1 pre-flight covers the user's *own* files only
+- [ ] Benchmark-oriented surfaces (Track C / dnallmmark)
+- [ ] Auto-applied data cleanup recipes (AF-1's controlled descendant: emitted-and-reviewed transforms, never silent)
+
+---
 
 ## Feature Prioritization Matrix
 
-| Feature | User Value | Implementation Cost | Priority |
-|---------|------------|---------------------|----------|
-| Platform split + parity tests + Windows executor | HIGH (unlocks native Windows) | MEDIUM (surface fully inventoried) | P1 |
-| Extras hygiene (base/cuda121/rocm) | HIGH (installs do what they claim) | LOW | P1 |
-| Install-lane docs + GPU matrix | HIGH (first thing every user hits) | LOW-MED | P1 |
-| Publish smoke dry-run | MEDIUM-HIGH (rust-proofs the chain) | MEDIUM | P1 |
-| Ollama disposition | MEDIUM (suite honesty, runner stability) | MEDIUM (breadth) | P1 |
-| GAP-1 disposition | MEDIUM (recovers or retires blocked surface) | MEDIUM (shim) / LOW (remove) | P1 |
-| #18 triton-windows decision | MEDIUM (Windows fla users) | LOW | P1 |
-| OIDC migration | MEDIUM (security posture, attestations) | MEDIUM | P2 |
-| mkdocs --strict cleanup | MEDIUM (docs gate honesty) | MEDIUM | P2 |
-| mypy cap + #20 fix | LOW-MEDIUM (maintainer lane) | LOW / MEDIUM | P2 |
-| Periodic smoke cadence | LOW-MEDIUM | LOW | P2 |
-| Runtime GPU warning | LOW | MEDIUM | P3 |
-| Staged publishing lane | LOW | MEDIUM | P3 |
+| Feature | User Value | Implementation Cost | Priority | Sequencing note |
+|---------|------------|---------------------|----------|-----------------|
+| TS-10 API core | HIGH (enables all) | LOW | P1 | First — everything consumes it |
+| TS-1 data profile | HIGH | MEDIUM | P1 | After/with core; feeds all verdicts |
+| TS-2 collect-all validation | HIGH | MEDIUM | P1 | With TS-1 (same scan) |
+| Registry enrichment (tokenizer_type/max_length) | Indirect HIGH | MEDIUM | P1 | Before TS-4's metadata paths — critical-path gap |
+| TS-4 suitability verdicts | HIGH (the flow's namesake) | MEDIUM-HIGH | P1 | After registry enrichment + TS-1 |
+| TS-5 availability | HIGH | MEDIUM | P1 | Spike ModelScope size probe early |
+| TS-7 config gen + round-trip | HIGH (the output artifact) | MEDIUM | P1 | After TS-2 + registry metadata for prefill |
+| TS-3 verdict states | HIGH | LOW | P1 | Judgment layer; land with first verdict-producing feature |
+| TS-9 download w/ progress | HIGH (flow completion) | MEDIUM | P1 | Bridge over `download_model`; last in chain |
+| TS-6 env panel | MEDIUM | LOW | P1 | Cheap; wizard's first screen |
+| TS-8 Back/prefill nav | MEDIUM | LOW-MEDIUM | P1 (in-memory) / P2 (persisted) | TUI mechanics, parallel-safe |
+| D-4 lab-models-first | MEDIUM (owner constraint) | LOW | P1 | Sort policy atop TS-4 |
+| D-1 truncation ranking | HIGH | LOW | P2 | First post-v1 add |
+| D-2 tokenizer dry-run | HIGH | MEDIUM-HIGH | P2 | Empirical trust layer |
+| D-3 lineage routing | HIGH | MEDIUM | P2 | Registry's unique payoff |
+| D-5 charset matrix | MEDIUM | LOW-MEDIUM | P2 | Honesty for cross-model users |
+| D-6 MCP shells | MEDIUM | LOW | P2 | Seam-stability dependent |
+| D-7 offline/degraded mode | MEDIUM | LOW | P2 (design rule in v1, full caching P2) | UNKNOWN-not-raise from day one |
 
-## Comparable Analysis
+---
 
-| Dimension | Comparable | Their approach | dnallm v1.3 plan |
-|-----------|-----------|----------------|------------------|
-| Windows interval ops | pybedtools / bioframe | pybedtools: unsupported, WSL/Docker; bioframe: pure-numpy engine with documented bedtools-equivalence map (`-loj` → `overlap(how='left')`) | platform-split: keep bedtools where it installs, numpy evaluator only where it can't — bioframe's pattern scoped to jaccard + loj, with parity *tests* (bioframe ships mappings, dnallm ships measured parity) |
-| GPU extras that work under pip | spaCy (`cuda12x`, `cuda-autodetect`) / jax (`cuda12`/`cuda13` via PyPI plugin wheels) | extras pull GPU wheels that live on PyPI → honest under every installer; spaCy deleted its frozen `cuda121`-class extras | torch CUDA wheels aren't on PyPI → keep uv lanes primary, retire the undead cuda121 lane, document the pip `--index-url` lane explicitly |
-| Install-lane communication | PyTorch get-started matrix + dev-discuss lane-EOL notices + runtime arch warnings | OS × platform × lane selector emitting exact commands; public lane deprecation notices | lane docs + verified per-generation matrix; cuda130 default; (P3) runtime warning |
-| uv/pip asymmetry handling | dataeval-flow docs, vLLM (`--torch-backend=auto`) | explicitly document that `[tool.uv.sources]` is uv-only; give pip users index commands | same: cross-installer honesty table |
-| Publish auth | pypa/gh-action-pypi-publish / `uv publish --trusted-publishing` | job-level `id-token: write`, environment binding, attestations default-on | OIDC migration (P2), token retired |
-| Publish validation | PyKMP / NVIDIA-NeMo release guides | build → check-wheel-contents → twine check → clean-venv install-from-wheel smoke → optional TestPyPI dry-run | workflow_dispatch dry-run with exactly this chain, periodic cadence as differentiator |
-| Docs anti-drift | sphinx-gallery / sybil / pytest-doctestplus; periodic link+example reviews | execute everything; schedule prose hygiene | already exceeds (example-nightly + byte-sync); adds the per-file sweep + `--strict` zero-warnings |
-| Dead test surface | PostHog ("delete expired tests"), dataretrieval (bounded skip window) | delete removed-feature tests; skip only in dated deprecation windows | per-item remove-vs-skip with ledgered rationale; typed-skip allowlist enforces the survivors |
-| Stale remote-code checkpoints | OpenELM-on-v5 class | pin ceiling, upstream fix, or drop | scoped compat-shim inside transformers_compat.py, or removal — decided at planning |
+## Competitor Feature Analysis
+
+| Feature | docker init | nf-core / nf-schema | pandera | wandb/Ultralytics | dnallmmark (sibling) | DNALLM v1.4 approach |
+|---------|-------------|---------------------|---------|-------------------|----------------------|----------------------|
+| Detect-before-asking | Signature-file platform detection | — | Schema-first inference | — | Registry presence probes | Sniff data file format/columns → prefill wizard defaults |
+| Collect-all errors | Overwrite warning | All failed params logged, then one throw | `lazy=True` → `SchemaErrors` w/ `failure_cases` | — | Wizard collect-all validation report | TS-2: structured issue list w/ severity + reason codes; same unwrapping serves config panel |
+| Data-level validation stage | — | Explicit 2nd stage after params | Core competency | — | Gauntlet (subprocess) | TS-1/TS-2: read-only scan; params (config) and data validated as distinct stages |
+| Size-before-download | — | — | — | — | Presence probe + queue state | TS-5: blob-size sum (disk) + params (VRAM), ModelScope-first, cached-local short-circuit |
+| Suitability vs *user's data* | — | — | — | — | Committed compat verdicts (static) | TS-4 + D-1: length-distribution-aware ranking — beyond all five comparators |
+| Wizard mechanics | Q&A with defaults | — | — | Entity/project picker | 4-step ModalScreen forms | TS-8: ModalScreen stack, typed dismiss, Back-with-prefill (terok pattern) |
+| Long-task UX | — | — | — | — | Popen + progress parsing, 5-state queue | TS-9: `@work(thread=True)` + ProgressBar + screen-scoped cancel; persistent queue deferred (AF-8) |
+| Edit-existing round-trip | Reuses existing compose filename | — | — | `wandb init` updates in-place | Session-undo | TS-7: load → edit → revalidate → gated save |
+| Degraded/offline behavior | Manual platform fallback | `lenientMode` | — | offline mode flag | Tolerant absent probes | D-7: UNKNOWN verdict state, never raise, cache last-known |
+
+---
 
 ## Sources
 
-- pybedtools installation docs (Windows unsupported): https://daler.github.io/pybedtools/main.html — MEDIUM (official docs, single source for the negative claim but unambiguous)
-- bioframe paper + "Bioframe for bedtools users" + benchmarks: https://www.biorxiv.org/content/10.1101/2022.02.16.480748v1.full.pdf, https://bioframe.readthedocs.io/en/latest/guide-bedtools.html, https://pmc.ncbi.nlm.nih.gov/articles/PMC10903647/ — MEDIUM (cross-verified, official docs + peer-reviewed)
-- Bioconda no-Windows / downstream breakage: https://stackoverflow.com/questions/48441023/, https://github.com/gao-lab/GLUE/issues/95 — MEDIUM
-- torch get-started lane matrix + commands: https://docs.pytorch.org/get-started/locally/ — MEDIUM (official)
-- cu126 wheel EOL notice (2.15, drops Maxwell/Pascal/Volta): https://dev-discuss.pytorch.org/t/notice-cuda-12-6-wheels-will-no-longer-be-published-from-pytorch-2-15-drops-maxwell-pascal-volta/3432 — MEDIUM (official mailing list)
-- sm_50/sm_60 removal warnings in 2.8 cu128: https://github.com/pytorch/pytorch/pull/158478 — MEDIUM
-- cu121 wheels stopped / CUDA 13 drops pre-Turing: https://pozzettiandrea.github.io/cuda-wheels/matrix/, https://developer.nvidia.com/blog/navigating-gpu-architecture-support-a-guide-for-nvidia-cuda-developers/ — MEDIUM (cross-checked against cheat sheets)
-- `[tool.uv.sources]` invisible to pip; lane docs pattern: https://pypi.org/project/dataeval-flow/0.2.3/#2 — MEDIUM (single project's docs but states the mechanism plainly; consistent with uv docs)
-- uv `--torch-backend` semantics + pitfalls: https://app.semanticdiff.com/gh/astral-sh/uv/pull/12070/overview, https://pydevtools.com/handbook/explanation/installing-cuda-python-packages.md — MEDIUM
-- spaCy GPU extras + cuda121-class removal: https://deepwiki.com/explosion/spaCy/1.2-installation-and-setup, https://github.com/explosion/spaCy/discussions/13567 — MEDIUM
-- jax cuda extras / PEP 685: https://www.gitclear.com/open_repos/google/jax/release/jax-v0.6.0, https://peps.python.org/pep-0685/ — MEDIUM (PEP is HIGH-legitimacy primary)
-- PyPI Trusted Publishing + attestations + 2FA timeline: https://docs.pypi.org/trusted-publishers/using-a-publisher/, https://docs.pypi.org/attestations/producing-attestations/, https://blogpypiorg.readthedocs.io/posts/2023-04-20-introducing-trusted-publishers/, https://blog.pypi.org/posts/2023-12-13-2fa-enforcement/ — MEDIUM (official docs, cross-verified)
-- uv publish flags (dry-run, trusted-publishing, testpypi): https://mintlify.wiki/astral-sh/uv/cli/publish, https://github.com/astral-sh/uv/pull/7475 — MEDIUM
-- Publish smoke chain: https://gertvdijk.github.io/PyKMP/releasing/ — MEDIUM (single guide but corroborated by NVIDIA-NeMo/Ananke workflow shapes in the same results)
-- Staged publishing GA (2026-05-22): https://hidekazu-konishi.com/entry/publishing_npm_and_pypi_packages_without_long_lived_tokens.html — LOW (single secondary source)
-- Docs testing tools: https://github.com/scientific-python/pytest-doctestplus/, https://skills.rest/skill/sybil, https://github.com/audeering/auglib/pull/51, https://raw.githubusercontent.com/lsst-sqre/sqr-032/tickets/DM-20939/index.rst — MEDIUM (cross-verified)
-- transformers v5 config dataclass breakage + OpenELM precedent: https://huggingface.co/apple/OpenELM-1_1B-Instruct/discussions/8, https://raw.githubusercontent.com/huggingface/transformers/c472755e79aac54d675845bff5e5c821c21260af/MIGRATION_GUIDE_V5.md — MEDIUM (official guide + live incident)
-- triton-windows fork status + requirements: https://github.com/triton-lang/triton-windows, https://raw.githubusercontent.com/woct0rdho/triton-windows/master/README.md, https://raw.githubusercontent.com/unslothai/unsloth/refs/tags/September-2025-v3/README.md — MEDIUM
-- Test deletion vs skip consensus: https://github.com/PostHog/posthog/blob/master/.agents/skills/maintaining-python-tests/SKILL.md, https://github.com/DOI-USGS/dataretrieval-python/pull/259, https://dev.to/multigrid/quarantining-a-flaky-llm-test-without-deleting-it-2k1j — MEDIUM (three independent sources agreeing)
-- Internal (HIGH, read directly): `.planning/PROJECT.md`, `.planning/WINDOWS.md` (#11/#12/#13/#18/#19/#20), `pyproject.toml` extras + uv tables, `.github/workflows/publish.yml`, parity-spike verdicts recorded in PROJECT.md
-
-**Gaps to flag for phase-time research:** exact pypa/gh-action-pypi-publish input syntax for the combined environment+OIDC workflow (README not fetched — the action README should be read at plan time); whether PyPI API tokens gain any sunset date (no announcement found — treat as "recommended migration," not forced); mypy capping practice not separately researched (MEDIUM from training; verify at plan time if the cap choice matters); bioframe's own test suite internals not inspected (its bedtools-parity *tests* vs documented mappings — dnallm's spike already exceeds this bar locally).
+- DNALLM checkout (HIGH — read directly, 2026-10-20): `dnallm/datahandling/data.py` (loaders, `validate_sequences` mutation semantics + charset-hazard docstring, `head`/`show`/`get_split_lengths`), `dnallm/models/model_info.yaml` (schema: structured finetuned fields incl. `base_model`; tokenizer info only in `describe` text; no max_length/size fields), `dnallm/models/model.py` (`download_model` signature/retry/reason-classification; `_get_device`; tokenizer fallback chain), `dnallm/configuration/configs.py` (Pydantic section classes; `InferenceConfig.max_length=512`), `dnallm/utils/sequence.py` (`check_sequence`, `calc_gc_content`), `cli/model_config_generator.py` (numbered menus, author-new-only, zhangtaolab-priority sort)
+- dnallmmark sibling checkout via TUI survey (HIGH — survey read-verified): screens/services inventory, merge-or-build verdicts (survey Part 5)
+- [docker init reference](https://docs.docker.com/reference/cli/docker/init/) + [Docker Java containerize guide](https://docs.docker.com.tw/guides/java/containerize/) (MEDIUM) — wizard flow, defaults, overwrite warnings
+- [nf-schema validation docs](https://nextflow-io.github.io/nf-schema/2.5.1/parameters/validation/) + [Nextflow input-validation training](https://training.nextflow.io/latest/nfcore_build/04_input_validation/) (MEDIUM) — collect-all-then-stop, two-stage order
+- [pandera lazy validation](https://github.com/unionai-oss/pandera/blob/main/docs/source/lazy_validation.md) + [pandera error reports](https://pandera.readthedocs.io/en/stable/error_report.html) (MEDIUM) — collect-all issue-list shape
+- [terok TUI wizard PR #797](https://github.com/terok-ai/terok/pull/797) + [Textual workers guide](https://python-cli-toolcraft.com/advanced-input-parsing-user-experience/building-terminal-uis-with-textual/running-background-work-in-textual-with-workers/) + [Textual modal-screen discussion](https://github.com/Textualize/textual/discussions/5388) (MEDIUM) — ModalScreen wizard, typed dismiss, workers/progress/cancel
+- [huggingface_hub metadata patterns](https://github.com/huggingface/metadata-sniffer/blob/main/02_process_code.py) + [MTEB model_size util](https://huggingface.co/spaces/mteb/leaderboard/raw/c05fcecdd9c2540133679b32f66b14e3cef44a7/utils/model_size.py) + [dataset-size SO 77139182](https://stackoverflow.com/questions/77139182/how-can-i-see-the-size-of-a-huggingface-dataset-before-downloading-it) (MEDIUM) — params-vs-blob-size duality, quantization caveat
+- ModelScope Hub API (MEDIUM-LOW — REST endpoints documented via [swama DeepWiki](https://deepwiki.com/Trans-N-ai/swama/6.2-model-repository-integration) and [omlx PR #1351](https://github.com/jundot/omlx/pull/1351); SDK per-file-size path unconfirmed — flagged as a phase spike)
+- [Snakemake dry-run behavior](https://informatics.fas.harvard.edu/workshops/snakemake/run/) + [ARMOR wiki](https://github.com/csoneson/ARMOR/wiki/Running-the-analysis) (MEDIUM) — preflight honesty contract
+- [wandb init CLI](https://docs.wandb.ai/ja/models/ref/cli/wandb-init) + [Ultralytics settings](https://docs.ultralytics.com/zh/usage/settings) (MEDIUM) — optional-wizard + snapshot-verb precedents
 
 ---
-*Feature research for: v1.3 Platform Reach & Packaging Honesty (Windows parity, packaging honesty, publish chain, docs accuracy)*
-*Researched: 2026-10-11*
+*Feature research for: DNALLM v1.4 Pre-flight UX & Registry-as-Truth-Source (Track A)*
+*Researched: 2026-10-20*

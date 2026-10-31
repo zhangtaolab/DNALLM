@@ -1,6 +1,63 @@
 # Milestones
 
-**Closeout:** override_closeout — 2 known gaps carried (owner-deferred acceptance halves, both minute-level resume paths in the WINDOWS ledger): PUBS-04 (PyPI trusted-publisher registration + token deletion after first green OIDC release — #25), WPAR-07 (Windows fla KDA smoke on RTX 5080 — #27). Pre-close artifact audit clean (2 deferred items resolved by Phase 20; 10 carried suppressions).
+## v1.4 Pre-flight UX & Registry-as-Truth-Source — REOPEN close, Phases 27–28 (Shipped: 2026-10-30)
+
+**Phases completed:** 4 phases (27, 27.1, 27.2, 28), 19 plans — the reopened v1.4 line; the original Phases 22–26 close shipped 2026-10-22 (entry below)
+
+**Delivered (reopen):** the transformers-4/5 compatibility program — a 49-entry per-model compatibility census with import-level evidence and typed registry verdicts; remediation of all 8 unsupported presets (4 repaired behind measured compat rungs: GENERanno ROPE, DNABERT-2 ALiBi, GENA-LM buffer reset, MutBERT forward wrap; exact pip guidance for GPN/Omni-DNA); one registry-derived support vocabulary feeding docs, the TUI sixth column, and MCP listings; curated optional extras (`.[deepspeed]` for GENA-LM-BigBird, flash-attn extra for CrossDNA) with plain-language missing-extra interception and a dedicated nightly/dispatch extras CI lane; and IN-01..IN-06 tech-debt closure. Registry distribution final: 19/21/5/1-extra/3-broken/0-blocked over 49 pretrained.
+
+**Key accomplishments:**
+- Re-runnable census tool: 49 pretrained entries import-probed under transformers 5.17.0 (25 import-ok / 18 arch-ok / 4 import-fail / 2 census-blocked) plus 22 family-representative load+forward proofs
+- Generated plain-language compatibility page for biologists (49 honest rows) plus two independent locks: an offline CI drift gate that re-derives every row from the registry (deliberate-red proven both ways) and a dispatch-only fail-closed re-verification lane whose --verify diff turns red on world drift — including a transformers version bump (VERSION DRIFT)
+- The census lane can now exit 0 (sanctioned sha256-pinned mamba kernels in its install step; the exact lane command proven green on the runner-box replica: 49 matched / exit 0), and the "not working" rows lead with plain-language verdicts a biologist can act on
+- Transformers-5 remediation: four measured rungs restore GENERanno / DNABERT-2 / GENA-LM / MutBERT under transformers 5 (every registry flip backed by a stamped probe; idempotency-pinned across 61 rung tests); GPN/Omni-DNA carry exact install guidance; BigBird's deepspeed forward is measured structurally impossible upstream (load-green/forward-red split, ruling A) and CrossDNA flips green through the flash-attn extra
+- One support-word module (`dnallm/models/support.py`) now feeds the regenerated compatibility page, a plain-language optional-dependency guide, README, the TUI suitability column, and MCP listings — same words everywhere
+- Curated extras + interception + CI: `deepspeed`/`flash-attn` extras with version-band rationale, guided ImportError at both load wrap sites, `extras_compat.yml` nightly/dispatch lane with two independent gates behind `ci.yml`'s fourth selector (20 offline contracts green)
+- IN-01..IN-06 tech debt closed (300-char cell cap, gate-pinned summary counts, helper unit tests, kwargs-safe load-boundary bridge, lane uv provisioning)
+- DISP-01 deferred by owner decision after GitHub branch protection (GH006) made the approved option-a direct push structurally impossible: the registration commit `d661998` is preserved on local branch `wip/27.1-03-census-registration`, and DISP-01 moves to a post-v1.4→main-merge operator step (exactly one `--ref v1.4` dispatch, plus the extras lane's first live run T-28-09)
+
+---
+
+**Closeout (v1.4 reopen):** override_closeout — 1 item newly acknowledged (27.1-VERIFICATION gaps_found = DISP-01, owner defer-dispatch until v1.4→main merge), 3 carried forward from prior closes (see STATE.md Deferred Items). Milestone re-audit 2026-10-30: `tech_debt`, 13/14 contract items (the 14th is the same DISP-01), integration 11/11 seams WIRED, 0 critical gaps, no regressions vs archived 22–26 (`.planning/milestones/v1.4-MILESTONE-AUDIT.md` — final-state snapshot superseding the 10-22 and 10-28 versions, both in git history). No new milestone tag (`milestone/v1.4` from the original close stands); 28 quick tasks archived to `milestones/v1.4-quick/`.
+
+## v1.4 Pre-flight UX & Registry-as-Truth-Source (Shipped: 2026-10-22)
+
+**Phases completed:** 5 phases, 23 plans, 62 tasks
+
+**Delivered:** the v1.4 Track A pre-flight surface — `dnallm.preflight` pure core (`validate_data` / `check_compatibility` / `probe_availability` / `generate_config`/`edit_config`), the `dnallm preflight` Textual wizard (env → data → suitability → validated config → optional ModelScope-first download), and the registry as runtime single source of truth (236-entry cached read-only loader consumed by `load_preset_model`, the MCP listing, and the CI-gated consistency checker); `tui` extra declared, `base` alias retired.
+
+**Stats:** 3 days (2026-10-20 → 2026-10-22) · git range `94c9819..close` (228 commits, 170 files, +38,911/−328) · closeout audit `tech_debt` verdict with 0 critical gaps (23/23 requirements, 7/7 integration seams, 3/3 E2E flows — see `milestones/v1.4-MILESTONE-AUDIT.md`) · Known verification overrides: 0 newly acknowledged, 10 carried forward from a prior close (see STATE.md Deferred Items)
+
+**Post-archive addendum (2026-10-22, commits b35f64d/eb901ca/365e0cb):** v1.4 feature documentation landed — TUI wizard user guide with 7 headless-captured screen walkthroughs (`docs/user_guide/tui/preflight_wizard.md` + `docs/pic/tui/`), preset-loading guide (`docs/user_guide/preset_loading.md`), README/quick-start/architecture/configuration doc refresh; full docs accuracy audit swept 159 files / 830 claims (1 failure — phantom `TaskHead` reference — fixed at both doc and root-cause docstring level, tests/tasks 192 passed).
+
+**Key accomplishments:**
+- Cached read-only typed registry loader (sole parser of model_info.yaml, 236 entries) with exact name/repo/task_type/base_model lookups, lab-first helpers, and base_model-chain inheritance — born read-only behind four probe-verified structure guards.
+- tokenizer_type / max_length enrichment committed for all 49 pretrained entries from one-time ModelScope-first metadata probes (never weights), 14 external-based plantcad entries pinned at 8192, inheritance live for 187/187 finetuned — landed as 122-line insertion-only text with both provenance blocks byte-preserved and 12 new enforcing tests.
+- Frozen report-type inventory + read-only validate_data (7 formats, DNADataset-parity reader, pkl refused) + registry-driven check_compatibility length verdicts behind AST-enforced import discipline
+- Three-dimension verdict engine (task x length x charset) with name-first k-mer budget classification (6mer->517, BPE->1536), strict/BPE charset stances, intent-routed lab-first listings, and an injectable prober shortlist — 100% module coverage
+- ModelScope-first probe_availability with side-effect-free three-way cache detection, an exhaustive failure-to-UNKNOWN taxonomy behind a core-owned bounded wait, a lock-guarded memo, and library-constant endpoint reporting — 36 network-free unit tests + one typed-skip slow-lane acceptance, 99% module coverage
+- Shared validate_sections path factored verbatim out of load_config (zero behavior change) + generate_config/edit_config with registry-derived defaults, collect-all field-level errors, and a write-only-when-given safe-YAML dump contract
+- Complete dnallm.preflight facade (four user-story functions + endpoint reporting + report types) proven by a facade-only cross-module user story on happy and severed-network paths, closed out at 99% package coverage with all six modules >=96%
+- Registry-first preset resolution: real entry names (then repo ids) resolve through the packaged registry with head fields patched into an unmutated TaskConfig copy, family behavior pinned identical for all ten zhangtaolab-default families
+- Declared the `tui` extra (textual 8.2.8 + platformdirs 4.12.1 resolved) so every `.[full]` CI leg now installs Textual, and retired the deprecated `base` extras alias in the same install-line change.
+- A Textual package skeleton whose every blocking core call crosses a thread worker as a typed message, with six probe-red-verified structure guards and a proven BaseException cancel sentinel that escapes `download_model`'s ten-attempt retry loop in one call.
+- `import dnallm.preflight` now costs 0.29 s and pulls none of torch/transformers/datasets/matplotlib (was 3.71 s with all four), with the compat-shim ordering guarantee moved into every consumer module.
+- Core-owned `dnallm/utils/env_info.py` collects version, GPU, and cache-disk facts as plain-language rows, with a torch-free fast path and no failure mode that raises
+- `dnallm preflight` launches a Textual wizard through a lazy import with a friendly bare-install hint; `DNALLMPreflightApp` composes the 25-02 worker seam over a single `WizardState`, and the environment panel paints version rows instantly while a thread worker fills the graphics-card and disk rows.
+- Optional data panel that hands a pasted path to validate_data through the worker seam and renders the returned DataReport — split counts, lengths, charset census, and every finding with its reason code — with a first-class skip that keeps the wizard usable without data
+- The wizard now answers "which model can do this job?" from the core alone: verdicts and a lab-first listing rendered in the core's exact order, an offline local state for every row, remote probes capped at the 20-row shortlist, and an on-demand per-row probe — with UNKNOWN shown honestly instead of hidden.
+- The wizard now ends in a validated config: a structured five-section form over the exact mapping the writer emits, every problem listed in the core's own order beside a byte-faithful YAML preview, and a save action that stays off until the list is empty — reached from either entry, including one click from "Use this model".
+- Optional single-model download with real byte progress, a cooperative stop that says what it cannot interrupt, and a summary that shows the returned model path before the config path
+- The wizard is proven end to end in one offline Pilot walk, "presentation only" is a two-way table that fails on an unlisted core call or an unmapped worker, every TUI module holds at 97.4%+ with no omit entry, and the copy review corrected the one sentence that promised a hub fallback the code does not perform.
+- The config panel now tells a biologist what to put in each field — a bad task type reads "Choose one of: embedding, mask, generation…" instead of the raw Pydantic pattern, the core's exact message is one press away, and all twelve ML terms the UAT named carry a one-line gloss while every YAML key stays verbatim.
+- All eight task types are now explained everywhere from one shared mapping, a static legend survives typing, and the LoRA and navigation sentences name what the reader needs.
+- The config error pane now lays out every error row and scrolls to its tail, and the task-type hint sits under its input so the panel's first control is visible at 80x24.
+- Read-only, repo-id-keyed consistency checker (dnallm/mcp/consistency.py) comparing every per-model MCP YAML plus server-config references against the packaged registry, with a red-when-drift matrix and a strict CI gate test
+- get_all_available_models rewritten to serve all 236 registry entries lab-first with a configured/enabled/loaded overlay, unmatched-configured visibility, and a one-line-per-model menu — tool surface and error contract unchanged
+
+---
+
+**Closeout (v1.3):** override_closeout — 2 known gaps carried (owner-deferred acceptance halves, both minute-level resume paths in the WINDOWS ledger): PUBS-04 (PyPI trusted-publisher registration + token deletion after first green OIDC release — #25), WPAR-07 (Windows fla KDA smoke on RTX 5080 — #27). Pre-close artifact audit clean (2 deferred items resolved by Phase 20; 10 carried suppressions).
 
 ## v1.3 Platform Reach & Packaging Honesty (Shipped: 2026-10-16)
 

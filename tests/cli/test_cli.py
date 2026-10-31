@@ -74,6 +74,7 @@ class TestCliGroup:
             "mutagenesis",
             "model-config-generator",
             "mcp-server",
+            "preflight",
         ):
             assert command in result.output
 
@@ -756,3 +757,68 @@ class TestStandaloneMutagenesModule:
         assert payload["batch_results"][1]["original_prediction"]["sequence"] == "GCTA"
         assert mut_cls.call_count == 2
         assert instance.evaluate.call_count == 2
+
+
+class TestPreflightCommand:
+    """The `preflight` subcommand of the dnallm group (TUI-02)."""
+
+    def test_command_opens_the_wizard_without_a_config(self, runner):
+        """No --config starts the wizard with config_path=None; argv is untouched."""
+        argv_before = list(sys.argv)
+        with patch("dnallm.tui.run_preflight") as run_preflight:
+            result = runner.invoke(cli, ["preflight"])
+
+        assert result.exit_code == 0
+        run_preflight.assert_called_once_with(config_path=None)
+        assert sys.argv == argv_before
+
+    def test_existing_config_is_passed_through(self, runner, config_file):
+        """--config hands the path to the wizard instead of loading it here."""
+        with patch("dnallm.tui.run_preflight") as run_preflight:
+            result = runner.invoke(cli, ["preflight", "--config", config_file])
+
+        assert result.exit_code == 0
+        run_preflight.assert_called_once_with(config_path=config_file)
+
+    def test_nonexistent_config_is_rejected_by_click(self, runner):
+        """click.Path(exists=True) rejects a missing file before the app starts."""
+        with patch("dnallm.tui.run_preflight") as run_preflight:
+            result = runner.invoke(cli, ["preflight", "--config", "/no/such/config.yaml"])
+
+        assert result.exit_code == 2
+        assert "Usage:" in result.output
+        run_preflight.assert_not_called()
+
+    def test_missing_tui_package_exits_one_with_install_hint(self, runner, monkeypatch):
+        """An unimportable dnallm.tui exits 1 with the friendly install hint."""
+        monkeypatch.setitem(sys.modules, "dnallm.tui", None)
+        result = runner.invoke(cli, ["preflight"])
+
+        assert result.exit_code == 1
+        assert 'pip install "dnallm[tui]"' in result.output
+
+    def test_bare_install_without_textual_exits_one_with_install_hint(self, runner, monkeypatch):
+        """The ImportError raised INSIDE run_preflight is caught too (TUI-02).
+
+        ``dnallm/tui/__init__.py`` imports cleanly without textual; the failure
+        surfaces from the lazy ``.app`` import inside ``run_preflight``. This
+        test therefore proves the except branch wraps the call and not only the
+        import. The cached modules are cleared because pytest imports
+        ``tests/tui/test_app.py`` (and so ``dnallm.tui.app``) during collection.
+        """
+        monkeypatch.setitem(sys.modules, "textual", None)
+        monkeypatch.setitem(sys.modules, "textual.app", None)
+        monkeypatch.delitem(sys.modules, "dnallm.tui.app", raising=False)
+        result = runner.invoke(cli, ["preflight"])
+
+        assert result.exit_code == 1
+        assert 'pip install "dnallm[tui]"' in result.output
+
+    def test_fallback_hint_matches_the_copy_constant(self):
+        """The defensive literal cannot drift from dnallm/tui/copy.py."""
+        from importlib import import_module
+
+        from dnallm.tui import copy as tui_copy
+
+        command_module = import_module("dnallm.cli.cli")
+        assert command_module._FALLBACK_INSTALL_HINT == tui_copy.INSTALL_HINT

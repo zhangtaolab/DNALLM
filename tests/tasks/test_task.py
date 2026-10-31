@@ -1,7 +1,7 @@
-"""Tests for DNA Language Model Task Definition Module.
+"""Tests for DNA Large Language Model Task Definition Module.
 
 This module tests the task definition components including TaskType enum
-and TaskConfig class for DNA language model fine-tuning tasks.
+and TaskConfig class for DNA large language model fine-tuning tasks.
 """
 
 import pytest

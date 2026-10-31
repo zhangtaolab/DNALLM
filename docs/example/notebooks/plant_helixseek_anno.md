@@ -20,7 +20,7 @@ The committed notebook carries its executed outputs, including the embedded gene
 Install DNALLM with the flash-linear-attention kernels PlantHelixSeek needs:
 
 ```bash
-uv pip install -e '.[full,fla]'
+uv pip install -e '.[full]'
 ```
 
 The scan runs on a CUDA GPU (the eager-attention route through dnallm processes one 8192-token window at a time, ~13 GB peak per forward; see the notebook's provenance cell). Unlike the CRE sibling, no `bedtools` install is needed — every Anno metric is computed in-process.

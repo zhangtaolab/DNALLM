@@ -20,7 +20,7 @@ The committed notebook carries its executed outputs, including the embedded pred
 Install DNALLM with the flash-linear-attention kernels PlantHelixSeek needs:
 
 ```bash
-uv pip install -e '.[full,fla]'
+uv pip install -e '.[full]'
 ```
 
 The jaccard step additionally requires [bedtools](https://bedtools.readthedocs.io) v2.31+ on `PATH`, and the scan runs on a CUDA GPU (the eager-attention route through dnallm has a batch-4 memory ceiling; see the notebook's provenance cell).

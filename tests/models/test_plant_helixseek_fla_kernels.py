@@ -5,8 +5,10 @@ flash-linear-attention for their HelixSeekDelta (KDA) layers. Without the packag
 the remote code silently falls back to a pure-PyTorch path that is not KDA math
 and produces positionally-uninformative outputs (proven 2026-10-03: probe-set
 p(CRE) 0.0073 in-DHS vs 0.0087 non-DHS on the fallback; 0.7673 vs 0.2230 with
-fla 0.5.2). These tests keep the dependency declared, wired into ``all``, and
-the import path stable across fla upgrades.
+fla 0.5.2). These tests keep the dependency in the base install (D-09, 28-01:
+the former ``fla`` extra is retired so PlantHelixSeek works out-of-the-box),
+the retired extra absent from the extras table and ``all``, and the import
+path stable across fla upgrades.
 """
 
 import re
@@ -66,21 +68,32 @@ class TestMetaExtraParser:
         assert _meta_extra_names("torch>=2.4.0,<2.12") == []
 
 
-class TestFlaExtraDeclared:
-    """The fla kernel extra must stay declared and reachable from ``all``."""
+class TestFlaBaseDependency:
+    """fla must ride the base install (D-09, 28-01): no extra may stand
+    between a default ``pip install dnallm`` and the PlantHelixSeek KDA
+    kernels. The retired ``fla`` extra must stay deleted — ``dnallm[fla]``
+    syntax is gone by design, and ``all`` must not carry the member."""
 
-    def test_fla_extra_declared_with_bounded_range(self):
-        extras = _load_pyproject()["project"]["optional-dependencies"]
-        assert "fla" in extras, "the fla kernel extra must stay declared in pyproject.toml"
-        assert any(
-            "flash-linear-attention>=0.5.2" in spec and "<0.6" in spec for spec in extras["fla"]
-        ), "fla spec must carry the 0.5.x floor and minor bound (chunk_kda stability)"
-
-    def test_fla_reachable_from_all(self):
-        extras = _load_pyproject()["project"]["optional-dependencies"]
-        assert any("fla" in _meta_extra_names(spec) for spec in extras["all"]), (
-            "all must include the fla extra as an exact bracket member"
+    def test_fla_declared_as_base_dependency(self):
+        deps = _load_pyproject()["project"]["dependencies"]
+        assert "flash-linear-attention>=0.5.2,<0.6" in deps, (
+            "flash-linear-attention>=0.5.2,<0.6 must be a base dependency "
+            "(D-09: PlantHelixSeek KDA kernels ship with every default install)"
         )
+
+    def test_retired_fla_extra_absent(self):
+        extras = _load_pyproject()["project"]["optional-dependencies"]
+        assert "fla" not in extras, (
+            "the retired fla extra must stay deleted (D-09): fla rides the "
+            "base install; dnallm[fla] syntax disappeared with the promotion"
+        )
+
+    def test_all_meta_extra_has_no_fla_member(self):
+        extras = _load_pyproject()["project"]["optional-dependencies"]
+        for spec in extras.get("all", []):
+            assert "fla" not in _meta_extra_names(spec), (
+                f"all must not carry the retired fla member (D-09/D-13): {spec!r}"
+            )
 
 
 class TestChunkKdaImportPath:

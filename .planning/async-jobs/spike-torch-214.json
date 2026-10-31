@@ -1,0 +1,44 @@
+{
+  "job_id": "spike-torch-214",
+  "plan_id": "spike-torch-214",
+  "kind": "github_actions_dispatch",
+  "workflow": "ci.yml",
+  "run_id": 40140203118,
+  "run_url": "https://github.com/zhangtaolab/DNALLM/actions/runs/40140203118",
+  "repo": "zhangtaolab/DNALLM",
+  "ref": "spike/torch-214-verification",
+  "head_sha": "bdf998e627a3a6ff42f1d308bce93188d1ffae10",
+  "dispatched_at": "2026-10-24T15:56:00Z",
+  "dispatched_by": "resume-work session (attempt 3: after codeload outage recovery via SHA-pin + action-cache prefill)",
+  "status": "terminal — run 40140203118 concluded failure 2026-10-25T01:41Z; VERDICT REACHED (see runbook 结论 section): criterion-a PASS (torch 2.14.1+cu130 installed via TUNA); criterion-b FAIL real blocker — mamba-ssm 2.3.2.post1 setup.py hardcodes -std=c++17 while torch>=2.12 ATen headers require C++20 (#error at selective_scan.cpp); no upstream linux_aarch64 wheels; causal-conv1d 1.7.0 built green; criterion-c not reached (mamba census skipped) — coverage-nightly proxy: 3215 passed / 2 failed / 22 skipped; failure 1 = v1.4 lazy-facade regression (import dnallm no longer activates transformers_compat shim — torch-independent, would fail on 2.11 too; first v1.4-tree notebook census ever); failure 2 = test_trainer_real_model test_sample_datasets 300s timeout, unattributed singleton. Ceiling raise BLOCKED pending mamba-ssm path decision (keep <2.12 / upstream research / sdist c++20 flag patch-spike). v1.4 lazy-facade regression is a must-fix independent of the ceiling decision.",
+  "expected_jobs": [
+    "test-mamba (3.11)",
+    "coverage-nightly (py3.12, full suite incl. slow)",
+    "example-nightly (py3.12, example execution census)"
+  ],
+  "purpose": "torch ceiling-raise pre-verification per .planning/research/torch-214-gb10-verification.md: spike branch pyproject <2.12 → <2.15 (7 places); prove mamba-ssm 2.3.2.post1 + causal_conv1d 1.7.0 source-compile and run against torch 2.14.x on GB10 before any v1.4 pyproject change.",
+  "pass_criteria": [
+    "resolver lands torch 2.14.x — PARTIALLY PRE-PROVEN pre-run: local dry-run with CI toolcache py3.12 + user-level TUNA mirror config resolves torch==2.14.1 through pypi.tuna.tsinghua.edu.cn",
+    "uv pip install -e .[mamba] --no-cache-dir --no-build-isolation source-builds green under torch 2.14",
+    "pytest tests/ -v -m 'not slow' mamba census green (same口径 as the regular mamba lane)"
+  ],
+  "verification_command": "gh run view 40103520749 --repo zhangtaolab/DNALLM --json status,conclusion,jobs",
+  "failure_matrix": "see runbook 失败诊断矩阵: resolver/no-kernel-image → spike commit adding cuda130 extra to test-mamba install line, re-dispatch; mamba compile fail → REAL blocker, capture full compile log + research upstream mamba-ssm releases, write conclusion back to runbook; compile green but runtime red → mamba-test-logs-* artifact, A.5 classify-before-retry discipline",
+  "after_green": "real ceiling raise lands on v1.4 as ONE commit referencing run 40103520749 (repo convention); then watch the first full nightly cycle (nightly is lockfile-free → implicit fleet jump to 2.14.x); ty gate unaffected (stub env pins torch==2.10.0)",
+  "rollback": "spike stage: delete remote/local spike branch, v1.4 untouched; post-raise red first night: revert the single commit back to <2.12",
+  "prior_attempt": {
+    "run_id": 40064966892,
+    "dispatched_at": "2026-10-24T05:06:33Z",
+    "cancelled_at": "2026-10-24T14:40Z",
+    "classification": "infra (not repo): coverage-nightly install step stalled — box route to pypi.org/files.pythonhosted.org went from ~100 KB/s trickle to 0 B/s dead at ~21:00 CST (327 MB downloaded of torch 2.14 cu130-variant wheel over 2.5h); GitHub API unaffected. A.5 discipline: infra red = recovery + re-dispatch, never silently retried."
+  },
+  "infra_fix_applied": "Owner-approved (2026-10-24 22:34 CST): user-level uv config ~/.config/uv/uv.toml on edgexpert-296a sets [[index]] url=https://pypi.tuna.tsinghua.edu.cn/simple default=true (uv 0.13.5 rejects scalar default-index). Empirically verified NOT shadowed by repo pyproject's explicit [[tool.uv.index]] entries — dry-run resolution of -e .[full] fetches all metadata from tuna; mirror serves torch 2.14.0/2.14.1 cp311+cp312 aarch64; measured 33.9 MB/s vs 0 B/s via pypi.org. Affects all future uv installs on this box by design (owner accepted).",
+  "notes": "Runner re-registered 2026-10-24 13:05 CST on edgexpert-296a (old registration auto-deleted by GitHub; dnallm-nightly id 23; sanitized-env setsid nohup per memory dnallm-nightly-runner-ops; stale entry edgexpert-3eee id 22 deleted by owner). Queue context at re-dispatch: two main scheduled runs (40075917991, 40082916781) may interleave with job-level leasing; two older stale scheduled runs (39923326745/39938261013) were cancelled owner-side earlier in the day.",
+  "prior_attempt_2": {
+    "run_id": 40103520749,
+    "dispatched_at": "2026-10-24T14:40:07Z",
+    "cancelled_at": null,
+    "classification": "infra (not repo): all three GPU lanes failed at 'Set up job' — codeload.github.com (action tarball host) stalled: actions/setup-python@v7 download timed out 3x (100s HttpClient timeout each) while api.github.com stayed green. Second dead international route same evening (pypi.org died first, fixed via TUNA mirror).",
+    "resolution": "spike commit bdf998e pins all 27 actions/* uses to immutable SHAs (checkout 11d5960a / setup-python 6d4fd22b / cache 0057852b / upload-artifact ea165f8d); runner action cache pre-filled under _work/_actions/actions/<name>/<sha>/ via .scratch/prefill-actions.sh (owner-run after permission classifier correctly blocked in-session cache writes): every file blob-hash-verified against the GitHub api git tree (setup-python 130, cache 125, upload-artifact 225 files; tarballs fetched via gh-proxy.com — only working route, byte-faithful); immutable-ref cache hits download nothing (air-gapped-runner pattern). ci.yml header carries a DO-NOT-MERGE note: revert to floating tags when the spike merges or network recovers."
+  }
+}

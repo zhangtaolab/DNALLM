@@ -119,24 +119,24 @@ print("Test Metrics:", test_metrics)
 After running the script, the training process will output logs showing the loss at each step. Upon completion, the `train_metrics` and `test_metrics` dictionaries will be printed.
 
 The `test_metrics` dictionary will contain key performance indicators for binary classification, such as:
--   **`test_accuracy`**: The proportion of correctly classified sequences.
--   **`test_precision`**: The ability of the model to avoid false positives.
--   **`test_recall`**: The ability of the model to find all true positive sequences.
--   **`test_f1`**: The harmonic mean of precision and recall, providing a single score to balance them.
--   **`test_AUROC`**: The Area Under the Receiver Operating Characteristic Curve, which measures the model's ability to distinguish between classes.
--   **`test_AUPRC`**: The Area Under the Precision-Recall Curve, which is especially useful for imbalanced datasets.
+-   **`accuracy`**: The proportion of correctly classified sequences.
+-   **`precision`**: The ability of the model to avoid false positives.
+-   **`recall`**: The ability of the model to find all true positive sequences.
+-   **`f1`**: The harmonic mean of precision and recall, providing a single score to balance them.
+-   **`AUROC`**: The Area Under the Receiver Operating Characteristic Curve, which measures the model's ability to distinguish between classes.
+-   **`AUPRC`**: The Area Under the Precision-Recall Curve, which is especially useful for imbalanced datasets.
 
 Example output:
 ```
 {
-    'test_loss': 0.547,
-    'test_accuracy': 0.740,
-    'test_precision': 0.721,
-    'test_recall': 0.808,
-    'test_f1': 0.762,
-    'test_mcc': 0.482,
-    'test_AUROC': 0.821,
-    'test_AUPRC': 0.810,
+    'loss': 0.547,
+    'accuracy': 0.740,
+    'precision': 0.721,
+    'recall': 0.808,
+    'f1': 0.762,
+    'mcc': 0.482,
+    'AUROC': 0.821,
+    'AUPRC': 0.810,
     ...
 }
 ```

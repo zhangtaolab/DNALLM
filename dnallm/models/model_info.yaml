@@ -1,172 +1,489 @@
 pretrained:
   - name: "Plant DNABERT"
     model: "zhangtaolab/plant-dnabert-BPE"
+    tokenizer_type: "DebertaV2Tokenizer"
+    max_length: 512
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnabert-BPE@6e4f65b3f1758517d0cc5737dee4d1bcf4b97095"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "Plant DNAGemma"
     model: "zhangtaolab/plant-dnagemma-BPE"
+    tokenizer_type: "GemmaTokenizer"
+    max_length: 1024
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnagemma-BPE@0b7eba46d4cb0e41b6fd1b56e15914a31617e3f9"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "Plant DNAGPT"
     model: "zhangtaolab/plant-dnagpt-BPE"
+    tokenizer_type: "GPT2Tokenizer"
+    max_length: 1024
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnagpt-BPE@1311a7f1186ba69351727a5705137294a7ca6651"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "Plant DNAMamba"
     model: "zhangtaolab/plant-dnamamba-BPE"
+    tokenizer_type: "GPTNeoXTokenizer"
+    max_length: 512
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnamamba-BPE@547d92a4d76b391c47816bc4ccf9d2cd88904e57"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "Plant NT"
     model: "zhangtaolab/plant-nucleotide-transformer-BPE"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 2050
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-nucleotide-transformer-BPE@e66bf2535aa2fc3297f677195d6b7e122c3a0510"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "Plant DNAModernBert"
     model: "zhangtaolab/plant-dnamodernbert-BPE"
+    tokenizer_type: "PreTrainedTokenizer"
+    max_length: 8192
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnamodernbert-BPE@b5b4a4d46cff0ea4426db10a95d2f541b527763d"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
+  - name: "Plant DNABERT 6mer"
+    model: "zhangtaolab/plant-dnabert-6mer"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnabert-6mer@c299564ed06f519edff11bb70c72191c1fbe884e; load inferred from family representative zhangtaolab/plant-dnabert-BPE"
+    tf_compat_tested: "5.17.0"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
+      task_type: "mask"
+  - name: "Plant DNABERT singlebase"
+    model: "zhangtaolab/plant-dnabert-singlebase"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnabert-singlebase@6927a516e1ed553cbec0e996f597df96ec909128; load inferred from family representative zhangtaolab/plant-dnabert-BPE"
+    tf_compat_tested: "5.17.0"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
+      task_type: "mask"
+  - name: "Plant DNAGemma 6mer"
+    model: "zhangtaolab/plant-dnagemma-6mer"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 1024
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnagemma-6mer@9c909f497236920e5cdc06139d9505c4635409b9; load inferred from family representative zhangtaolab/plant-dnagemma-BPE"
+    tf_compat_tested: "5.17.0"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
+      task_type: "generation"
+  - name: "Plant DNAGemma singlebase"
+    model: "zhangtaolab/plant-dnagemma-singlebase"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 1024
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnagemma-singlebase@b6355b189a7aa149676f639b4e151f830710361d; load inferred from family representative zhangtaolab/plant-dnagemma-BPE"
+    tf_compat_tested: "5.17.0"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
+      task_type: "generation"
+  - name: "Plant DNAGPT 6mer"
+    model: "zhangtaolab/plant-dnagpt-6mer"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 1024
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnagpt-6mer@2a59c2f251329442711aa90fcf28e0456fd3189a; load inferred from family representative zhangtaolab/plant-dnagpt-BPE"
+    tf_compat_tested: "5.17.0"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
+      task_type: "generation"
+  - name: "Plant DNAGPT singlebase"
+    model: "zhangtaolab/plant-dnagpt-singlebase"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 1024
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnagpt-singlebase@e385e48b2dbcd9557e32b51b3cc88f1d24644c31; load inferred from family representative zhangtaolab/plant-dnagpt-BPE"
+    tf_compat_tested: "5.17.0"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
+      task_type: "generation"
+  - name: "Plant NT 6mer"
+    model: "zhangtaolab/plant-nucleotide-transformer-6mer"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 2050
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-nucleotide-transformer-6mer@381f8a9d15c0b9e829bad6375858373df501541a"
+    tf_compat_tested: "5.17.0"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
+      task_type: "mask"
+  - name: "Plant NT singlebase"
+    model: "zhangtaolab/plant-nucleotide-transformer-singlebase"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 2050
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-nucleotide-transformer-singlebase@d81ae674203d57cc5f63a02e31f35467f70d7d16; load inferred from family representative zhangtaolab/plant-nucleotide-transformer-6mer"
+    tf_compat_tested: "5.17.0"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
+      task_type: "mask"
+  - name: "Plant DNAMamba 2mer"
+    model: "zhangtaolab/plant-dnamamba-2mer"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnamamba-2mer@4f155e06017a09cff835604586120d87fb955636; load inferred from family representative zhangtaolab/plant-dnamamba-BPE"
+    tf_compat_tested: "5.17.0"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with 2mer tokenizer."
+      task_type: "generation"
+  - name: "Plant DNAMamba 3mer"
+    model: "zhangtaolab/plant-dnamamba-3mer"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnamamba-3mer@a09d321e59a45ebbc94fe140092b6b0688d85e93; load inferred from family representative zhangtaolab/plant-dnamamba-BPE"
+    tf_compat_tested: "5.17.0"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with 3mer tokenizer."
+      task_type: "generation"
+  - name: "Plant DNAMamba 4mer"
+    model: "zhangtaolab/plant-dnamamba-4mer"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnamamba-4mer@d0cfa8c844a72af46ea85086e07ae46db63d6d0f; load inferred from family representative zhangtaolab/plant-dnamamba-BPE"
+    tf_compat_tested: "5.17.0"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with 4mer tokenizer."
+      task_type: "generation"
+  - name: "Plant DNAMamba 5mer"
+    model: "zhangtaolab/plant-dnamamba-5mer"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnamamba-5mer@db5ce97b72ef7895d257e629f69a1d6197e8c850; load inferred from family representative zhangtaolab/plant-dnamamba-BPE"
+    tf_compat_tested: "5.17.0"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with 5mer tokenizer."
+      task_type: "generation"
+  - name: "Plant DNAMamba 6mer"
+    model: "zhangtaolab/plant-dnamamba-6mer"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnamamba-6mer@11fa90ab6f6d37123ab096a2de1042b0fa7c6792; load inferred from family representative zhangtaolab/plant-dnamamba-BPE"
+    tf_compat_tested: "5.17.0"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
+      task_type: "generation"
+  - name: "Plant DNAMamba singlebase"
+    model: "zhangtaolab/plant-dnamamba-singlebase"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnamamba-singlebase@73c6556f91c06b2760b10941915b017580710da9; load inferred from family representative zhangtaolab/plant-dnamamba-BPE"
+    tf_compat_tested: "5.17.0"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
+      task_type: "generation"
+  - name: "Plant DNAModernBert singlebase"
+    model: "zhangtaolab/plant-dnamodernbert-singlebase"
+    tokenizer_type: "PreTrainedTokenizer"
+    max_length: 8192
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/plant-dnamodernbert-singlebase@4e305489f96e959a1087cbca8c00b53fb109f066; load inferred from family representative zhangtaolab/plant-dnamodernbert-BPE"
+    tf_compat_tested: "5.17.0"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
+      task_type: "mask"
   - name: "AgroNT"
     model: "InstaDeepAI/agro-nucleotide-transformer-1b"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 1026
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "hf InstaDeepAI/agro-nucleotide-transformer-1b@b0e1ea1f53a2bf5bb29f8eab7a7e553bf06c1ab1; load inferred from family representative zhangtaolab/plant-nucleotide-transformer-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "Caduceus-PH"
     model: "kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16"
+    tokenizer_type: "CaduceusTokenizer"
+    max_length: 131072
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16@b0477522ac5d044ad03578aa724ec8e4bdbd405b"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "Caduceus-PS"
     model: "kuleshov-group/caduceus-ps_seqlen-131k_d_model-256_n_layer-16"
+    tokenizer_type: "CaduceusTokenizer"
+    max_length: 131072
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "hf kuleshov-group/caduceus-ps_seqlen-131k_d_model-256_n_layer-16@d89eeb853136ea64da7feb3d0c8e909771b17ae6; load inferred from family representative kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "PlantCaduceus"
     model: "kuleshov-group/PlantCaduceus_l32"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 512
+    tf_compat_status: shim-required-tf5
+    tf_compat_evidence: "hf kuleshov-group/PlantCaduceus_l32@e624c13c3d35415348b854c87a218893b23564f7; load+forward verified via rung _patch_tied_weights_bookkeeping_on_load"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "PlantCAD2"
     model: "kuleshov-group/PlantCAD2-Small-l24-d0768"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 8192
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf kuleshov-group/PlantCAD2-Small-l24-d0768@f756c255cb76e9f538c3acec04acf4214ed03fb3"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "DNABERT"
     model: "zhihan1996/DNA_bert_6"
+    max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "hf zhihan1996/DNA_bert_6@c56e67ea5827e0ddc67ef059addcf71569b1216e; load inferred from family representative zhangtaolab/plant-dnabert-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "DNABERT-2"
     model: "zhihan1996/DNABERT-2-117M"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 512
+    tf_compat_status: shim-required-tf5
+    tf_compat_evidence: "hf zhihan1996/DNABERT-2-117M@7bce263b15377fc15361f52cfab88f8b586abda0; load+forward verified via rung _install_dnabert2_tf5_shims"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "GENA-LM"
     model: "AIRI-Institute/gena-lm-bert-base"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 512
+    tf_compat_status: shim-required-tf5
+    tf_compat_evidence: "hf AIRI-Institute/gena-lm-bert-base@416f055300346a5830ca49438daf5f4e136ed9a8; load+forward verified via rung _patch_gena_token_type_ids_on_load"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "GENA-LM-BigBird"
     model: "AIRI-Institute/gena-lm-bigbird-base-sparse"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 4096
+    tf_compat_status: remote-code-broken
+    tf_compat_evidence: "hf AIRI-Institute/gena-lm-bigbird-base-sparse@3a9028d36137341c10df771c3bd93de530d74594; load works with the deepspeed extra but forward is blocked by an upstream-dead Triton API; deepspeed 0.19.6's sparse-attention LUT construction calls triton libtriton.superblock, a symbol absent from triton 3.6.0 and 3.8.0, so no installable resolution exists under torch>=2.4; the default install still fails at construction because remote modeling_bert.py (bigbird block-sparse attention) imports the external deepspeed package, outside dnallm's default dependency set - not a transformers API removal; the import itself was restored by the _patch_apply_chunking_to_forward rung (see previous_status)"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "GENERator"
     model: "GenerTeam/GENERator-eukaryote-1.2b-base"
+    tokenizer_type: "DNAKmerTokenizer"
+    max_length: 16384
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf GenerTeam/GENERator-eukaryote-1.2b-base@5e872c94264891f9adf59d8ea64e426bb68badb5"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "GENERanno"
-    model: "GenerTeam/GENERanno-eukaryote-1.2b-base"
+    model: "lgq12697/GENERanno-eukaryote-0.5b-base"
+    max_length: 8192
+    tf_compat_status: shim-required-tf5
+    tf_compat_evidence: "ms lgq12697/GENERanno-eukaryote-0.5b-base@0ae1f40ffaef2d905c20629a2fa509f4e1bf187b; load+forward verified via rung _patch_rope_default_init"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "GenomeOcean"
     model: "pGenomeOcean/GenomeOcean-100M"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 32768
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf pGenomeOcean/GenomeOcean-100M@44b24d0f3b2a6d5dd8a0113ebda51f1615374000"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "GPN"
     model: "songlab/gpn-brassicales"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 512
+    tf_compat_status: remote-code-broken
+    tf_compat_evidence: "hf songlab/gpn-brassicales@eb9c35d0d18571abe84390d22e74f2b21d319ce3; failing import: ConvNetForMaskedLM not found in transformers 5.17.0; native architecture ConvNetForMaskedLM was removed from transformers 5.x; restoring it means vendoring an entire architecture implementation, which is outside the per-name rung discipline (dnallm's dnallm/models/special/gpn.py handler requires the external gpn package instead)"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "GROVER"
     model: "PoetschLab/GROVER"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 512
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "hf PoetschLab/GROVER@6b223110f0d6963e849f55bc2a2f3cff0e38c7a4; load inferred from family representative zhangtaolab/plant-dnabert-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "HyenaDNA"
     model: "LongSafari/hyenadna-small-32k-seqlen-hf"
+    tokenizer_type: "HyenaDNATokenizer"
+    max_length: 32770
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf LongSafari/hyenadna-small-32k-seqlen-hf@8fe770c78eb13fe33bf81501612faeddf4d6f331"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "LucaOne"
     model: "LucaGroup/LucaOne-default-step36M"
+    tokenizer_type: "LucaGPLMTokenizer"
+    max_length: 4096
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf LucaGroup/LucaOne-default-step36M@f0d2807eb097a1507b911022d979b502cd62b74c"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "Jamba-DNA"
     model: "RaphaelMourad/Jamba-DNA-v1-114M-hg38"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 4096
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf RaphaelMourad/Jamba-DNA-v1-114M-hg38@4078cf3177d244d4b9ebe259e11bbdca3324eaad"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "Mistral-DNA"
     model: "RaphaelMourad/Mistral-DNA-v1-138M-hg38"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 512
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf RaphaelMourad/Mistral-DNA-v1-138M-hg38@4c3c8c7b44fae10e63b5902d27c8699feeca7a56"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "ModernBERT-DNA"
     model: "RaphaelMourad/ModernBERT-DNA-v1-37M-hg38"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 8192
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "hf RaphaelMourad/ModernBERT-DNA-v1-37M-hg38@f0898c773bc52e9ab9d0251a7d8990b41feb5dd7; load inferred from family representative zhangtaolab/plant-dnamodernbert-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "MutBERT"
     model: "JadenLong/MutBERT-Human-Ref"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 512
+    tf_compat_status: shim-required-tf5
+    tf_compat_evidence: "hf JadenLong/MutBERT-Human-Ref@fe04deaf62e242c9d33f842ea20985513a8dd51a; load+forward verified via rung _patch_mutbert_forward_on_load"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "Nucleotide Transformer"
     model: "InstaDeepAI/nucleotide-transformer-v2-100m-multi-species"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 2050
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "hf InstaDeepAI/nucleotide-transformer-v2-100m-multi-species@f34324c6fde36a4f635f0f1f06cac5d25acd6798; load inferred from family representative zhangtaolab/plant-nucleotide-transformer-BPE"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "OmniNA"
     model: "XLS/OmniNA-66m"
+    max_length: 2048
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf XLS/OmniNA-66m@2c5e876a22b04cb8a99b059e6bdfa667b20d103a"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "Omni-DNA"
     model: "zehui127/Omni-DNA-116M"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 250
+    tf_compat_status: remote-code-broken
+    tf_compat_evidence: "hf zehui127/Omni-DNA-116M@8a602a8324e1c29aff91112a7b78cad841d4c9d5; failing import: olmo; remote configuration_olmo.py line 8 imports olmo.config.ModelConfig - an external package outside dnallm's dependency set, not a transformers API removal; installing the third-party olmo package is out of census scope"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "ProkBERT"
     model: "neuralbioinfo/prokbert-mini"
+    tokenizer_type: "LCATokenizer"
+    max_length: 1024
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "hf neuralbioinfo/prokbert-mini@feb2520a43cd9cdb5b3d8477e47209dbcb55d1dc"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "PlantHelixSeek"
     model: "zhangtaolab/PlantHelixSeek"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 8192
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/PlantHelixSeek@fe3bdace03314b97700efd5b3f328c672c7bb1a9"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "FungiHelixSeek"
     model: "zhangtaolab/FungiHelixSeek"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 8192
+    tf_compat_status: import-verified-tf5
+    tf_compat_evidence: "ms zhangtaolab/FungiHelixSeek@0fbfc2649bb47d34727d2057508dca0a60dffeda; load inferred from family representative zhangtaolab/PlantHelixSeek"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Kingdom-scale fungal DNA foundation model (hybrid linear-attention/Transformer MoE, 263M total / ~112M active, singleBase tokenizer)."
       task_type: "mask"
   - name: "PlantBiMoE"
     model: "lgq12697/PlantBiMoE"
+    tokenizer_type: "PlantbimoeTokenizer"
+    max_length: 32768
+    tf_compat_status: verified-tf5
+    tf_compat_evidence: "ms lgq12697/PlantBiMoE@bee38b1496c38edd3de4d7e3cd2c2ee725c1300f"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Plant genome foundation model (BiMamba + SparseMoE hybrid, 86.95M total / 63.93M active, single-base tokenizer, trained on 42 plant species)."
       task_type: "mask"
 
   - name: "CrossDNA"
     model: "chengCCC/CrossDNA_pretrain"
+    tokenizer_type: "CrossDNATokenizer"
+    max_length: 1024
+    tf_compat_status: extra-required-tf5
+    tf_compat_evidence: "hf chengCCC/CrossDNA_pretrain@cd118dc45eaa0f2debb05f03ed0290fe56a78ab1; load+forward verified via the flash-attn extra (flash-attn 2.8.3.post2)"
+    tf_compat_tested: "5.17.0"
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -175,6 +492,7 @@ pretrained:
 finetuned:
   - name: "Plant DNABERT BPE promoter"
     model: "zhangtaolab/plant-dnabert-BPE-promoter"
+    base_model: "zhangtaolab/plant-dnabert-BPE"
     task:
       describe: "Predict whether a DNA sequence is a core promoter in plants by using Plant DNABERT model with BPE tokenizer."
       task_type: "binary"
@@ -183,6 +501,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT BPE promoter"
     model: "zhangtaolab/plant-dnagpt-BPE-promoter"
+    base_model: "zhangtaolab/plant-dnagpt-BPE"
     task:
       describe: "Predict whether a DNA sequence is a core promoter in plants by using Plant DNAGPT model with BPE tokenizer."
       task_type: "binary"
@@ -191,6 +510,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer BPE promoter"
     model: "zhangtaolab/plant-nucleotide-transformer-BPE-promoter"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-BPE"
     task:
       describe: "Predict whether a DNA sequence is a core promoter in plants by using Plant Nucleotide Transformer model with BPE tokenizer."
       task_type: "binary"
@@ -199,6 +519,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma BPE promoter"
     model: "zhangtaolab/plant-dnagemma-BPE-promoter"
+    base_model: "zhangtaolab/plant-dnagemma-BPE"
     task:
       describe: "Predict whether a DNA sequence is a core promoter in plants by using Plant DNAGemma model with BPE tokenizer."
       task_type: "binary"
@@ -207,6 +528,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba BPE promoter"
     model: "zhangtaolab/plant-dnamamba-BPE-promoter"
+    base_model: "zhangtaolab/plant-dnamamba-BPE"
     task:
       describe: "Predict whether a DNA sequence is a core promoter in plants by using Plant DNAMamba model with BPE tokenizer."
       task_type: "binary"
@@ -215,6 +537,7 @@ finetuned:
       threshold: 0.5
   - name: "DNABERT-2 promoter"
     model: "zhangtaolab/dnabert2-promoter"
+    base_model: "zhihan1996/DNABERT-2-117M"
     task:
       describe: "Predict whether a DNA sequence is a core promoter in plants by using DNABERT-2 model."
       task_type: "binary"
@@ -223,6 +546,7 @@ finetuned:
       threshold: 0.5
   - name: "Nucleotide Transformer promoter"
     model: "zhangtaolab/nucleotide-transformer-v2-100m-promoter"
+    base_model: "InstaDeepAI/nucleotide-transformer-v2-100m-multi-species"
     task:
       describe: "Predict whether a DNA sequence is a core promoter in plants by using Nucleotide Transformer model."
       task_type: "binary"
@@ -231,6 +555,7 @@ finetuned:
       threshold: 0.5
   - name: "AgroNT promoter"
     model: "zhangtaolab/agront-1b-promoter"
+    base_model: "InstaDeepAI/agro-nucleotide-transformer-1b"
     task:
       describe: "Predict whether a DNA sequence is a core promoter in plants by using AgroNT model."
       task_type: "binary"
@@ -239,6 +564,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNABERT 6mer promoter"
     model: "zhangtaolab/plant-dnabert-6mer-promoter"
+    base_model: "zhangtaolab/plant-dnabert-6mer"
     task:
       describe: "Predict whether a DNA sequence is a core promoter in plants by using Plant DNABERT model with 6mer tokenizer."
       task_type: "binary"
@@ -247,6 +573,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT 6mer promoter"
     model: "zhangtaolab/plant-dnagpt-6mer-promoter"
+    base_model: "zhangtaolab/plant-dnagpt-6mer"
     task:
       describe: "Predict whether a DNA sequence is a core promoter in plants by using Plant DNAGPT model with 6mer tokenizer."
       task_type: "binary"
@@ -255,6 +582,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer 6mer promoter"
     model: "zhangtaolab/plant-nucleotide-transformer-6mer-promoter"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-6mer"
     task:
       describe: "Predict whether a DNA sequence is a core promoter in plants by using Plant Nucleotide Transformer model with 6mer tokenizer."
       task_type: "binary"
@@ -263,6 +591,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma 6mer promoter"
     model: "zhangtaolab/plant-dnagemma-6mer-promoter"
+    base_model: "zhangtaolab/plant-dnagemma-6mer"
     task:
       describe: "Predict whether a DNA sequence is a core promoter in plants by using Plant DNAGemma model with 6mer tokenizer."
       task_type: "binary"
@@ -271,6 +600,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba 6mer promoter"
     model: "zhangtaolab/plant-dnamamba-6mer-promoter"
+    base_model: "zhangtaolab/plant-dnamamba-6mer"
     task:
       describe: "Predict whether a DNA sequence is a core promoter in plants by using Plant DNAMamba model with 6mer tokenizer."
       task_type: "binary"
@@ -279,6 +609,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNABERT singlebase promoter"
     model: "zhangtaolab/plant-dnabert-singlebase-promoter"
+    base_model: "zhangtaolab/plant-dnabert-singlebase"
     task:
       describe: "Predict whether a DNA sequence is a core promoter in plants by using Plant DNABERT model with singlebase tokenizer."
       task_type: "binary"
@@ -287,6 +618,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT singlebase promoter"
     model: "zhangtaolab/plant-dnagpt-singlebase-promoter"
+    base_model: "zhangtaolab/plant-dnagpt-singlebase"
     task:
       describe: "Predict whether a DNA sequence is a core promoter in plants by using Plant DNAGPT model with singlebase tokenizer."
       task_type: "binary"
@@ -295,6 +627,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer singlebase promoter"
     model: "zhangtaolab/plant-nucleotide-transformer-singlebase-promoter"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-singlebase"
     task:
       describe: "Predict whether a DNA sequence is a core promoter in plants by using Plant Nucleotide Transformer model with singlebase tokenizer."
       task_type: "binary"
@@ -303,6 +636,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma singlebase promoter"
     model: "zhangtaolab/plant-dnagemma-singlebase-promoter"
+    base_model: "zhangtaolab/plant-dnagemma-singlebase"
     task:
       describe: "Predict whether a DNA sequence is a core promoter in plants by using Plant DNAGemma model with singlebase tokenizer."
       task_type: "binary"
@@ -311,6 +645,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba singlebase promoter"
     model: "zhangtaolab/plant-dnamamba-singlebase-promoter"
+    base_model: "zhangtaolab/plant-dnamamba-singlebase"
     task:
       describe: "Predict whether a DNA sequence is a core promoter in plants by using Plant DNAMamba model with singlebase tokenizer."
       task_type: "binary"
@@ -320,6 +655,7 @@ finetuned:
 
   - name: "Plant DNABERT BPE conservation"
     model: "zhangtaolab/plant-dnabert-BPE-conservation"
+    base_model: "zhangtaolab/plant-dnabert-BPE"
     task:
       describe: "Predict whether a DNA sequence is conserved in plants by using Plant DNABERT model with BPE tokenizer."
       task_type: "binary"
@@ -328,6 +664,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT BPE conservation"
     model: "zhangtaolab/plant-dnagpt-BPE-conservation"
+    base_model: "zhangtaolab/plant-dnagpt-BPE"
     task:
       describe: "Predict whether a DNA sequence is conserved in plants by using Plant DNAGPT model with BPE tokenizer."
       task_type: "binary"
@@ -336,6 +673,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer BPE conservation"
     model: "zhangtaolab/plant-nucleotide-transformer-BPE-conservation"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-BPE"
     task:
       describe: "Predict whether a DNA sequence is conserved in plants by using Plant Nucleotide Transformer model with BPE tokenizer."
       task_type: "binary"
@@ -344,6 +682,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma BPE conservation"
     model: "zhangtaolab/plant-dnagemma-BPE-conservation"
+    base_model: "zhangtaolab/plant-dnagemma-BPE"
     task:
       describe: "Predict whether a DNA sequence is conserved in plants by using Plant DNAGemma model with BPE tokenizer."
       task_type: "binary"
@@ -352,6 +691,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba BPE conservation"
     model: "zhangtaolab/plant-dnamamba-BPE-conservation"
+    base_model: "zhangtaolab/plant-dnamamba-BPE"
     task:
       describe: "Predict whether a DNA sequence is conserved in plants by using Plant DNAMamba model with BPE tokenizer."
       task_type: "binary"
@@ -360,6 +700,7 @@ finetuned:
       threshold: 0.5
   - name: "DNABERT-2 conservation"
     model: "zhangtaolab/dnabert2-conservation"
+    base_model: "zhihan1996/DNABERT-2-117M"
     task:
       describe: "Predict whether a DNA sequence is conserved in plants by using DNABERT-2 model."
       task_type: "binary"
@@ -368,6 +709,7 @@ finetuned:
       threshold: 0.5
   - name: "Nucleotide Transformer conservation"
     model: "zhangtaolab/nucleotide-transformer-v2-100m-conservation"
+    base_model: "InstaDeepAI/nucleotide-transformer-v2-100m-multi-species"
     task:
       describe: "Predict whether a DNA sequence is conserved in plants by using Nucleotide Transformer model."
       task_type: "binary"
@@ -376,6 +718,7 @@ finetuned:
       threshold: 0.5
   - name: "AgroNT conservation"
     model: "zhangtaolab/agront-1b-conservation"
+    base_model: "InstaDeepAI/agro-nucleotide-transformer-1b"
     task:
       describe: "Predict whether a DNA sequence is conserved in plants by using AgroNT model."
       task_type: "binary"
@@ -384,6 +727,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNABERT 6mer conservation"
     model: "zhangtaolab/plant-dnabert-6mer-conservation"
+    base_model: "zhangtaolab/plant-dnabert-6mer"
     task:
       describe: "Predict whether a DNA sequence is conserved in plants by using Plant DNABERT model with 6mer tokenizer."
       task_type: "binary"
@@ -392,6 +736,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT 6mer conservation"
     model: "zhangtaolab/plant-dnagpt-6mer-conservation"
+    base_model: "zhangtaolab/plant-dnagpt-6mer"
     task:
       describe: "Predict whether a DNA sequence is conserved in plants by using Plant DNAGPT model with 6mer tokenizer."
       task_type: "binary"
@@ -400,6 +745,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer 6mer conservation"
     model: "zhangtaolab/plant-nucleotide-transformer-6mer-conservation"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-6mer"
     task:
       describe: "Predict whether a DNA sequence is conserved in plants by using Plant Nucleotide Transformer model with 6mer tokenizer."
       task_type: "binary"
@@ -408,6 +754,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma 6mer conservation"
     model: "zhangtaolab/plant-dnagemma-6mer-conservation"
+    base_model: "zhangtaolab/plant-dnagemma-6mer"
     task:
       describe: "Predict whether a DNA sequence is conserved in plants by using Plant DNAGemma model with 6mer tokenizer."
       task_type: "binary"
@@ -416,6 +763,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba 6mer conservation"
     model: "zhangtaolab/plant-dnamamba-6mer-conservation"
+    base_model: "zhangtaolab/plant-dnamamba-6mer"
     task:
       describe: "Predict whether a DNA sequence is conserved in plants by using Plant DNAMamba model with 6mer tokenizer."
       task_type: "binary"
@@ -424,6 +772,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNABERT singlebase conservation"
     model: "zhangtaolab/plant-dnabert-singlebase-conservation"
+    base_model: "zhangtaolab/plant-dnabert-singlebase"
     task:
       describe: "Predict whether a DNA sequence is conserved in plants by using Plant DNABERT model with singlebase tokenizer."
       task_type: "binary"
@@ -432,6 +781,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT singlebase conservation"
     model: "zhangtaolab/plant-dnagpt-singlebase-conservation"
+    base_model: "zhangtaolab/plant-dnagpt-singlebase"
     task:
       describe: "Predict whether a DNA sequence is conserved in plants by using Plant DNAGPT model with singlebase tokenizer."
       task_type: "binary"
@@ -440,6 +790,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer singlebase conservation"
     model: "zhangtaolab/plant-nucleotide-transformer-singlebase-conservation"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-singlebase"
     task:
       describe: "Predict whether a DNA sequence is conserved in plants by using Plant Nucleotide Transformer model with singlebase tokenizer."
       task_type: "binary"
@@ -448,6 +799,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma singlebase conservation"
     model: "zhangtaolab/plant-dnagemma-singlebase-conservation"
+    base_model: "zhangtaolab/plant-dnagemma-singlebase"
     task:
       describe: "Predict whether a DNA sequence is conserved in plants by using Plant DNAGemma model with singlebase tokenizer."
       task_type: "binary"
@@ -456,6 +808,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba singlebase conservation"
     model: "zhangtaolab/plant-dnamamba-singlebase-conservation"
+    base_model: "zhangtaolab/plant-dnamamba-singlebase"
     task:
       describe: "Predict whether a DNA sequence is conserved in plants by using Plant DNAMamba model with singlebase tokenizer."
       task_type: "binary"
@@ -465,6 +818,7 @@ finetuned:
 
   - name: "Plant DNABERT BPE lncRNAs"
     model: "zhangtaolab/plant-dnabert-BPE-lncRNAs"
+    base_model: "zhangtaolab/plant-dnabert-BPE"
     task:
       describe: "Predict whether a DNA sequence is a lncRNA in plants by using Plant DNABERT model with BPE tokenizer."
       task_type: "binary"
@@ -473,6 +827,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT BPE lncRNAs"
     model: "zhangtaolab/plant-dnagpt-BPE-lncRNAs"
+    base_model: "zhangtaolab/plant-dnagpt-BPE"
     task:
       describe: "Predict whether a DNA sequence is a lncRNA in plants by using Plant DNAGPT model with BPE tokenizer."
       task_type: "binary"
@@ -481,6 +836,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer BPE lncRNAs"
     model: "zhangtaolab/plant-nucleotide-transformer-BPE-lncRNAs"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-BPE"
     task:
       describe: "Predict whether a DNA sequence is a lncRNA in plants by using Plant Nucleotide Transformer model with BPE tokenizer."
       task_type: "binary"
@@ -489,6 +845,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma BPE lncRNAs"
     model: "zhangtaolab/plant-dnagemma-BPE-lncRNAs"
+    base_model: "zhangtaolab/plant-dnagemma-BPE"
     task:
       describe: "Predict whether a DNA sequence is a lncRNA in plants by using Plant DNAGemma model with BPE tokenizer."
       task_type: "binary"
@@ -497,6 +854,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba BPE lncRNAs"
     model: "zhangtaolab/plant-dnamamba-BPE-lncRNAs"
+    base_model: "zhangtaolab/plant-dnamamba-BPE"
     task:
       describe: "Predict whether a DNA sequence is a lncRNA in plants by using Plant DNAMamba model with BPE tokenizer."
       task_type: "binary"
@@ -505,6 +863,7 @@ finetuned:
       threshold: 0.5
   - name: "DNABERT-2 lncRNAs"
     model: "zhangtaolab/dnabert2-lncRNAs"
+    base_model: "zhihan1996/DNABERT-2-117M"
     task:
       describe: "Predict whether a DNA sequence is a lncRNA in plants by using DNABERT-2 model."
       task_type: "binary"
@@ -513,6 +872,7 @@ finetuned:
       threshold: 0.5
   - name: "Nucleotide Transformer lncRNAs"
     model: "zhangtaolab/nucleotide-transformer-v2-100m-lncRNAs"
+    base_model: "InstaDeepAI/nucleotide-transformer-v2-100m-multi-species"
     task:
       describe: "Predict whether a DNA sequence is a lncRNA in plants by using Nucleotide Transformer model."
       task_type: "binary"
@@ -521,6 +881,7 @@ finetuned:
       threshold: 0.5
   - name: "AgroNT lncRNAs"
     model: "zhangtaolab/agront-1b-lncRNAs"
+    base_model: "InstaDeepAI/agro-nucleotide-transformer-1b"
     task:
       describe: "Predict whether a DNA sequence is a lncRNA in plants by using AgroNT model."
       task_type: "binary"
@@ -529,6 +890,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNABERT 6mer lncRNAs"
     model: "zhangtaolab/plant-dnabert-6mer-lncRNAs"
+    base_model: "zhangtaolab/plant-dnabert-6mer"
     task:
       describe: "Predict whether a DNA sequence is a lncRNA in plants by using Plant DNABERT model with 6mer tokenizer."
       task_type: "binary"
@@ -537,6 +899,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT 6mer lncRNAs"
     model: "zhangtaolab/plant-dnagpt-6mer-lncRNAs"
+    base_model: "zhangtaolab/plant-dnagpt-6mer"
     task:
       describe: "Predict whether a DNA sequence is a lncRNA in plants by using Plant DNAGPT model with 6mer tokenizer."
       task_type: "binary"
@@ -545,6 +908,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer 6mer lncRNAs"
     model: "zhangtaolab/plant-nucleotide-transformer-6mer-lncRNAs"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-6mer"
     task:
       describe: "Predict whether a DNA sequence is a lncRNA in plants by using Plant Nucleotide Transformer model with 6mer tokenizer."
       task_type: "binary"
@@ -553,6 +917,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma 6mer lncRNAs"
     model: "zhangtaolab/plant-dnagemma-6mer-lncRNAs"
+    base_model: "zhangtaolab/plant-dnagemma-6mer"
     task:
       describe: "Predict whether a DNA sequence is a lncRNA in plants by using Plant DNAGemma model with 6mer tokenizer."
       task_type: "binary"
@@ -561,6 +926,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba 6mer lncRNAs"
     model: "zhangtaolab/plant-dnamamba-6mer-lncRNAs"
+    base_model: "zhangtaolab/plant-dnamamba-6mer"
     task:
       describe: "Predict whether a DNA sequence is a lncRNA in plants by using Plant DNAMamba model with 6mer tokenizer."
       task_type: "binary"
@@ -569,6 +935,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNABERT singlebase lncRNAs"
     model: "zhangtaolab/plant-dnabert-singlebase-lncRNAs"
+    base_model: "zhangtaolab/plant-dnabert-singlebase"
     task:
       describe: "Predict whether a DNA sequence is a lncRNA in plants by using Plant DNABERT model with singlebase tokenizer."
       task_type: "binary"
@@ -577,6 +944,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT singlebase lncRNAs"
     model: "zhangtaolab/plant-dnagpt-singlebase-lncRNAs"
+    base_model: "zhangtaolab/plant-dnagpt-singlebase"
     task:
       describe: "Predict whether a DNA sequence is a lncRNA in plants by using Plant DNAGPT model with singlebase tokenizer."
       task_type: "binary"
@@ -585,6 +953,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer singlebase lncRNAs"
     model: "zhangtaolab/plant-nucleotide-transformer-singlebase-lncRNAs"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-singlebase"
     task:
       describe: "Predict whether a DNA sequence is a lncRNA in plants by using Plant Nucleotide Transformer model with singlebase tokenizer."
       task_type: "binary"
@@ -593,6 +962,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma singlebase lncRNAs"
     model: "zhangtaolab/plant-dnagemma-singlebase-lncRNAs"
+    base_model: "zhangtaolab/plant-dnagemma-singlebase"
     task:
       describe: "Predict whether a DNA sequence is a lncRNA in plants by using Plant DNAGemma model with singlebase tokenizer."
       task_type: "binary"
@@ -601,6 +971,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba singlebase lncRNAs"
     model: "zhangtaolab/plant-dnamamba-singlebase-lncRNAs"
+    base_model: "zhangtaolab/plant-dnamamba-singlebase"
     task:
       describe: "Predict whether a DNA sequence is a lncRNA in plants by using Plant DNAMamba model with singlebase tokenizer."
       task_type: "binary"
@@ -610,6 +981,7 @@ finetuned:
 
   - name: "Plant DNABERT BPE H3K27ac"
     model: "zhangtaolab/plant-dnabert-BPE-H3K27ac"
+    base_model: "zhangtaolab/plant-dnabert-BPE"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants by using Plant DNABERT model with BPE tokenizer."
       task_type: "binary"
@@ -618,6 +990,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT BPE H3K27ac"
     model: "zhangtaolab/plant-dnagpt-BPE-H3K27ac"
+    base_model: "zhangtaolab/plant-dnagpt-BPE"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants by using Plant DNAGPT model with BPE tokenizer."
       task_type: "binary"
@@ -626,6 +999,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer BPE H3K27ac"
     model: "zhangtaolab/plant-nucleotide-transformer-BPE-H3K27ac"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-BPE"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants by using Plant Nucleotide Transformer model with BPE tokenizer."
       task_type: "binary"
@@ -634,6 +1008,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma BPE H3K27ac"
     model: "zhangtaolab/plant-dnagemma-BPE-H3K27ac"
+    base_model: "zhangtaolab/plant-dnagemma-BPE"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants by using Plant DNAGemma model with BPE tokenizer."
       task_type: "binary"
@@ -642,6 +1017,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba BPE H3K27ac"
     model: "zhangtaolab/plant-dnamamba-BPE-H3K27ac"
+    base_model: "zhangtaolab/plant-dnamamba-BPE"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants by using Plant DNAMamba model with BPE tokenizer."
       task_type: "binary"
@@ -650,6 +1026,7 @@ finetuned:
       threshold: 0.5
   - name: "DNABERT-2 H3K27ac"
     model: "zhangtaolab/dnabert2-H3K27ac"
+    base_model: "zhihan1996/DNABERT-2-117M"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants by using DNABERT-2 model."
       task_type: "binary"
@@ -658,6 +1035,7 @@ finetuned:
       threshold: 0.5
   - name: "Nucleotide Transformer H3K27ac"
     model: "zhangtaolab/nucleotide-transformer-v2-100m-H3K27ac"
+    base_model: "InstaDeepAI/nucleotide-transformer-v2-100m-multi-species"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants by using Nucleotide Transformer model."
       task_type: "binary"
@@ -666,6 +1044,7 @@ finetuned:
       threshold: 0.5
   - name: "AgroNT H3K27ac"
     model: "zhangtaolab/agront-1b-H3K27ac"
+    base_model: "InstaDeepAI/agro-nucleotide-transformer-1b"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants by using AgroNT model."
       task_type: "binary"
@@ -674,6 +1053,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNABERT 6mer H3K27ac"
     model: "zhangtaolab/plant-dnabert-6mer-H3K27ac"
+    base_model: "zhangtaolab/plant-dnabert-6mer"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants by using Plant DNABERT model with 6mer tokenizer."
       task_type: "binary"
@@ -682,6 +1062,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT 6mer H3K27ac"
     model: "zhangtaolab/plant-dnagpt-6mer-H3K27ac"
+    base_model: "zhangtaolab/plant-dnagpt-6mer"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants by using Plant DNAGPT model with 6mer tokenizer."
       task_type: "binary"
@@ -690,6 +1071,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer 6mer H3K27ac"
     model: "zhangtaolab/plant-nucleotide-transformer-6mer-H3K27ac"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-6mer"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants by using Plant Nucleotide Transformer model with 6mer tokenizer."
       task_type: "binary"
@@ -698,6 +1080,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma 6mer H3K27ac"
     model: "zhangtaolab/plant-dnagemma-6mer-H3K27ac"
+    base_model: "zhangtaolab/plant-dnagemma-6mer"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants by using Plant DNAGemma model with 6mer tokenizer."
       task_type: "binary"
@@ -706,6 +1089,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba 6mer H3K27ac"
     model: "zhangtaolab/plant-dnamamba-6mer-H3K27ac"
+    base_model: "zhangtaolab/plant-dnamamba-6mer"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants by using Plant DNAMamba model with 6mer tokenizer."
       task_type: "binary"
@@ -714,6 +1098,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNABERT singlebase H3K27ac"
     model: "zhangtaolab/plant-dnabert-singlebase-H3K27ac"
+    base_model: "zhangtaolab/plant-dnabert-singlebase"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants by using Plant DNABERT model with singlebase tokenizer."
       task_type: "binary"
@@ -722,6 +1107,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT singlebase H3K27ac"
     model: "zhangtaolab/plant-dnagpt-singlebase-H3K27ac"
+    base_model: "zhangtaolab/plant-dnagpt-singlebase"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants by using Plant DNAGPT model with singlebase tokenizer."
       task_type: "binary"
@@ -730,6 +1116,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer singlebase H3K27ac"
     model: "zhangtaolab/plant-nucleotide-transformer-singlebase-H3K27ac"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-singlebase"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants by using Plant Nucleotide Transformer model with singlebase tokenizer."
       task_type: "binary"
@@ -738,6 +1125,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma singlebase H3K27ac"
     model: "zhangtaolab/plant-dnagemma-singlebase-H3K27ac"
+    base_model: "zhangtaolab/plant-dnagemma-singlebase"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants by using Plant DNAGemma model with singlebase tokenizer."
       task_type: "binary"
@@ -746,6 +1134,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba singlebase H3K27ac"
     model: "zhangtaolab/plant-dnamamba-singlebase-H3K27ac"
+    base_model: "zhangtaolab/plant-dnamamba-singlebase"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants by using Plant DNAMamba model with singlebase tokenizer."
       task_type: "binary"
@@ -755,6 +1144,7 @@ finetuned:
 
   - name: "Plant DNABERT BPE H3K4me3"
     model: "zhangtaolab/plant-dnabert-BPE-H3K4me3"
+    base_model: "zhangtaolab/plant-dnabert-BPE"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants by using Plant DNABERT model with BPE tokenizer."
       task_type: "binary"
@@ -763,6 +1153,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT BPE H3K4me3"
     model: "zhangtaolab/plant-dnagpt-BPE-H3K4me3"
+    base_model: "zhangtaolab/plant-dnagpt-BPE"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants by using Plant DNAGPT model with BPE tokenizer."
       task_type: "binary"
@@ -771,6 +1162,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer BPE H3K4me3"
     model: "zhangtaolab/plant-nucleotide-transformer-BPE-H3K4me3"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-BPE"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants by using Plant Nucleotide Transformer model with BPE tokenizer."
       task_type: "binary"
@@ -779,6 +1171,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma BPE H3K4me3"
     model: "zhangtaolab/plant-dnagemma-BPE-H3K4me3"
+    base_model: "zhangtaolab/plant-dnagemma-BPE"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants by using Plant DNAGemma model with BPE tokenizer."
       task_type: "binary"
@@ -787,6 +1180,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba BPE H3K4me3"
     model: "zhangtaolab/plant-dnamamba-BPE-H3K4me3"
+    base_model: "zhangtaolab/plant-dnamamba-BPE"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants by using Plant DNAMamba model with BPE tokenizer."
       task_type: "binary"
@@ -795,6 +1189,7 @@ finetuned:
       threshold: 0.5
   - name: "DNABERT-2 H3K4me3"
     model: "zhangtaolab/dnabert2-H3K4me3"
+    base_model: "zhihan1996/DNABERT-2-117M"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants by using DNABERT-2 model."
       task_type: "binary"
@@ -803,6 +1198,7 @@ finetuned:
       threshold: 0.5
   - name: "Nucleotide Transformer H3K4me3"
     model: "zhangtaolab/nucleotide-transformer-v2-100m-H3K4me3"
+    base_model: "InstaDeepAI/nucleotide-transformer-v2-100m-multi-species"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants by using Nucleotide Transformer model."
       task_type: "binary"
@@ -811,6 +1207,7 @@ finetuned:
       threshold: 0.5
   - name: "AgroNT H3K4me3"
     model: "zhangtaolab/agront-1b-H3K4me3"
+    base_model: "InstaDeepAI/agro-nucleotide-transformer-1b"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants by using AgroNT model."
       task_type: "binary"
@@ -819,6 +1216,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNABERT 6mer H3K4me3"
     model: "zhangtaolab/plant-dnabert-6mer-H3K4me3"
+    base_model: "zhangtaolab/plant-dnabert-6mer"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants by using Plant DNABERT model with 6mer tokenizer."
       task_type: "binary"
@@ -827,6 +1225,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT 6mer H3K4me3"
     model: "zhangtaolab/plant-dnagpt-6mer-H3K4me3"
+    base_model: "zhangtaolab/plant-dnagpt-6mer"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants by using Plant DNAGPT model with 6mer tokenizer."
       task_type: "binary"
@@ -835,6 +1234,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer 6mer H3K4me3"
     model: "zhangtaolab/plant-nucleotide-transformer-6mer-H3K4me3"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-6mer"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants by using Plant Nucleotide Transformer model with 6mer tokenizer."
       task_type: "binary"
@@ -843,6 +1243,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma 6mer H3K4me3"
     model: "zhangtaolab/plant-dnagemma-6mer-H3K4me3"
+    base_model: "zhangtaolab/plant-dnagemma-6mer"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants by using Plant DNAGemma model with 6mer tokenizer."
       task_type: "binary"
@@ -851,6 +1252,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba 6mer H3K4me3"
     model: "zhangtaolab/plant-dnamamba-6mer-H3K4me3"
+    base_model: "zhangtaolab/plant-dnamamba-6mer"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants by using Plant DNAMamba model with 6mer tokenizer."
       task_type: "binary"
@@ -859,6 +1261,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNABERT singlebase H3K4me3"
     model: "zhangtaolab/plant-dnabert-singlebase-H3K4me3"
+    base_model: "zhangtaolab/plant-dnabert-singlebase"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants by using Plant DNABERT model with singlebase tokenizer."
       task_type: "binary"
@@ -867,6 +1270,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT singlebase H3K4me3"
     model: "zhangtaolab/plant-dnagpt-singlebase-H3K4me3"
+    base_model: "zhangtaolab/plant-dnagpt-singlebase"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants by using Plant DNAGPT model with singlebase tokenizer."
       task_type: "binary"
@@ -875,6 +1279,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer singlebase H3K4me3"
     model: "zhangtaolab/plant-nucleotide-transformer-singlebase-H3K4me3"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-singlebase"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants by using Plant Nucleotide Transformer model with singlebase tokenizer."
       task_type: "binary"
@@ -883,6 +1288,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma singlebase H3K4me3"
     model: "zhangtaolab/plant-dnagemma-singlebase-H3K4me3"
+    base_model: "zhangtaolab/plant-dnagemma-singlebase"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants by using Plant DNAGemma model with singlebase tokenizer."
       task_type: "binary"
@@ -891,6 +1297,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba singlebase H3K4me3"
     model: "zhangtaolab/plant-dnamamba-singlebase-H3K4me3"
+    base_model: "zhangtaolab/plant-dnamamba-singlebase"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants by using Plant DNAMamba model with singlebase tokenizer."
       task_type: "binary"
@@ -900,6 +1307,7 @@ finetuned:
 
   - name: "Plant DNABERT BPE H3K27me3"
     model: "zhangtaolab/plant-dnabert-BPE-H3K27me3"
+    base_model: "zhangtaolab/plant-dnabert-BPE"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants by using Plant DNABERT model with BPE tokenizer."
       task_type: "binary"
@@ -908,6 +1316,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT BPE H3K27me3"
     model: "zhangtaolab/plant-dnagpt-BPE-H3K27me3"
+    base_model: "zhangtaolab/plant-dnagpt-BPE"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants by using Plant DNAGPT model with BPE tokenizer."
       task_type: "binary"
@@ -916,6 +1325,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer BPE H3K27me3"
     model: "zhangtaolab/plant-nucleotide-transformer-BPE-H3K27me3"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-BPE"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants by using Plant Nucleotide Transformer model with BPE tokenizer."
       task_type: "binary"
@@ -924,6 +1334,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma BPE H3K27me3"
     model: "zhangtaolab/plant-dnagemma-BPE-H3K27me3"
+    base_model: "zhangtaolab/plant-dnagemma-BPE"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants by using Plant DNAGemma model with BPE tokenizer."
       task_type: "binary"
@@ -932,6 +1343,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba BPE H3K27me3"
     model: "zhangtaolab/plant-dnamamba-BPE-H3K27me3"
+    base_model: "zhangtaolab/plant-dnamamba-BPE"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants by using Plant DNAMamba model with BPE tokenizer."
       task_type: "binary"
@@ -940,6 +1352,7 @@ finetuned:
       threshold: 0.5
   - name: "DNABERT-2 H3K27me3"
     model: "zhangtaolab/dnabert2-H3K27me3"
+    base_model: "zhihan1996/DNABERT-2-117M"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants by using DNABERT-2 model."
       task_type: "binary"
@@ -948,6 +1361,7 @@ finetuned:
       threshold: 0.5
   - name: "Nucleotide Transformer H3K27me3"
     model: "zhangtaolab/nucleotide-transformer-v2-100m-H3K27me3"
+    base_model: "InstaDeepAI/nucleotide-transformer-v2-100m-multi-species"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants by using Nucleotide Transformer model."
       task_type: "binary"
@@ -956,6 +1370,7 @@ finetuned:
       threshold: 0.5
   - name: "AgroNT H3K27me3"
     model: "zhangtaolab/agront-1b-H3K27me3"
+    base_model: "InstaDeepAI/agro-nucleotide-transformer-1b"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants by using AgroNT model."
       task_type: "binary"
@@ -964,6 +1379,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNABERT 6mer H3K27me3"
     model: "zhangtaolab/plant-dnabert-6mer-H3K27me3"
+    base_model: "zhangtaolab/plant-dnabert-6mer"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants by using Plant DNABERT model with 6mer tokenizer."
       task_type: "binary"
@@ -972,6 +1388,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT 6mer H3K27me3"
     model: "zhangtaolab/plant-dnagpt-6mer-H3K27me3"
+    base_model: "zhangtaolab/plant-dnagpt-6mer"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants by using Plant DNAGPT model with 6mer tokenizer."
       task_type: "binary"
@@ -980,6 +1397,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer 6mer H3K27me3"
     model: "zhangtaolab/plant-nucleotide-transformer-6mer-H3K27me3"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-6mer"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants by using Plant Nucleotide Transformer model with 6mer tokenizer."
       task_type: "binary"
@@ -988,6 +1406,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma 6mer H3K27me3"
     model: "zhangtaolab/plant-dnagemma-6mer-H3K27me3"
+    base_model: "zhangtaolab/plant-dnagemma-6mer"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants by using Plant DNAGemma model with 6mer tokenizer."
       task_type: "binary"
@@ -996,6 +1415,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba 6mer H3K27me3"
     model: "zhangtaolab/plant-dnamamba-6mer-H3K27me3"
+    base_model: "zhangtaolab/plant-dnamamba-6mer"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants by using Plant DNAMamba model with 6mer tokenizer."
       task_type: "binary"
@@ -1004,6 +1424,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNABERT singlebase H3K27me3"
     model: "zhangtaolab/plant-dnabert-singlebase-H3K27me3"
+    base_model: "zhangtaolab/plant-dnabert-singlebase"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants by using Plant DNABERT model with singlebase tokenizer."
       task_type: "binary"
@@ -1012,6 +1433,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT singlebase H3K27me3"
     model: "zhangtaolab/plant-dnagpt-singlebase-H3K27me3"
+    base_model: "zhangtaolab/plant-dnagpt-singlebase"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants by using Plant DNAGPT model with singlebase tokenizer."
       task_type: "binary"
@@ -1020,6 +1442,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer singlebase H3K27me3"
     model: "zhangtaolab/plant-nucleotide-transformer-singlebase-H3K27me3"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-singlebase"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants by using Plant Nucleotide Transformer model with singlebase tokenizer."
       task_type: "binary"
@@ -1028,6 +1451,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma singlebase H3K27me3"
     model: "zhangtaolab/plant-dnagemma-singlebase-H3K27me3"
+    base_model: "zhangtaolab/plant-dnagemma-singlebase"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants by using Plant DNAGemma model with singlebase tokenizer."
       task_type: "binary"
@@ -1036,6 +1460,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba singlebase H3K27me3"
     model: "zhangtaolab/plant-dnamamba-singlebase-H3K27me3"
+    base_model: "zhangtaolab/plant-dnamamba-singlebase"
     task:
       describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants by using Plant DNAMamba model with singlebase tokenizer."
       task_type: "binary"
@@ -1045,6 +1470,7 @@ finetuned:
 
   - name: "Plant DNABERT BPE open chromatin"
     model: "zhangtaolab/plant-dnabert-BPE-open_chromatin"
+    base_model: "zhangtaolab/plant-dnabert-BPE"
     task:
       describe: "Predict whether a DNA sequence is in open chromatin regions in plants by using Plant DNABERT model with BPE tokenizer."
       task_type: "multiclass"
@@ -1053,6 +1479,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT BPE open chromatin"
     model: "zhangtaolab/plant-dnagpt-BPE-open_chromatin"
+    base_model: "zhangtaolab/plant-dnagpt-BPE"
     task:
       describe: "Predict whether a DNA sequence is in open chromatin regions in plants by using Plant DNAGPT model with BPE tokenizer."
       task_type: "multiclass"
@@ -1061,6 +1488,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer BPE open chromatin"
     model: "zhangtaolab/plant-nucleotide-transformer-BPE-open_chromatin"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-BPE"
     task:
       describe: "Predict whether a DNA sequence is in open chromatin regions in plants by using Plant Nucleotide Transformer model with BPE tokenizer."
       task_type: "multiclass"
@@ -1069,6 +1497,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma BPE open chromatin"
     model: "zhangtaolab/plant-dnagemma-BPE-open_chromatin"
+    base_model: "zhangtaolab/plant-dnagemma-BPE"
     task:
       describe: "Predict whether a DNA sequence is in open chromatin regions in plants by using Plant DNAGemma model with BPE tokenizer."
       task_type: "multiclass"
@@ -1077,6 +1506,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba BPE open chromatin"
     model: "zhangtaolab/plant-dnamamba-BPE-open_chromatin"
+    base_model: "zhangtaolab/plant-dnamamba-BPE"
     task:
       describe: "Predict whether a DNA sequence is in open chromatin regions in plants by using Plant DNAMamba model with BPE tokenizer."
       task_type: "multiclass"
@@ -1085,6 +1515,7 @@ finetuned:
       threshold: 0.5
   - name: "DNABERT-2 open chromatin"
     model: "zhangtaolab/dnabert2-open_chromatin"
+    base_model: "zhihan1996/DNABERT-2-117M"
     task:
       describe: "Predict whether a DNA sequence is in open chromatin regions in plants by using DNABERT-2 model."
       task_type: "multiclass"
@@ -1093,6 +1524,7 @@ finetuned:
       threshold: 0.5
   - name: "Nucleotide Transformer open chromatin"
     model: "zhangtaolab/nucleotide-transformer-v2-100m-open_chromatin"
+    base_model: "InstaDeepAI/nucleotide-transformer-v2-100m-multi-species"
     task:
       describe: "Predict whether a DNA sequence is in open chromatin regions in plants by using Nucleotide Transformer model."
       task_type: "multiclass"
@@ -1101,6 +1533,7 @@ finetuned:
       threshold: 0.5
   - name: "AgroNT open chromatin"
     model: "zhangtaolab/agront-1b-open_chromatin"
+    base_model: "InstaDeepAI/agro-nucleotide-transformer-1b"
     task:
       describe: "Predict whether a DNA sequence is in open chromatin regions in plants by using AgroNT model."
       task_type: "multiclass"
@@ -1109,6 +1542,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNABERT 6mer open chromatin"
     model: "zhangtaolab/plant-dnabert-6mer-open_chromatin"
+    base_model: "zhangtaolab/plant-dnabert-6mer"
     task:
       describe: "Predict whether a DNA sequence is in open chromatin regions in plants by using Plant DNABERT model with 6mer tokenizer."
       task_type: "multiclass"
@@ -1117,6 +1551,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT 6mer open chromatin"
     model: "zhangtaolab/plant-dnagpt-6mer-open_chromatin"
+    base_model: "zhangtaolab/plant-dnagpt-6mer"
     task:
       describe: "Predict whether a DNA sequence is in open chromatin regions in plants by using Plant DNAGPT model with 6mer tokenizer."
       task_type: "multiclass"
@@ -1125,6 +1560,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer 6mer open chromatin"
     model: "zhangtaolab/plant-nucleotide-transformer-6mer-open_chromatin"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-6mer"
     task:
       describe: "Predict whether a DNA sequence is in open chromatin regions in plants by using Plant Nucleotide Transformer model with 6mer tokenizer."
       task_type: "multiclass"
@@ -1133,6 +1569,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma 6mer open chromatin"
     model: "zhangtaolab/plant-dnagemma-6mer-open_chromatin"
+    base_model: "zhangtaolab/plant-dnagemma-6mer"
     task:
       describe: "Predict whether a DNA sequence is in open chromatin regions in plants by using Plant DNAGemma model with 6mer tokenizer."
       task_type: "multiclass"
@@ -1141,6 +1578,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba 6mer open chromatin"
     model: "zhangtaolab/plant-dnamamba-6mer-open_chromatin"
+    base_model: "zhangtaolab/plant-dnamamba-6mer"
     task:
       describe: "Predict whether a DNA sequence is in open chromatin regions in plants by using Plant DNAMamba model with 6mer tokenizer."
       task_type: "multiclass"
@@ -1149,6 +1587,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNABERT singlebase open chromatin"
     model: "zhangtaolab/plant-dnabert-singlebase-open_chromatin"
+    base_model: "zhangtaolab/plant-dnabert-singlebase"
     task:
       describe: "Predict whether a DNA sequence is in open chromatin regions in plants by using Plant DNABERT model with singlebase tokenizer."
       task_type: "multiclass"
@@ -1157,6 +1596,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGPT singlebase open chromatin"
     model: "zhangtaolab/plant-dnagpt-singlebase-open_chromatin"
+    base_model: "zhangtaolab/plant-dnagpt-singlebase"
     task:
       describe: "Predict whether a DNA sequence is in open chromatin regions in plants by using Plant DNAGPT model with singlebase tokenizer."
       task_type: "multiclass"
@@ -1165,6 +1605,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant Nucleotide Transformer singlebase open chromatin"
     model: "zhangtaolab/plant-nucleotide-transformer-singlebase-open_chromatin"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-singlebase"
     task:
       describe: "Predict whether a DNA sequence is in open chromatin regions in plants by using Plant Nucleotide Transformer model with singlebase tokenizer."
       task_type: "multiclass"
@@ -1173,6 +1614,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAGemma singlebase open chromatin"
     model: "zhangtaolab/plant-dnagemma-singlebase-open_chromatin"
+    base_model: "zhangtaolab/plant-dnagemma-singlebase"
     task:
       describe: "Predict whether a DNA sequence is in open chromatin regions in plants by using Plant DNAGemma model with singlebase tokenizer."
       task_type: "multiclass"
@@ -1181,6 +1623,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant DNAMamba singlebase open chromatin"
     model: "zhangtaolab/plant-dnamamba-singlebase-open_chromatin"
+    base_model: "zhangtaolab/plant-dnamamba-singlebase"
     task:
       describe: "Predict whether a DNA sequence is in open chromatin regions in plants by using Plant DNAMamba model with singlebase tokenizer."
       task_type: "multiclass"
@@ -1190,6 +1633,7 @@ finetuned:
 
   - name: "Plant DNABERT BPE promoter strength leaf"
     model: "zhangtaolab/plant-dnabert-BPE-promoter_strength_leaf"
+    base_model: "zhangtaolab/plant-dnabert-BPE"
     task:
       describe: "Predict promoter strength of a DNA sequence in tobacco leaves by using Plant DNABERT model with BPE tokenizer."
       task_type: "regression"
@@ -1197,6 +1641,7 @@ finetuned:
       label_names: "promoter strength in tobacco leaves"
   - name: "Plant DNAGPT BPE promoter strength leaf"
     model: "zhangtaolab/plant-dnagpt-BPE-promoter_strength_leaf"
+    base_model: "zhangtaolab/plant-dnagpt-BPE"
     task:
       describe: "Predict promoter strength of a DNA sequence in tobacco leaves by using Plant DNAGPT model with BPE tokenizer."
       task_type: "regression"
@@ -1204,6 +1649,7 @@ finetuned:
       label_names: "promoter strength in tobacco leaves"
   - name: "Plant Nucleotide Transformer BPE promoter strength leaf"
     model: "zhangtaolab/plant-nucleotide-transformer-BPE-promoter_strength_leaf"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-BPE"
     task:
       describe: "Predict promoter strength of a DNA sequence in tobacco leaves by using Plant Nucleotide Transformer model with BPE tokenizer."
       task_type: "regression"
@@ -1211,6 +1657,7 @@ finetuned:
       label_names: "promoter strength in tobacco leaves"
   - name: "Plant DNAGemma BPE promoter strength leaf"
     model: "zhangtaolab/plant-dnagemma-BPE-promoter_strength_leaf"
+    base_model: "zhangtaolab/plant-dnagemma-BPE"
     task:
       describe: "Predict promoter strength of a DNA sequence in tobacco leaves by using Plant DNAGemma model with BPE tokenizer."
       task_type: "regression"
@@ -1218,6 +1665,7 @@ finetuned:
       label_names: "promoter strength in tobacco leaves"
   - name: "Plant DNAMamba BPE promoter strength leaf"
     model: "zhangtaolab/plant-dnamamba-BPE-promoter_strength_leaf"
+    base_model: "zhangtaolab/plant-dnamamba-BPE"
     task:
       describe: "Predict promoter strength of a DNA sequence in tobacco leaves by using Plant DNAMamba model with BPE tokenizer."
       task_type: "regression"
@@ -1225,6 +1673,7 @@ finetuned:
       label_names: "promoter strength in tobacco leaves"
   - name: "DNABERT-2 promoter strength leaf"
     model: "zhangtaolab/dnabert2-promoter_strength_leaf"
+    base_model: "zhihan1996/DNABERT-2-117M"
     task:
       describe: "Predict promoter strength of a DNA sequence in tobacco leaves by using DNABERT-2 model."
       task_type: "regression"
@@ -1232,6 +1681,7 @@ finetuned:
       label_names: "promoter strength in tobacco leaves"
   - name: "Nucleotide Transformer promoter strength leaf"
     model: "zhangtaolab/nucleotide-transformer-v2-100m-promoter_strength_leaf"
+    base_model: "InstaDeepAI/nucleotide-transformer-v2-100m-multi-species"
     task:
       describe: "Predict promoter strength of a DNA sequence in tobacco leaves by using Nucleotide Transformer model."
       task_type: "regression"
@@ -1239,6 +1689,7 @@ finetuned:
       label_names: "promoter strength in tobacco leaves"
   - name: "AgroNT promoter strength leaf"
     model: "zhangtaolab/agront-1b-promoter_strength_leaf"
+    base_model: "InstaDeepAI/agro-nucleotide-transformer-1b"
     task:
       describe: "Predict promoter strength of a DNA sequence in tobacco leaves by using AgroNT model."
       task_type: "regression"
@@ -1246,6 +1697,7 @@ finetuned:
       label_names: "promoter strength in tobacco leaves"
   - name: "Plant DNABERT 6mer promoter strength leaf"
     model: "zhangtaolab/plant-dnabert-6mer-promoter_strength_leaf"
+    base_model: "zhangtaolab/plant-dnabert-6mer"
     task:
       describe: "Predict promoter strength of a DNA sequence in tobacco leaves by using Plant DNABERT model with 6mer tokenizer."
       task_type: "regression"
@@ -1253,6 +1705,7 @@ finetuned:
       label_names: "promoter strength in tobacco leaves"
   - name: "Plant DNAGPT 6mer promoter strength leaf"
     model: "zhangtaolab/plant-dnagpt-6mer-promoter_strength_leaf"
+    base_model: "zhangtaolab/plant-dnagpt-6mer"
     task:
       describe: "Predict promoter strength of a DNA sequence in tobacco leaves by using Plant DNAGPT model with 6mer tokenizer."
       task_type: "regression"
@@ -1260,6 +1713,7 @@ finetuned:
       label_names: "promoter strength in tobacco leaves"
   - name: "Plant Nucleotide Transformer 6mer promoter strength leaf"
     model: "zhangtaolab/plant-nucleotide-transformer-6mer-promoter_strength_leaf"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-6mer"
     task:
       describe: "Predict promoter strength of a DNA sequence in tobacco leaves by using Plant Nucleotide Transformer model with 6mer tokenizer."
       task_type: "regression"
@@ -1267,6 +1721,7 @@ finetuned:
       label_names: "promoter strength in tobacco leaves"
   - name: "Plant DNAGemma 6mer promoter strength leaf"
     model: "zhangtaolab/plant-dnagemma-6mer-promoter_strength_leaf"
+    base_model: "zhangtaolab/plant-dnagemma-6mer"
     task:
       describe: "Predict promoter strength of a DNA sequence in tobacco leaves by using Plant DNAGemma model with 6mer tokenizer."
       task_type: "regression"
@@ -1274,6 +1729,7 @@ finetuned:
       label_names: "promoter strength in tobacco leaves"
   - name: "Plant DNAMamba 6mer promoter strength leaf"
     model: "zhangtaolab/plant-dnamamba-6mer-promoter_strength_leaf"
+    base_model: "zhangtaolab/plant-dnamamba-6mer"
     task:
       describe: "Predict promoter strength of a DNA sequence in tobacco leaves by using Plant DNAMamba model with 6mer tokenizer."
       task_type: "regression"
@@ -1281,6 +1737,7 @@ finetuned:
       label_names: "promoter strength in tobacco leaves"
   - name: "Plant DNABERT singlebase promoter strength leaf"
     model: "zhangtaolab/plant-dnabert-singlebase-promoter_strength_leaf"
+    base_model: "zhangtaolab/plant-dnabert-singlebase"
     task:
       describe: "Predict promoter strength of a DNA sequence in tobacco leaves by using Plant DNABERT model with singlebase tokenizer."
       task_type: "regression"
@@ -1288,6 +1745,7 @@ finetuned:
       label_names: "promoter strength in tobacco leaves"
   - name: "Plant DNAGPT singlebase promoter strength leaf"
     model: "zhangtaolab/plant-dnagpt-singlebase-promoter_strength_leaf"
+    base_model: "zhangtaolab/plant-dnagpt-singlebase"
     task:
       describe: "Predict promoter strength of a DNA sequence in tobacco leaves by using Plant DNAGPT model with singlebase tokenizer."
       task_type: "regression"
@@ -1295,6 +1753,7 @@ finetuned:
       label_names: "promoter strength in tobacco leaves"
   - name: "Plant Nucleotide Transformer singlebase promoter strength leaf"
     model: "zhangtaolab/plant-nucleotide-transformer-singlebase-promoter_strength_leaf"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-singlebase"
     task:
       describe: "Predict promoter strength of a DNA sequence in tobacco leaves by using Plant Nucleotide Transformer model with singlebase tokenizer."
       task_type: "regression"
@@ -1302,6 +1761,7 @@ finetuned:
       label_names: "promoter strength in tobacco leaves"
   - name: "Plant DNAGemma singlebase promoter strength leaf"
     model: "zhangtaolab/plant-dnagemma-singlebase-promoter_strength_leaf"
+    base_model: "zhangtaolab/plant-dnagemma-singlebase"
     task:
       describe: "Predict promoter strength of a DNA sequence in tobacco leaves by using Plant DNAGemma model with singlebase tokenizer."
       task_type: "regression"
@@ -1309,6 +1769,7 @@ finetuned:
       label_names: "promoter strength in tobacco leaves"
   - name: "Plant DNAMamba singlebase promoter strength leaf"
     model: "zhangtaolab/plant-dnamamba-singlebase-promoter_strength_leaf"
+    base_model: "zhangtaolab/plant-dnamamba-singlebase"
     task:
       describe: "Predict promoter strength of a DNA sequence in tobacco leaves by using Plant DNAMamba model with singlebase tokenizer."
       task_type: "regression"
@@ -1317,6 +1778,7 @@ finetuned:
 
   - name: "Plant DNABERT BPE promoter strength protoplast"
     model: "zhangtaolab/plant-dnabert-BPE-promoter_strength_protoplast"
+    base_model: "zhangtaolab/plant-dnabert-BPE"
     task:
       describe: "Predict promoter strength of a DNA sequence in maize protoplasts by using Plant DNABERT model with BPE tokenizer."
       task_type: "regression"
@@ -1324,6 +1786,7 @@ finetuned:
       label_names: "promoter strength in maize protoplasts"
   - name: "Plant DNAGPT BPE promoter strength protoplast"
     model: "zhangtaolab/plant-dnagpt-BPE-promoter_strength_protoplast"
+    base_model: "zhangtaolab/plant-dnagpt-BPE"
     task:
       describe: "Predict promoter strength of a DNA sequence in maize protoplasts by using Plant DNAGPT model with BPE tokenizer."
       task_type: "regression"
@@ -1331,6 +1794,7 @@ finetuned:
       label_names: "promoter strength in maize protoplasts"
   - name: "Plant Nucleotide Transformer BPE promoter strength protoplast"
     model: "zhangtaolab/plant-nucleotide-transformer-BPE-promoter_strength_protoplast"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-BPE"
     task:
       describe: "Predict promoter strength of a DNA sequence in maize protoplasts by using Plant Nucleotide Transformer model with BPE tokenizer."
       task_type: "regression"
@@ -1338,6 +1802,7 @@ finetuned:
       label_names: "promoter strength in maize protoplasts"
   - name: "Plant DNAGemma BPE promoter strength protoplast"
     model: "zhangtaolab/plant-dnagemma-BPE-promoter_strength_protoplast"
+    base_model: "zhangtaolab/plant-dnagemma-BPE"
     task:
       describe: "Predict promoter strength of a DNA sequence in maize protoplasts by using Plant DNAGemma model with BPE tokenizer."
       task_type: "regression"
@@ -1345,6 +1810,7 @@ finetuned:
       label_names: "promoter strength in maize protoplasts"
   - name: "Plant DNAMamba BPE promoter strength protoplast"
     model: "zhangtaolab/plant-dnamamba-BPE-promoter_strength_protoplast"
+    base_model: "zhangtaolab/plant-dnamamba-BPE"
     task:
       describe: "Predict promoter strength of a DNA sequence in maize protoplasts by using Plant DNAMamba model with BPE tokenizer."
       task_type: "regression"
@@ -1352,6 +1818,7 @@ finetuned:
       label_names: "promoter strength in maize protoplasts"
   - name: "DNABERT-2 promoter strength protoplast"
     model: "zhangtaolab/dnabert2-promoter_strength_protoplast"
+    base_model: "zhihan1996/DNABERT-2-117M"
     task:
       describe: "Predict promoter strength of a DNA sequence in maize protoplasts by using DNABERT-2 model."
       task_type: "regression"
@@ -1359,6 +1826,7 @@ finetuned:
       label_names: "promoter strength in maize protoplasts"
   - name: "Nucleotide Transformer promoter strength protoplast"
     model: "zhangtaolab/nucleotide-transformer-v2-100m-promoter_strength_protoplast"
+    base_model: "InstaDeepAI/nucleotide-transformer-v2-100m-multi-species"
     task:
       describe: "Predict promoter strength of a DNA sequence in maize protoplasts by using Nucleotide Transformer model."
       task_type: "regression"
@@ -1366,6 +1834,7 @@ finetuned:
       label_names: "promoter strength in maize protoplasts"
   - name: "AgroNT promoter strength protoplast"
     model: "zhangtaolab/agront-1b-promoter_strength_protoplast"
+    base_model: "InstaDeepAI/agro-nucleotide-transformer-1b"
     task:
       describe: "Predict promoter strength of a DNA sequence in maize protoplasts by using AgroNT model."
       task_type: "regression"
@@ -1373,6 +1842,7 @@ finetuned:
       label_names: "promoter strength in maize protoplasts"
   - name: "Plant DNABERT 6mer promoter strength protoplast"
     model: "zhangtaolab/plant-dnabert-6mer-promoter_strength_protoplast"
+    base_model: "zhangtaolab/plant-dnabert-6mer"
     task:
       describe: "Predict promoter strength of a DNA sequence in maize protoplasts by using Plant DNABERT model with 6mer tokenizer."
       task_type: "regression"
@@ -1380,6 +1850,7 @@ finetuned:
       label_names: "promoter strength in maize protoplasts"
   - name: "Plant DNAGPT 6mer promoter strength protoplast"
     model: "zhangtaolab/plant-dnagpt-6mer-promoter_strength_protoplast"
+    base_model: "zhangtaolab/plant-dnagpt-6mer"
     task:
       describe: "Predict promoter strength of a DNA sequence in maize protoplasts by using Plant DNAGPT model with 6mer tokenizer."
       task_type: "regression"
@@ -1387,6 +1858,7 @@ finetuned:
       label_names: "promoter strength in maize protoplasts"
   - name: "Plant Nucleotide Transformer 6mer promoter strength protoplast"
     model: "zhangtaolab/plant-nucleotide-transformer-6mer-promoter_strength_protoplast"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-6mer"
     task:
       describe: "Predict promoter strength of a DNA sequence in maize protoplasts by using Plant Nucleotide Transformer model with 6mer tokenizer."
       task_type: "regression"
@@ -1394,6 +1866,7 @@ finetuned:
       label_names: "promoter strength in maize protoplasts"
   - name: "Plant DNAGemma 6mer promoter strength protoplast"
     model: "zhangtaolab/plant-dnagemma-6mer-promoter_strength_protoplast"
+    base_model: "zhangtaolab/plant-dnagemma-6mer"
     task:
       describe: "Predict promoter strength of a DNA sequence in maize protoplasts by using Plant DNAGemma model with 6mer tokenizer."
       task_type: "regression"
@@ -1401,6 +1874,7 @@ finetuned:
       label_names: "promoter strength in maize protoplasts"
   - name: "Plant DNAMamba 6mer promoter strength protoplast"
     model: "zhangtaolab/plant-dnamamba-6mer-promoter_strength_protoplast"
+    base_model: "zhangtaolab/plant-dnamamba-6mer"
     task:
       describe: "Predict promoter strength of a DNA sequence in maize protoplasts by using Plant DNAMamba model with 6mer tokenizer."
       task_type: "regression"
@@ -1408,6 +1882,7 @@ finetuned:
       label_names: "promoter strength in maize protoplasts"
   - name: "Plant DNABERT singlebase promoter strength protoplast"
     model: "zhangtaolab/plant-dnabert-singlebase-promoter_strength_protoplast"
+    base_model: "zhangtaolab/plant-dnabert-singlebase"
     task:
       describe: "Predict promoter strength of a DNA sequence in maize protoplasts by using Plant DNABERT model with singlebase tokenizer."
       task_type: "regression"
@@ -1415,6 +1890,7 @@ finetuned:
       label_names: "promoter strength in maize protoplasts"
   - name: "Plant DNAGPT singlebase promoter strength protoplast"
     model: "zhangtaolab/plant-dnagpt-singlebase-promoter_strength_protoplast"
+    base_model: "zhangtaolab/plant-dnagpt-singlebase"
     task:
       describe: "Predict promoter strength of a DNA sequence in maize protoplasts by using Plant DNAGPT model with singlebase tokenizer."
       task_type: "regression"
@@ -1422,6 +1898,7 @@ finetuned:
       label_names: "promoter strength in maize protoplasts"
   - name: "Plant Nucleotide Transformer singlebase promoter strength protoplast"
     model: "zhangtaolab/plant-nucleotide-transformer-singlebase-promoter_strength_protoplast"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-singlebase"
     task:
       describe: "Predict promoter strength of a DNA sequence in maize protoplasts by using Plant Nucleotide Transformer model with singlebase tokenizer."
       task_type: "regression"
@@ -1429,6 +1906,7 @@ finetuned:
       label_names: "promoter strength in maize protoplasts"
   - name: "Plant DNAGemma singlebase promoter strength protoplast"
     model: "zhangtaolab/plant-dnagemma-singlebase-promoter_strength_protoplast"
+    base_model: "zhangtaolab/plant-dnagemma-singlebase"
     task:
       describe: "Predict promoter strength of a DNA sequence in maize protoplasts by using Plant DNAGemma model with singlebase tokenizer."
       task_type: "regression"
@@ -1436,6 +1914,7 @@ finetuned:
       label_names: "promoter strength in maize protoplasts"
   - name: "Plant DNAMamba singlebase promoter strength protoplast"
     model: "zhangtaolab/plant-dnamamba-singlebase-promoter_strength_protoplast"
+    base_model: "zhangtaolab/plant-dnamamba-singlebase"
     task:
       describe: "Predict promoter strength of a DNA sequence in maize protoplasts by using Plant DNAMamba model with singlebase tokenizer."
       task_type: "regression"
@@ -1443,6 +1922,7 @@ finetuned:
       label_names: "promoter strength in maize protoplasts"
   - name: "Plant DNAMamba singlebase tRNADetector"
     model: "zhangtaolab/tRNADetector"
+    base_model: "zhangtaolab/plant-dnamamba-singlebase"
     task:
       describe: "Predict whether a DNA sequence is a tRNA in plants by using Plant DNAMamba model with singlebase tokenizer."
       task_type: "multiclass"
@@ -1451,6 +1931,7 @@ finetuned:
       threshold: 0.5
   - name: "Plant NT singlebase tRNAPointer"
     model: "zhangtaolab/tRNAPointer"
+    base_model: "zhangtaolab/plant-nucleotide-transformer-singlebase"
     task:
       describe: "Predict of tRNA start and end sites in DNA sequence by using Plant NT model with singlebase tokenizer."
       task_type: "token"
@@ -1464,25 +1945,27 @@ finetuned:
       describe: "Predict of ACRs in different cell types by using PlantCAD2 small model."
       task_type: "multilabel"
       num_labels: 92
-      label_names: []
+      label_names: null
       threshold: 0.5
   - name: "PlantCAD2 cell type specific acr medium"
     model: "plantcad/cell_type_specific_acr_plantcad2_medium"
     base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    max_length: 8192
     task:
       describe: "Predict of ACRs in different cell types by using PlantCAD2 medium model."
       task_type: "multilabel"
       num_labels: 92
-      label_names: []
+      label_names: null
       threshold: 0.5
   - name: "PlantCAD2 cell type specific acr large"
     model: "plantcad/cell_type_specific_acr_plantcad2_large"
     base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    max_length: 8192
     task:
       describe: "Predict of ACRs in different cell types by using PlantCAD2 large model."
       task_type: "multilabel"
       num_labels: 92
-      label_names: []
+      label_names: null
       threshold: 0.5
   - name: "PlantCAD2 cross species acr train on arabidopsis small"
     model: "plantcad/cross_species_acr_train_on_arabidopsis_plantcad2_small"
@@ -1496,6 +1979,7 @@ finetuned:
   - name: "PlantCAD2 cross species acr train on arabidopsis medium"
     model: "plantcad/cross_species_acr_train_on_arabidopsis_plantcad2_medium"
     base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    max_length: 8192
     task:
       describe: "Predict of ACRs in different species by using PlantCAD2 medium model."
       task_type: "binary"
@@ -1505,6 +1989,7 @@ finetuned:
   - name: "PlantCAD2 cross species acr train on arabidopsis large"
     model: "plantcad/cross_species_acr_train_on_arabidopsis_plantcad2_large"
     base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    max_length: 8192
     task:
       describe: "Predict of ACRs in different species by using PlantCAD2 large model."
       task_type: "binary"
@@ -1523,6 +2008,7 @@ finetuned:
   - name: "PlantCAD2 cross species acr train on nine species medium"
     model: "plantcad/cross_species_acr_train_on_nine_species_plantcad2_medium"
     base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    max_length: 8192
     task:
       describe: "Predict of ACRs in different species by using PlantCAD2 medium model."
       task_type: "binary"
@@ -1532,6 +2018,7 @@ finetuned:
   - name: "PlantCAD2 cross species acr train on nine species large"
     model: "plantcad/cross_species_acr_train_on_nine_species_plantcad2_large"
     base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    max_length: 8192
     task:
       describe: "Predict of ACRs in different species by using PlantCAD2 large model."
       task_type: "binary"
@@ -1549,6 +2036,7 @@ finetuned:
   - name: "PlantCAD2 cross species leaf absolute expression medium"
     model: "plantcad/cross_species_leaf_absolute_expression_plantcad2_medium"
     base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    max_length: 8192
     task:
       describe: "Predict of absolute gene expression in different species leaf by using PlantCAD2 medium model."
       task_type: "regression"
@@ -1557,6 +2045,7 @@ finetuned:
   - name: "PlantCAD2 cross species leaf absolute expression large"
     model: "plantcad/cross_species_leaf_absolute_expression_plantcad2_large"
     base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    max_length: 8192
     task:
       describe: "Predict of absolute gene expression in different species leaf by using PlantCAD2 large model."
       task_type: "regression"
@@ -1573,6 +2062,7 @@ finetuned:
   - name: "PlantCAD2 cross species leaf absolute translation medium"
     model: "plantcad/cross_species_leaf_absolute_translation_plantcad2_medium"
     base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    max_length: 8192
     task:
       describe: "Predict of absolute mRNA translation in different species leaf by using PlantCAD2 medium model."
       task_type: "regression"
@@ -1581,6 +2071,7 @@ finetuned:
   - name: "PlantCAD2 cross species leaf absolute translation large"
     model: "plantcad/cross_species_leaf_absolute_translation_plantcad2_large"
     base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    max_length: 8192
     task:
       describe: "Predict of absolute mRNA translation in different species leaf by using PlantCAD2 large model."
       task_type: "regression"
@@ -1591,23 +2082,25 @@ finetuned:
     base_model: "kuleshov-group/PlantCAD2-Small-l24-d0768"
     task:
       describe: "Predict of on/off expression in different species leaf by using PlantCAD2 small model."
-      task_type: "classification"
+      task_type: "binary"
       num_labels: 2
       label_names: ["off", "on"]
   - name: "PlantCAD2 cross species leaf on off expression medium"
     model: "plantcad/cross_species_leaf_on_off_expression_plantcad2_medium"
     base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    max_length: 8192
     task:
       describe: "Predict of on/off expression in different species leaf by using PlantCAD2 medium model."
-      task_type: "classification"
+      task_type: "binary"
       num_labels: 2
       label_names: ["off", "on"]
   - name: "PlantCAD2 cross species leaf on off expression large"
     model: "plantcad/cross_species_leaf_on_off_expression_plantcad2_large"
     base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    max_length: 8192
     task:
       describe: "Predict of on/off expression in different species leaf by using PlantCAD2 large model."
-      task_type: "classification"
+      task_type: "binary"
       num_labels: 2
       label_names: ["off", "on"]
   - name: "PlantCAD2 cross species leaf on off translation small"
@@ -1615,23 +2108,25 @@ finetuned:
     base_model: "kuleshov-group/PlantCAD2-Small-l24-d0768"
     task:
       describe: "Predict of on/off translation in different species leaf by using PlantCAD2 small model."
-      task_type: "classification"
+      task_type: "binary"
       num_labels: 2
       label_names: ["off", "on"]
   - name: "PlantCAD2 cross species leaf on off translation medium"
     model: "plantcad/cross_species_leaf_on_off_translation_plantcad2_medium"
     base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    max_length: 8192
     task:
       describe: "Predict of on/off translation in different species leaf by using PlantCAD2 medium model."
-      task_type: "classification"
+      task_type: "binary"
       num_labels: 2
       label_names: ["off", "on"]
   - name: "PlantCAD2 cross species leaf on off translation large"
     model: "plantcad/cross_species_leaf_on_off_translation_plantcad2_large"
     base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    max_length: 8192
     task:
       describe: "Predict of on/off translation in different species leaf by using PlantCAD2 large model."
-      task_type: "classification"
+      task_type: "binary"
       num_labels: 2
       label_names: ["off", "on"]
 # PlantHelixSeek finetuned checkpoints (Phase 06-01 registry freeze, 2026-10-03).
@@ -1667,3 +2162,28 @@ finetuned:
       num_labels: 17
       label_names: ["O", "B-CDS", "I-CDS", "L-CDS", "U-CDS", "B-INTRON", "I-INTRON", "L-INTRON", "U-INTRON", "B-UTR5", "I-UTR5", "L-UTR5", "U-UTR5", "B-UTR3", "I-UTR3", "L-UTR3", "U-UTR3"]
       threshold: 0.5
+# Registry enrichment: tokenizer_type / max_length (Phase 22-02, 2026-10-20).
+# Method: one-time remote metadata probes — config.json / tokenizer_config.json only,
+#   ModelScope first with HuggingFace fallback, no weights downloaded (D-01
+#   probe-then-commit; re-probing reproduces these values remotely).
+# Coverage rule (D-03): all zhangtaolab/* entries enriched mandatorily; third-party
+#   entries best-effort — a gap is an absent key, never null/empty/zero.
+# max_length rule (D-02): every pretrained entry carries max_length; finetuned entries
+#   inherit via base_model resolved by the loader at query time — an explicit
+#   finetuned max_length exists only where the measured value differs from the
+#   base's, plus the 14 external-based plantcad repos whose bases sit outside
+#   this registry.
+# Probe and insertion tooling is intentionally uncommitted (gitignored .scratch/,
+#   owner convention 2026-10-20).
+# Registry compatibility census: tf_compat_status / tf_compat_evidence / tf_compat_tested (Phase 27-03, 2026-10-27).
+# Method: import census plus sampled load/forward evidence under transformers
+#   5.17.0 over all 49 pretrained entries; frozen evidence artifact:
+#   tests/models/compat_census.json (27-02, dispositions complete).
+# Coverage rule: all 49 pretrained entries carry the fields; finetuned entries
+#   inherit from their bases and carry no tf_compat_* keys.
+# tf_compat_tested records what was ACTUALLY tested: transformers 5.17.0 only.
+#   The transformers 4 side is inferred (model code written in the transformers 4
+#   era), never separately tested (D-05); inference wording is a docs-layer
+#   concern (27-04).
+# Tooling: scripts/census_compat.py --write-registry --apply (committed,
+#   re-runnable; anchored text insertion only - never a YAML round-trip).

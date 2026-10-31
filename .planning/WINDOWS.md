@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 6
+open_count: 17
 waived_count: 3
-fixed_count: 18
-total_count: 27
-last_updated: 2026-10-14T15:49:25.972Z
+fixed_count: 19
+total_count: 39
+last_updated: 2026-10-29T16:37:25.830Z
 ---
 
 # Broken Windows Ledger
@@ -43,6 +43,22 @@ last_updated: 2026-10-14T15:49:25.972Z
 | 26 | 18 | unrun-verify | docs/getting_started/installation.md |  | 18-01 pip-side alias full-closure resolve deferred: pip HTTP stack stalls against this box's network (5 attempts: direct PyPI x2, tuna mirror bulk+resolver, pinned dual-index metadata crawl) while uv/gh/curl unaffected; mechanism already live-probed (pip 26.2.1, 18-RESEARCH) + wheel METADATA alias line + guard test + uv parity green; re-run: uv venv --seed /tmp/xp --python 3.12 && /tmp/xp/bin/python -m pip install "$(ls dist/*.whl)[base]" on a healthy-network host | open |  | 2026-10-14T14:13:29.034Z |  |
 | 27 | 18 | unrun-verify | pyproject.toml |  | 18-03 Windows fla KDA re-verification deferred by owner (稍后再做, coordinator-relayed 2026-10-14 ~14:5xZ) — WPAR-07 acceptance half + T-18-SC SUS retirement + WINDOWS #18 closure all gate on real-hardware execution (RTX 5080); full checklist in 18-03-SUMMARY.md Task 1 Record; resume on the Windows box from origin/v1.3 (>=399f9f1, the surgery commit): (1) pip install -e ".[fla]" in a fresh venv or the dnallm-cuda env — NO manual triton-windows step, the marker must pull it; (2) pip show triton-windows -> Version: 3.7.1.post27; (3) python -c "import torch; print(torch.__version__, torch.version.cuda)" and record both; (4) python -c "from fla.ops.kda.chunk import chunk_kda; print(callable(chunk_kda))" -> True (equivalent: pytest tests/models/test_plant_helixseek_fla_kernels.py — test_chunk_kda_importable_when_fla_installed gates this import); (5) compile + execute a KDA chunk kernel under the resolved torch (WINDOWS #18 remedy precedent, RTX 5080 sm_120) and record the output; (6) capture env/venv, triton-windows version, torch version + cuda build, import result, kernel evidence, date — then re-run /gsd-execute-phase 18 (18-03 Task 2 closes WINDOWS #18, retires the SUS flag on the evidence, marks WPAR-07) | open |  | 2026-10-14T15:49:25.972Z |  |
 | 28 | post-v1.3 | deviation | example/notebooks/plant_helixseek_cre/plant_helixseek_cre.ipynb |  | First Windows GPU full-suite census (2026-10-19, dnallm-cuda env, RTX 5080, 2498P/120F/32S) surfaced the last unguarded bedtools-ecosystem surface: CRE notebook cell 16's presentation-only zoom figure invokes the pgt CLI (pygenometracks), which pyproject gates platform_system != 'Windows' (line 56, matplotlib-cap rationale) — compute path (cell 11 jaccard numpy dispatch) was already platform-split by 16-01. Disposition: sys.platform == 'win32' seam at the render call only (POSIX branch byte-preserved, data-file writes unguarded, committed outputs kept as the Linux-execution record), docs mirror synced byte-identical. census residue taxonomy: ~92 failures were VRAM-exhaustion cascade (monolithic full-suite run on 16GB vs CI's D-07 staged-serial discipline — not a code defect; affected files re-ran green on the freed GPU), 25 were scikit-allel missing from the owner env (installed per pyproject constraint scikit-allel>=1.3.13,<2; test_vep 56P/5S green), this 1 was the real surface gap. Follow-up: 6 residual failures re-run exclusive-GPU fresh-process — 5 were CUDA-context poisoning from the first real OOM (4 re-verified green standalone: ia3 roundtrip, with_config_file, both TestUnload; mcp_functionality excluded from Windows scope per owner directive 2026-10-19 — MCP not tested on this box, same convention family as the ollama disposition); the one genuine >16GB task is test_ia3_training_mamba (mambapy pscan pure-torch scan, modeling_mamba.py:306 slow_forward → pscan.py:169) — dispositioned as a Windows-GPU-only typed skip at test head (sys.platform=='win32' and cuda available → pytest.skip environment-unavailable, 0.37s verified 2026-10-19); Linux nightly (GB10) and Windows CPU runs still execute it unchanged. Also noted: check_docs_sync gives a false DIFFER on Windows autocrlf=true checkouts (git blobs identical; normalize EOL before trusting a local red). | fixed |  | 2026-10-19T09:40:00.000Z |  |
+| 29 | 27.1 | deviation | docs/user_guide/preset_loading.md |  | Pre-existing repo-wide ruff format failure (untouched by 27.1-01); plan-level format gate not green, touched files clean; logged in phase deferred-items.md | open |  | 2026-10-28T12:09:18.962Z |  |
+| 30 | 27.2 | deviation | scripts/census_compat.py |  | 27.2-03 Rule 1: census_entry now threads the resolved config dir into _remote_record so CrossDNA's auto_map jobs resolve against the checkpoint subdirectory (root-only resolution left the record census-blocked). | open |  | 2026-10-29T04:56:47.578Z |  |
+| 31 | 27.2 | deviation | tests/models/test_census_compat.py |  | 27.2-03 Rule 1: disposition pins (_is_failure_record, _needs_disposition) treat a green load+forward as superseding historical previous_status failure stamps, matching the merge_records green-drop rule. | open |  | 2026-10-29T04:56:47.650Z |  |
+| 32 | 27.2 | deviation | tests/models/test_compat_docs_consistency.py |  | 27.2-03 Rule 1: blocked-map docs pin no longer requires a non-empty census-blocked roster (the campaign measured it to zero); per-row fail-closed mapping stays armed. | open |  | 2026-10-29T04:56:47.741Z |  |
+| 33 | 27.2 | deviation | docs/user_guide/optional_dependencies.md |  | 27.2-04 Rule 3: the plan's verify command yaml.safe_load(nav) cannot parse mkdocs.yml's pre-existing !!python/name: emoji tags - the parse leg runs with yaml.UnsafeLoader (the loader mkdocs config requires); mkdocs build --strict is the independent structural check. | open |  | 2026-10-29T05:15:45.029Z |  |
+| 34 | 27.2 | deviation | docs/user_guide/optional_dependencies.md |  | 27.2-04 Rule 1: GENERanno guide section's meta-sentence ('you never claim the model works as-is') replaced with direct plain-language wording per the 2026-10-21 biologist-readable directive. | open |  | 2026-10-29T05:15:45.126Z |  |
+| 35 | 28 | unmet-truth | .scratch/p28-extras/compat.json |  | BigBird forward_ok=true unmet (28-01): deepspeed 0.19.6 sparse kernel needs triton libtriton.superblock (removed before triton 3.x; absent in 3.6.0 and 3.8.0) — load greens with the extra, forward structurally blocked; owner ruling pending for Plan 02 | open |  | 2026-10-29T15:31:50.260Z |  |
+| 36 | 28 | deviation | scripts/census_compat.py |  | Plan verify-3 command re-scoped under owner ruling A: BigBird asserts remote-code-broken with split evidence, not extra-required-tf5 (CrossDNA-only flip) | open |  | 2026-10-29T16:07:04.565Z |  |
+| 37 | 28 | deviation | dnallm/models/support.py |  | Plan-literal BigBird support word 'works with the deepspeed extra' withheld under owner ruling A: forward measured structurally dead, override stays 'needs deepspeed' | open |  | 2026-10-29T16:07:04.687Z |  |
+| 38 | 28 | deviation | docs/user_guide/optional_dependencies.md |  | 28-03 plan-literal BigBird summary cell 'works with the deepspeed extra' withheld under owner ruling A: guide keeps support word 'needs deepspeed'; the required phrase appears only inside the load-green/forward-red split sentence | open |  | 2026-10-29T16:25:03.717Z |  |
+| 39 | 28 | deviation | tests/test_extras_guard.py | 400 | 28-05 Rule-3 companion: sanctioned cuda121/rocm residue entries re-pinned to the reworded README:260 and models_troubleshooting lines (fla-extra retirement wording, D-09) | open |  | 2026-10-29T16:37:25.830Z |  |
+| 40 | ci-triage-261030 | flake (fixed) | tests/preflight/test_availability.py |  | Windows-leg fast-lane failure, CI run 40895987467 (2026-10-29, pre-dating all 10-30 changes): test_modelscope_cache_candidates_dual_layout_dots asserted a forward-slash-joined expectation against a backslash-joined Windows reality (mixed separators in C:\...\models\org\name___with___dots); same-day fix a106e8e rebuilt the test on platform-native separators — subsequent runs green. Recorded here because the failure class had no ledger row. | fixed | Fixed same-day by a106e8e (fix(test): platform-native separators in modelscope dual-layout test); verified green on all later Windows legs incl. runs 41061141375 / 41062761279-era pushes | 2026-10-30T13:36:00Z | 2026-10-30T13:36:00Z |
+| 41 | ci-triage-261030 | flake (fixed) | tests/tui/test_screens.py |  | Windows-leg fast-lane failure, CI run 41059324819 (2026-10-30 12:57Z push, first run carrying the five 261030 quick-task code changes): test_skipping_the_download_reaches_the_summary_without_downloading failed 1/3606 with textual.css.query.NoMatches: No nodes match 'HeaderTitle' on Header(); identical code passed the Windows leg on run 41061141375 (13:11Z, success) — nondeterministic mount-timing flake (the CSS query races the async Header/HeaderTitle mount on slower Windows runners); the test and TUI screens were untouched by the same-day changes. Fix candidate: poll/wait_for the HeaderTitle query (Textual Pilot) instead of an immediate query. | fixed | Fixed by 166dda2 (test(tui): wait for summary header mount): the skip-path test now polls for the single mounted HeaderTitle through the existing bounded _wait_until helper (~5 s) before rendering the summary. Evidence chain: CI run 41059324819 first-run failure (NoMatches) -> CI run 41061141375 pass -> CI run 41059324819 rerun success -> this fix. Local verification at the fix commit: test_skipping_the_download_reaches_the_summary_without_downloading 1 passed, full tests/tui/test_screens.py 105 passed, complete tests/tui lane 205 passed, re-run green under the tracer gate. | 2026-10-30T13:36:00Z | 2026-10-30T14:10:09Z |
+| 42 | ci-triage-261030 | flake (fixed) | tests/tui/test_screens.py |  | Windows-leg fast-lane failure, CI run 41065033616 (2026-10-30 13:39Z push b7d217d): test_edit_an_existing_config_opens_it_through_the_core failed 1/3606 with bare assert False at test_screens.py:1670 because the ConfigScreen snapshot followed the #entry-from-config click with only one pause — a slow Windows runner could still be showing EntryScreen at the moment of the isinstance snapshot. Prior family data: run 41059324819 (12:57Z) failed the row-41 skip-path test, fixed by 166dda2, while identical code passed run 41061141375 (13:11Z) and the 41059324819 rerun. Family note: click -> single pause -> immediate screen-state assertion is timing-fragile on slow runners; two instances CI-evidenced (rows 41-42), both hardened with bounded _wait_until; other unaudited instances may exist and get hardened on first CI evidence. | fixed | Fixed by 4da1ed5 (test(tui): wait for config screen transition): the target now waits for ConfigScreen through the existing bounded _wait_until helper (~5 s) before _settle_config, preserving the active assertion and all three fake.edit_calls argument assertions; the neighboring empty-path test stays unchanged (polling an already-active EntryScreen settles nothing). Local verification at the fix commit: test_edit_an_existing_config_opens_it_through_the_core 1 passed, full tests/tui/test_screens.py 105 passed, complete tests/tui lane 205 passed, re-run green under the tracer gate. | 2026-10-30T14:29:01Z | 2026-10-30T14:29:01Z |
+| 43 | ci-triage-261030 | flake (fixed) | dnallm/tui/screens/suitability.py |  | Windows-leg test-windows (py3.12) failure, CI run 41081401307 for PR #69 at head 10f53ae (2 failed / 3604 passed): test_data_continue_opens_the_suitability_panel propagated textual.css.query.NoMatches for #suitability-listing — app.on_compatibility_ready routed the current report's local batch into apply_compatibility_ready while the suitability listing table was not yet mounted, and _refresh_availability_cells queried it unguarded; the availability state writes (wizard + screen) happen before the refresh, so the crash only lost the repaint. This is a PRODUCTION mount race, not a test poll: unlike rows 41-42 and 44 the fix belongs in the screen. Family note: rows 41-44 are CI-evidenced asynchronous TUI readiness instances (worker messages and layout can each outrun the DOM); each instance is hardened on first CI evidence, and other unaudited instances are not rewritten speculatively. | fixed | Fixed by 14780da (fix(tui): guard suitability refresh before listing mount): _refresh_availability_cells wraps only its existing #suitability-listing query_one in try/except NoMatches and returns early when the table is absent; mounted-table behavior is byte-for-byte unchanged (same selector, DataTable type, update loop, Coordinate writes, row-count boundary). Evidence: the deterministic unmounted-screen regression test_a_local_batch_before_the_listing_mounts_stores_state_without_raising proved NoMatches RED pre-fix and, post-fix, that both state stores keep the exact CACHED report (WizardState availability_by_entry + screen _local_by_model); focused runs in tests/tui/test_screens.py (regression, test_availability_updates_leave_the_support_cell_untouched, test_data_continue_opens_the_suitability_panel) 3 passed; ruff/format clean. Push to PR #69 updates it for the CI re-check. | 2026-10-30T16:07:12Z | 2026-10-30T16:07:12Z |
+| 44 | ci-triage-261030 | flake (fixed) | tests/tui/test_screens.py |  | Windows-leg test-windows (py3.12) failure, same CI run 41081401307 for PR #69 at head 10f53ae: test_the_panel_is_usable_at_80x24 observed the findings table at Region(x=2, y=17, width=76, height=1), so the original header-plus-one geometry assertion evaluated 1 >= (1+1) and failed — the region snapshot was taken after worker completion and one pause, before the slow Windows runner had finished laying out the table. Family note: rows 41-44 are CI-evidenced asynchronous TUI readiness instances; this one is a test-side layout-settle race (bounded wait like rows 41-42, unlike row 43's production mount guard); each instance is hardened on first CI evidence, and other unaudited instances are not rewritten speculatively. | fixed | Fixed by e89573f (test(tui): wait for findings table layout): the test stores the #data-findings table, awaits the existing bounded _wait_until (~5 s) until table.region.height >= table.header_height + 1, asserts layout_settled with a timeout message, and only then takes the region snapshot; the unchanged original assertion table_region.height >= header_height + 1 plus every body/button/first-row/reason-code assertion is preserved, with no fixed sleep and no _wait_until change. Local verification at the fix commit: test_the_panel_is_usable_at_80x24 1 passed, full tests/tui/test_screens.py 106 passed, complete tests/tui lane 206 passed, ruff/format clean. | 2026-10-30T16:07:12Z | 2026-10-30T16:07:12Z |
 
 ````json
 [
@@ -396,6 +412,162 @@ last_updated: 2026-10-14T15:49:25.972Z
     "recorded_at": "2026-10-14T15:49:25.972Z",
     "resolved_at": null,
     "milestone": "v1.3"
+  },
+  {
+    "id": 28,
+    "kind": "deviation",
+    "phase": "post-v1.3",
+    "file": "example/notebooks/plant_helixseek_cre/plant_helixseek_cre.ipynb",
+    "line": null,
+    "description": "First Windows GPU full-suite census (2026-10-19, dnallm-cuda env, RTX 5080, 2498P/120F/32S) surfaced the last unguarded bedtools-ecosystem surface: CRE notebook cell 16's presentation-only zoom figure invokes the pgt CLI (pygenometracks), which pyproject gates platform_system != 'Windows' (line 56, matplotlib-cap rationale) — compute path (cell 11 jaccard numpy dispatch) was already platform-split by 16-01. Disposition: sys.platform == 'win32' seam at the render call only (POSIX branch byte-preserved, data-file writes unguarded, committed outputs kept as the Linux-execution record), docs mirror synced byte-identical. census residue taxonomy: ~92 failures were VRAM-exhaustion cascade (monolithic full-suite run on 16GB vs CI's D-07 staged-serial discipline — not a code defect; affected files re-ran green on the freed GPU), 25 were scikit-allel missing from the owner env (installed per pyproject constraint scikit-allel>=1.3.13,<2; test_vep 56P/5S green), this 1 was the real surface gap. Follow-up: 6 residual failures re-run exclusive-GPU fresh-process — 5 were CUDA-context poisoning from the first real OOM (4 re-verified green standalone: ia3 roundtrip, with_config_file, both TestUnload; mcp_functionality excluded from Windows scope per owner directive 2026-10-19 — MCP not tested on this box, same convention family as the ollama disposition); the one genuine >16GB task is test_ia3_training_mamba (mambapy pscan pure-torch scan, modeling_mamba.py:306 slow_forward → pscan.py:169) — dispositioned as a Windows-GPU-only typed skip at test head (sys.platform=='win32' and cuda available → pytest.skip environment-unavailable, 0.37s verified 2026-10-19); Linux nightly (GB10) and Windows CPU runs still execute it unchanged. Also noted: check_docs_sync gives a false DIFFER on Windows autocrlf=true checkouts (git blobs identical; normalize EOL before trusting a local red).",
+    "status": "fixed",
+    "reason": "",
+    "recorded_at": "2026-10-19T09:40:00.000Z",
+    "resolved_at": null,
+    "milestone": null
+  },
+  {
+    "id": 29,
+    "kind": "deviation",
+    "phase": "27.1",
+    "file": "docs/user_guide/preset_loading.md",
+    "line": null,
+    "description": "Pre-existing repo-wide ruff format failure (untouched by 27.1-01); plan-level format gate not green, touched files clean; logged in phase deferred-items.md",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-28T12:09:18.962Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
+  },
+  {
+    "id": 30,
+    "kind": "deviation",
+    "phase": "27.2",
+    "file": "scripts/census_compat.py",
+    "line": null,
+    "description": "27.2-03 Rule 1: census_entry now threads the resolved config dir into _remote_record so CrossDNA's auto_map jobs resolve against the checkpoint subdirectory (root-only resolution left the record census-blocked).",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-29T04:56:47.578Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
+  },
+  {
+    "id": 31,
+    "kind": "deviation",
+    "phase": "27.2",
+    "file": "tests/models/test_census_compat.py",
+    "line": null,
+    "description": "27.2-03 Rule 1: disposition pins (_is_failure_record, _needs_disposition) treat a green load+forward as superseding historical previous_status failure stamps, matching the merge_records green-drop rule.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-29T04:56:47.650Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
+  },
+  {
+    "id": 32,
+    "kind": "deviation",
+    "phase": "27.2",
+    "file": "tests/models/test_compat_docs_consistency.py",
+    "line": null,
+    "description": "27.2-03 Rule 1: blocked-map docs pin no longer requires a non-empty census-blocked roster (the campaign measured it to zero); per-row fail-closed mapping stays armed.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-29T04:56:47.741Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
+  },
+  {
+    "id": 33,
+    "kind": "deviation",
+    "phase": "27.2",
+    "file": "docs/user_guide/optional_dependencies.md",
+    "line": null,
+    "description": "27.2-04 Rule 3: the plan's verify command yaml.safe_load(nav) cannot parse mkdocs.yml's pre-existing !!python/name: emoji tags - the parse leg runs with yaml.UnsafeLoader (the loader mkdocs config requires); mkdocs build --strict is the independent structural check.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-29T05:15:45.029Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
+  },
+  {
+    "id": 34,
+    "kind": "deviation",
+    "phase": "27.2",
+    "file": "docs/user_guide/optional_dependencies.md",
+    "line": null,
+    "description": "27.2-04 Rule 1: GENERanno guide section's meta-sentence ('you never claim the model works as-is') replaced with direct plain-language wording per the 2026-10-21 biologist-readable directive.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-29T05:15:45.126Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
+  },
+  {
+    "id": 35,
+    "kind": "unmet-truth",
+    "phase": "28",
+    "file": ".scratch/p28-extras/compat.json",
+    "line": null,
+    "description": "BigBird forward_ok=true unmet (28-01): deepspeed 0.19.6 sparse kernel needs triton libtriton.superblock (removed before triton 3.x; absent in 3.6.0 and 3.8.0) — load greens with the extra, forward structurally blocked; owner ruling pending for Plan 02",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-29T15:31:50.260Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
+  },
+  {
+    "id": 36,
+    "kind": "deviation",
+    "phase": "28",
+    "file": "scripts/census_compat.py",
+    "line": null,
+    "description": "Plan verify-3 command re-scoped under owner ruling A: BigBird asserts remote-code-broken with split evidence, not extra-required-tf5 (CrossDNA-only flip)",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-29T16:07:04.565Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
+  },
+  {
+    "id": 37,
+    "kind": "deviation",
+    "phase": "28",
+    "file": "dnallm/models/support.py",
+    "line": null,
+    "description": "Plan-literal BigBird support word 'works with the deepspeed extra' withheld under owner ruling A: forward measured structurally dead, override stays 'needs deepspeed'",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-29T16:07:04.687Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
+  },
+  {
+    "id": 38,
+    "kind": "deviation",
+    "phase": "28",
+    "file": "docs/user_guide/optional_dependencies.md",
+    "line": null,
+    "description": "28-03 plan-literal BigBird summary cell 'works with the deepspeed extra' withheld under owner ruling A: guide keeps support word 'needs deepspeed'; the required phrase appears only inside the load-green/forward-red split sentence",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-29T16:25:03.717Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
+  },
+  {
+    "id": 39,
+    "kind": "deviation",
+    "phase": "28",
+    "file": "tests/test_extras_guard.py",
+    "line": 400,
+    "description": "28-05 Rule-3 companion: sanctioned cuda121/rocm residue entries re-pinned to the reworded README:260 and models_troubleshooting lines (fla-extra retirement wording, D-09)",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-29T16:37:25.830Z",
+    "resolved_at": null,
+    "milestone": "v1.4"
   }
 ]
 ````

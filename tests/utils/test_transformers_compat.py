@@ -795,14 +795,43 @@ class TestPretrainedConfigLegacyDefaults:
     """
 
     def test_bare_config_answers_legacy_defaults(self):
-        """After apply_patches() a fresh config answers both legacy defaults with False."""
+        """After apply_patches() a fresh config answers every legacy default."""
         config = PretrainedConfig()
         missing = [
-            name for name in ("is_decoder", "add_cross_attention") if not hasattr(config, name)
+            name
+            for name in ("is_decoder", "add_cross_attention", "pad_token_id")
+            if not hasattr(config, name)
         ]
         assert not missing, f"legacy config defaults missing after apply_patches(): {missing}"
         assert config.is_decoder is False
         assert config.add_cross_attention is False
+        assert config.pad_token_id is None
+
+    def test_config_without_pad_token_id_answers_none(self):
+        """The DNABERT-2 read shape: a config lacking pad_token_id answers None.
+
+        4.x set ``pad_token_id`` (default None) on every config instance; 5.x
+        resolves it only when config.json carries the key. DNABERT-2's remote
+        ``bert_layers.py`` reads it unguarded (``padding_idx=config.pad_token_id``),
+        so a key-absent checkpoint died with AttributeError until pad_token_id
+        joined the closed map (2026-10-23 Mac audit; platform-independent).
+        """
+        config = PretrainedConfig()
+        assert not hasattr(config, "pad_token_id") or config.pad_token_id is None
+
+        apply_patches()  # repeat application must not synthesize a concrete value
+
+        assert config.pad_token_id is None
+
+    def test_explicitly_set_pad_token_id_wins_over_default(self):
+        """An explicitly set pad_token_id keeps its value; the default answers None only."""
+        config = PretrainedConfig()
+        config.pad_token_id = 7
+
+        apply_patches()
+
+        assert config.pad_token_id == 7
+        assert PretrainedConfig().pad_token_id is None
 
     def test_explicitly_set_value_wins_over_default(self):
         """An explicitly set instance value shadows the restored default."""
@@ -843,12 +872,14 @@ class TestPretrainedConfigLegacyDefaults:
             )
 
     def test_patch_skips_when_defaults_resolve_natively(self, monkeypatch):
-        """A config class resolving both names natively (the 4.x shape) is left untouched."""
+        """A config class resolving every closed-map name natively (the 4.x shape) is left untouched."""
 
         class _NativeConfig:
             is_decoder = False
 
             add_cross_attention = False
+
+            pad_token_id = None
 
         monkeypatch.setattr(transformers.configuration_utils, "PretrainedConfig", _NativeConfig)
         transformers_compat._patch_pretrained_config_legacy_defaults()
@@ -1322,6 +1353,15 @@ EXPECTED_PATCH_INSTALLERS = frozenset({
     "_patch_get_head_mask",
     "_patch_legacy_init_weights_bookkeeping",
     "_patch_legacy_tie_weights_arity",
+    # 27-02 census-driven rungs (tests/models/compat_census.json evidence)
+    "_patch_apply_chunking_to_forward",
+    "_patch_tied_weights_bookkeeping_on_load",
+    # 27.2-01 census-measured rung: GENERanno ROPE 'default' table entry
+    "_patch_rope_default_init",
+    # 27.2-01 Task 2 author-defect repair: GENA-LM token_type_ids buffer
+    "_patch_gena_token_type_ids_on_load",
+    # 27.2-02 Task 1 author-defect repair: MutBERT 2-D input forward
+    "_patch_mutbert_forward_on_load",
 })
 
 

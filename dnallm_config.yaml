@@ -1,0 +1,9 @@
+task:
+  task_type: binary
+model:
+  name: zhangtaolab/FungiHelixSeek
+finetune:
+  max_length: 8192
+inference:
+  max_length: 8192
+lora: {}

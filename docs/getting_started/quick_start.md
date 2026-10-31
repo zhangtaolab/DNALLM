@@ -137,6 +137,26 @@ uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation
 
 Please ensure your machine can connect to GitHub, otherwise Mamba dependencies may fail to download.
 
+## Start From Your Own Data: the Pre-flight Wizard
+
+Before writing any config by hand, run the interactive pre-flight wizard. It checks
+your data file, lists which models are compatible, and writes a validated config
+for you — all in the terminal, no YAML editing:
+
+```bash
+pip install "dnallm[tui]"
+dnallm preflight
+```
+
+The wizard takes you through seven screens (environment, entry, your data, model
+suitability, config editing with live validation, optional model download,
+summary) and saves the exact config file it previewed. If you already have a
+config, `dnallm preflight --config my.yaml` opens it for live-validated editing.
+Full walkthrough with screenshots: [Pre-flight Wizard](../user_guide/tui/preflight_wizard.md).
+
+To load a registry model in one Python call afterwards, see
+[Preset Model Loading](../user_guide/preset_loading.md).
+
 ## Basic Usage
 
 ### 1. Basic Model Loading and Inference
@@ -316,13 +336,15 @@ DNALLM supports the following task types:
 
 - Explore the [API documentation](../api/inference/inference.md) for detailed function references
 - Check out [user guides](../user_guide/getting_started.md) for specific use cases
+- Check your data and pick a model interactively: [Pre-flight Wizard](../user_guide/tui/preflight_wizard.md)
+- Load a registry model in one call: [Preset Model Loading](../user_guide/preset_loading.md)
 - Visit the [FAQ](../faq/index.md) for common questions
 - Join the community discussions on GitHub
 
 ## Need More Details?
 
 - See [Installation Guide](installation.md) for complete dependency information, including:
-  - All available dependency groups (`all`, `base`, `dev`, `test`, `notebook`, `docs`, `ui`, `mcp`, `fla`)
+  - All available dependency groups (`all`, `dev`, `test`, `notebook`, `docs`, `ui`, `mcp`) — core dependencies come with the plain base install, no extra needed
   - Hardware-specific groups (`cpu`, `cuda124`, `cuda126`, `cuda128`, `cuda130` — mutually exclusive; `mamba` combines with a CUDA group)
   - Installation scenarios for different use cases
   - Troubleshooting common issues

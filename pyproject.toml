@@ -1,7 +1,7 @@
 [project]
 name = "dnallm"
-version = "1.3.3"
-description = "A comprehensive toolkit for fine-tuning and inference with DNA Language Models"
+version = "1.4.1"
+description = "A comprehensive toolkit for fine-tuning and inference with DNA Large Language Models"
 readme = "README.md"
 requires-python = ">=3.11"
 keywords = ["dna", "language-model", "bioinformatics", "machine-learning", "genomics"]
@@ -31,6 +31,13 @@ dependencies = [
     "datasets<=5.1.0",
     "einops>=0.7.0",
     "evaluate>=0.4.3",
+    # KDA kernels for PlantHelixSeek remote code (HelixSeekDelta layers). Bare
+    # install: rides the already-installed torch/triton — do NOT use fla's own
+    # backend extras
+    # ([cuda]/[rocm]), they pin their own torch and would downgrade this environment.
+    # D-09 (28-01): promoted from the retired fla extra to a base dependency —
+    # PlantHelixSeek works out-of-the-box on a default install.
+    "flash-linear-attention>=0.5.2,<0.6",
     "huggingface-hub>=0.29.0",
     "ipykernel>=6.29.5",
     "ipywidgets>=8",
@@ -45,7 +52,12 @@ dependencies = [
     "ninja>1",
     "numba>0.56.2",
     # numpy 1.x retired 2026-10-10; 1.x users stay on the 0.8.x series
-    "numpy>=2.0.0",
+    # numpy 2.5.x with coverage 7.16.x on Python 3.13 fails every instrumented
+    # run at conftest import with ImportError: cannot load module more than
+    # once per process (numpy double-init guard). The CI matrix pins numpy
+    # 2.2.0 and the 1.26.4 leg was retired 2026-10. Lift the <2.6 ceiling only
+    # after coverage compatibility with numpy 2.6+ is verified.
+    "numpy>=2.0.0,<2.6",
     "optuna>=3.6.0",
     "openpyxl>=3.1.5",
     "pandas>=2.2.3",
@@ -62,9 +74,15 @@ dependencies = [
     "starlette>=0.40.0,<1.9.0",
     "tensorboardx>=2.6.2.2",
     "tokenizers>=0.21.0",
-    "torch>=2.4.0,<2.12",
+    "torch>=2.4.0,<2.15",
     "tqdm>=4.67.1",
     "transformers>=4.49.0,<6",
+    # WPAR-07 (18-01): torch Windows wheels declare no triton, but fla's
+    # fla.ops.* kernels need it -- declare the triton-lang-org fork wheel,
+    # Windows-only, exact band (no floating). Linux resolvers see the marker
+    # evaluate false and never pull it. D-09 (28-01): moved verbatim from the
+    # retired fla extra into the base dependency set.
+    "triton-windows>=3.7.1.post27,<3.8; platform_system == 'Windows'",
     "umap-learn>=0.5.7",
     "uvicorn>=0.24.0",
     "wandb>=0.19.8",
@@ -89,6 +107,7 @@ dev = [
     "seaborn>=0.13.0",
 ]
 test = [
+    "dnallm[tui]",
     "pytest>=8.4",
     "pytest-asyncio>=1.0",
     "pytest-cov>=7.0",
@@ -143,51 +162,61 @@ mcp = [
     # landing on the broken 1.22.
     "pydantic-ai>=1.107.0,<2",
 ]
+# Optional terminal-wizard layer (`dnallm preflight`); the platformdirs band
+# mirrors textual's own declared >=3.6,<5 constraint so the resolver has one answer.
+tui = [
+    "textual>=8.2,<9",
+    "platformdirs>=3.6,<5",
+]
 full = [
     "dnallm[dev,test,notebook,mcp]",
     "isort>=6.0.1",
 ]
-# Deprecated one-cycle alias (owner 2026-10-14): base was renamed to full in
-# v1.3; this alias still installs the full set (no silent under-install).
-# Remove in v1.4 -- pip/uv then only warn that the extra does not exist and
-# exit 0, leaving a core-only under-install (which this cycle prevents).
-base = [
-    "dnallm[full]",
-]
 all = [
-    "dnallm[full,dev,test,notebook,docs,ui,mcp,fla]",
+    "dnallm[full,dev,test,notebook,docs,ui,mcp,tui]",
 ]
 cpu = [
-    "torch>=2.4.0,<2.12",
+    "torch>=2.4.0,<2.15",
 ]
 cuda124 = [
-    "torch>=2.4.0,<2.12",
+    "torch>=2.4.0,<2.15",
 ]
 cuda126 = [
-    "torch>=2.6.0,<2.12",
+    "torch>=2.6.0,<2.15",
 ]
 cuda128 = [
-    "torch>=2.6.0,<2.12",
+    "torch>=2.6.0,<2.15",
 ]
 cuda130 = [
-    "torch>=2.9.0,<2.12",
+    "torch>=2.9.0,<2.15",
 ]
+# Upstream ships no mamba-ssm wheels for torch 2.11+ (release matrix stops
+# at torch 2.10), and torch 2.14 headers require C++20 while the 2.3.2.post1
+# setup.py hardcodes c++17: source installs on modern torch must go through
+# scripts/install_mamba.sh (sha256-pinned sdist + the four -std flag edits,
+# upstream PR #1000 equivalent). CI installs the kernels exclusively via
+# that script; this extra stays the end-user torch<2.12 fast path.
 mamba = [
     "causal_conv1d==1.7.0",
     "mamba-ssm==2.3.2.post1",
-    "torch>=2.6.0,<2.12",
+    "torch>=2.6.0,<2.15",
 ]
-# KDA kernels for PlantHelixSeek remote code (HelixSeekDelta layers). Bare install:
-# rides the already-installed torch/triton — do NOT use fla's own backend extras
-# ([cuda]/[rocm]), they pin their own torch and would downgrade this environment.
-fla = [
-    "flash-linear-attention>=0.5.2,<0.6",
-    # WPAR-07 (18-01): torch Windows wheels declare no triton, but fla's
-    # fla.ops.* kernels need it -- declare the triton-lang-org fork wheel,
-    # Windows-only, exact band (no floating). Linux resolvers see the marker
-    # evaluate false and never pull it.
-    "triton-windows>=3.7.1.post27,<3.8; platform_system == 'Windows'",
-]
+# deepspeed.ops.sparse_attention was REMOVED upstream in v0.19.7 (2026-09-16);
+# GENA-LM-BigBird's remote code imports it, so the band cap is mandatory — an
+# unpinned resolve installs a deepspeed whose module no longer exists and the
+# model stays broken despite the extra. Linux + CUDA compile package: no
+# platform marker by design (D-11) — pip fails loudly where the build cannot
+# run rather than silently installing an empty extra. Never a member of
+# all/full (D-13).
+deepspeed = ["deepspeed>=0.19.6,<0.19.7"]
+# flash-attn's sdist imports torch in setup.py and ships no pyproject.toml, so
+# an isolated PEP 517 build dies with ModuleNotFoundError: torch — end-user
+# source installs must carry --no-build-isolation (documented in
+# optional_dependencies.md). CI builds it exclusively through
+# scripts/install_flash_attn.sh (sha256-pinned sdist + explicit sm_121 gencode
+# patch); this extra is the end-user dependency contract. Linux + CUDA only,
+# no platform marker (D-11), never a member of all/full (D-13).
+flash-attn = ["flash-attn>=2.8.3.post2,<2.9"]
 
 #mamba = [
 #    "mamba-ssm>=2.2",

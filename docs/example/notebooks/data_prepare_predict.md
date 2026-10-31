@@ -52,10 +52,11 @@ inferencer = DNAInference(
 )
 
 results = inferencer.infer(
-    file_path="../../../../tests/test_data/binary_classification/test.csv",
-    batch_size=32
+    file_path="../../../../tests/test_data/binary_classification/test.csv"
 )
 ```
+
+Batch size is controlled by the `batch_size` field in the inference config YAML, not by `infer()`.
 
 ## Related Tutorials
 

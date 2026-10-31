@@ -25,17 +25,29 @@ updates:
       # no longer exports as of 5.17 — mamba-family model loading breaks on
       # upgrades until upstream remote code adapts (see .planning/WINDOWS.md).
       # A transformers bump must re-verify the mamba load path before merge.
+      # Re-verify duty: a transformers bump must also re-run the census lane
+      # (gh workflow run census_compat.yml --ref <branch>, dispatch-only) and
+      # land the refreshed tf_compat_* registry fields before merging the bump.
       # datasets is pinned <=3.2.0 in pyproject (tokenization pipeline API);
       # the pin itself is the constraint Dependabot already respects.
-      # torch: the ceiling (<2.12, mirrored across every cuda/rocm/mamba
-      # extra) is an ABI claim, not a version preference. The exact-pinned
-      # native kernel stack (mamba-ssm 2.3.2.post1, causal-conv1d 1.7.0,
-      # evo-venv flash-attn 2.8.3.post1) compiles against the installed
-      # torch; widening the ceiling re-resolves torch on any reinstall and
-      # breaks those kernels plus the ~50-min sm_120 flash-attn wheel build
-      # (PR #42's fast-leg green never exercised the dispatch-only legs that
-      # carry them). Bump torch only as a coordinated kernel-rebuild +
-      # nightly-validation cycle.
+      # torch: the ceiling (<2.15, mirrored across the cpu/cuda124/cuda126/
+      # cuda128/cuda130/mamba extras) is an ABI claim, not a version
+      # preference: the exact-pinned native kernel stack (mamba-ssm
+      # 2.3.2.post1, causal-conv1d 1.7.0) still compiles against the
+      # installed torch. The 2026-10 raise completed the coordinated
+      # kernel-rebuild + nightly-validation cycle this entry used to
+      # demand: run 40140203118 resolved+installed torch 2.14.1+cu130 on
+      # the GB10 runner with the suite census at 3215 passed (the 2
+      # failures torch-independent); causal-conv1d 1.7.0 source-compiles
+      # green as-is; mamba-ssm 2.3.2.post1 builds via the sha256-pinned
+      # sdist -std=c++17 -> -std=c++20 patch pipeline in
+      # scripts/install_mamba.sh (kernel-rebuild half, landed with the
+      # mamba-extra install rework). The prior ceiling (origin 5721ec3,
+      # 2026-05-08) was forward-looking, never defect-driven. Standing
+      # rule: ATen's C++20 floor is torch-2.14-specific, so any bump to
+      # >=2.15 repeats the same coordinated kernel-rebuild +
+      # nightly-validation cycle; this ignore stays so Dependabot never
+      # auto-widens an ABI ceiling.
       - dependency-name: "torch"
         update-types: ["version-update:semver-minor", "version-update:semver-major"]
     groups:

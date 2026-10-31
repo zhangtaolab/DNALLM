@@ -1035,7 +1035,7 @@ class DNADataset:
                 return example
 
             # Create a dataset with random reverse complement.
-            ds.map(concat_fn, with_indices=True, desc="Reverse complementary")
+            ds = ds.map(concat_fn, with_indices=True, desc="Reverse complementary")
             return ds
 
         if isinstance(self.dataset, DatasetDict):

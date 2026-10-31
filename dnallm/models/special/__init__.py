@@ -1,3 +1,8 @@
+# Ordering guarantee: the compat shims must install before the module-level
+# transformer imports below resolve any modeling symbol (see
+# dnallm/models/__init__.py for the transformers >= 5.19 rationale).
+from ...utils import transformers_compat as _transformers_compat  # ruff: ignore[unused-import]
+
 from .dnabert2 import _handle_dnabert2_models
 from .evo import _handle_evo1_models, _handle_evo2_models
 from .gpn import _handle_gpn_models

@@ -6,7 +6,7 @@ title: Getting Started
 
 # Getting Started
 
-The 15-minute path from a clean machine to a fine-tuned DNA language model: install, load a pre-trained model, run one inference, run one fine-tune. Everything below runs on CPU; add a GPU extra when you want speed (one command, linked below — not duplicated here).
+The 15-minute path from a clean machine to a fine-tuned DNA large language model: install, load a pre-trained model, run one inference, run one fine-tune. Everything below runs on CPU; add a GPU extra when you want speed (one command, linked below — not duplicated here).
 
 For the complete install matrix (CUDA lanes, NPU/XPU, Mamba, plain-pip GPU quirks) see the [Installation Guide](../getting_started/installation.md); for runnable examples of every workflow see the [Quick Start](../getting_started/quick_start.md).
 
@@ -49,6 +49,8 @@ uv pip install -e '.[full,cuda130]'   # CUDA 13.0, driver >= 580
 
 Pick your lane by GPU generation in the [GPU Support Matrix](../getting_started/gpu_support.md). Note: the CUDA extras' wheel-index pins are uv-only — under plain `pip` a GPU torch build must be installed last from the PyTorch index; see [GPU Support with plain pip](../getting_started/installation.md#gpu-support-with-plain-pip) and the [Install Honesty Matrix](../getting_started/install_honesty.md).
 
+> **Extras changes in v1.4:** the former `fla` extra was retired — flash-linear-attention (the kernels behind the PlantHelixSeek models) is now a base dependency, so those models load on a default install with no extra step. Two new optional extras cover models with compiled dependencies: `.[deepspeed]` (GENA-LM-BigBird) and `.[flash-attn]` (CrossDNA). Both build from source on Linux with an NVIDIA GPU and are never part of `full` or `all`; see [Optional Dependencies](../user_guide/optional_dependencies.md).
+
 ### Verify
 
 ```bash
@@ -57,6 +59,8 @@ python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 ```
 
 More verification commands (core modules, CUDA, Mamba, XPU): [Installation — Verification](../getting_started/installation.md#verification).
+
+> **Have your own data?** The fastest route from here is the pre-flight wizard: `pip install "dnallm[tui]"`, then run `dnallm preflight`. The terminal wizard checks your sequences, tells you which of the 236 registry models are compatible, and writes a validated config file for you — no YAML hand-editing. Already have a config? `dnallm preflight --config my.yaml` opens it for live-validated editing. See the [Pre-flight Wizard guide](../user_guide/tui/preflight_wizard.md).
 
 ## Step 2 — Load a model, run one inference
 
@@ -86,7 +90,7 @@ from dnallm import load_config, load_model_and_tokenizer, DNAInference
 configs = load_config("inference_config.yaml")
 
 model, tokenizer = load_model_and_tokenizer(
-    "zhangtaolab/plant-dnagpt-BPE-promoter",  # 130+ models available
+    "zhangtaolab/plant-dnagpt-BPE-promoter",  # 236 registry models: 49 pretrained + 187 fine-tuned
     task_config=configs["task"],
     source="huggingface",  # or "modelscope" / "local"
 )
@@ -111,6 +115,8 @@ The result is a dict keyed by sequence index — `label` is the predicted class 
     }
 }
 ```
+
+Shortcut: any registry model can also be loaded in one call — `load_preset_model("zhangtaolab/plant-dnabert-BPE-promoter", configs["task"])` (import from `dnallm.models.model`) resolves the registry entry, validates the task type, and copies the model's head settings for you. See [Preset Model Loading](../user_guide/preset_loading.md).
 
 ## Step 3 — Fine-tune a model once
 
@@ -147,6 +153,7 @@ The config's `finetune` section is a Hugging Face `TrainingArguments` subset (3 
 
 - **`torch.cuda.is_available()` is False after a plain `pip install`** — you most likely have the CPU wheel. On Windows the default PyPI torch wheel is CPU-only, and `pip` ignores the CUDA index pins in `pyproject.toml`. Fix: [GPU Support with plain pip](../getting_started/installation.md#gpu-support-with-plain-pip).
 - **Resolver conflict when combining hardware extras** — `cpu`, `cuda124`–`cuda130` are mutually exclusive by design; pick exactly one (`mamba` is the only hardware extra that combines with a CUDA group). See [Dependency Groups](../getting_started/installation.md#dependency-groups).
+- **numpy 1.x environments fail to resolve** — the v1.4 base dependencies require numpy >= 2.0; environments pinned to numpy 1.x should stay on the 0.8.x release series.
 - **Mamba extras fail to build** — `mamba-ssm` compiles from source and needs `nvcc` matching your PyTorch CUDA version. See [Mamba Installation Failure](../getting_started/installation.md#mamba-installation-failure).
 - **First model load is slow / needs network** — weights download from Hugging Face (or ModelScope via `source="modelscope"`) on first use and are cached afterwards.
 
@@ -158,5 +165,7 @@ Full troubleshooting list: [Installation — Troubleshooting](../getting_started
 - [Configuration Reference](../configuration/configuration.md) — every YAML section (`task`, `finetune`, `lora`, `ia3`, `inference`, `vep`, `sweep`, `benchmark`)
 - [Architecture Overview](../architecture/overview.md) — how a config flows through model loading, training, and inference
 - Task guides: [Fine-tuning](../user_guide/fine_tuning/getting_started.md) · [Inference](../user_guide/inference/getting_started.md) · [CLI](../user_guide/cli/usage.md)
+- Check data/model compatibility interactively: [Pre-flight Wizard](../user_guide/tui/preflight_wizard.md) · Load a registry model in one call: [Preset Model Loading](../user_guide/preset_loading.md)
+- Which models work with transformers 5: [Model Compatibility](../user_guide/model_compatibility.md) · Model-specific extras (`deepspeed`, `flash-attn`): [Optional Dependencies](../user_guide/optional_dependencies.md)
 - Serve predictions to AI assistants: `dnallm-mcp-server --transport streamable-http` — [MCP Server Guide](../user_guide/mcp/startserver.md)
 - Contributing code: [CONTRIBUTING.md](https://github.com/zhangtaolab/DNALLM/blob/main/CONTRIBUTING.md) · Full docs site: https://zhangtaolab.github.io/DNALLM/

@@ -1,0 +1,740 @@
+"""Every user-facing string the pre-flight wizard shows (D-10).
+
+Copy lives in one module for two reasons: the phase-end plain-language review
+is a single-file read, and tests can assert on the exact sentence a user sees
+instead of re-deriving it.
+
+Every sentence is written for a biologist: no exception class names, no
+reason-code spelling, no jargon. Technical identifiers (a version string, a
+model name, a folder path) are shown verbatim.
+"""
+
+__all__ = [
+    "APP_TITLE",
+    "AVAILABILITY_CACHED_HUB",
+    "AVAILABILITY_CACHED_LOCAL",
+    "AVAILABILITY_DETAIL_LABEL",
+    "AVAILABILITY_REMOTE",
+    "CANCEL_PENDING_NOTE",
+    "CHECKING_PLACEHOLDER",
+    "CONFIG_BUILDING",
+    "CONFIG_CONTINUE_TO_DOWNLOAD",
+    "CONFIG_DEFAULT_EXPORT_NAME",
+    "CONFIG_EDITING",
+    "CONFIG_ERRORS_HEADING",
+    "CONFIG_ERROR_DETAILS_HIDE",
+    "CONFIG_ERROR_DETAILS_SHOW",
+    "CONFIG_ERROR_DETAIL_LINE",
+    "CONFIG_ERROR_GENERIC",
+    "CONFIG_ERROR_LINE",
+    "CONFIG_ERROR_MESSAGES",
+    "CONFIG_FIELD_HINTS",
+    "CONFIG_FIELD_LABELS",
+    "CONFIG_HAS_ERRORS",
+    "CONFIG_KEPT_AS_IS_HEADING",
+    "CONFIG_KEPT_AS_IS_LINE",
+    "CONFIG_NO_SOURCE",
+    "CONFIG_OUTPUT_PATH_LABEL",
+    "CONFIG_OUTPUT_PATH_PROMPT",
+    "CONFIG_PANEL_TITLE",
+    "CONFIG_PREVIEW_HEADING",
+    "CONFIG_READONLY_FACTS_NOTE",
+    "CONFIG_READY",
+    "CONFIG_SAVED",
+    "CONFIG_SAVE_ACTION",
+    "CONFIG_SAVE_DISABLED_REASON",
+    "CONFIG_SAVING",
+    "CONFIG_SECTION_FINETUNE",
+    "CONFIG_SECTION_INFERENCE",
+    "CONFIG_SECTION_LORA",
+    "CONFIG_SECTION_MODEL",
+    "CONFIG_SECTION_TASK",
+    "DATA_CHARSET_HEADING",
+    "DATA_CHARSET_ROW",
+    "DATA_CHECK_ACTION",
+    "DATA_CONTINUE_ACTION",
+    "DATA_COUNT_NOT_APPLICABLE",
+    "DATA_FINDINGS_COLUMNS",
+    "DATA_FINDINGS_HEADING",
+    "DATA_PANEL_TITLE",
+    "DATA_PATH_PROMPT",
+    "DATA_READY",
+    "DATA_SKIP_ACTION",
+    "DATA_SKIP_NOTE",
+    "DATA_SPLIT_ROW",
+    "DATA_SPLIT_ROW_EMPTY",
+    "DATA_SUMMARY_HEADING",
+    "DOWNLOAD_ATTEMPT",
+    "DOWNLOAD_BLURB",
+    "DOWNLOAD_CANCELLED",
+    "DOWNLOAD_CANCEL_ACTION",
+    "DOWNLOAD_DONE",
+    "DOWNLOAD_ELAPSED",
+    "DOWNLOAD_FAILED",
+    "DOWNLOAD_MODEL_LABEL",
+    "DOWNLOAD_NOT_STARTED",
+    "DOWNLOAD_NO_MODEL",
+    "DOWNLOAD_PANEL_TITLE",
+    "DOWNLOAD_PROGRESS",
+    "DOWNLOAD_RETRY_ACTION",
+    "DOWNLOAD_SIZE_LABEL",
+    "DOWNLOAD_SIZE_UNKNOWN",
+    "DOWNLOAD_SKIP_ACTION",
+    "DOWNLOAD_START_ACTION",
+    "EMPTY_PATH_PROMPT",
+    "ENTRY_BLURB",
+    "ENTRY_CONFIG_EMPTY",
+    "ENTRY_CONFIG_PROMPT",
+    "ENTRY_EDIT_CONFIG",
+    "ENTRY_PANEL_TITLE",
+    "ENTRY_START_FROM_DATA",
+    "ENV_CHECK_FAILED",
+    "ENV_CONTINUE_ACTION",
+    "ENV_DEVICE_SECTION",
+    "ENV_DISK_SECTION",
+    "ENV_PANEL_TITLE",
+    "ENV_ROW_LABELS",
+    "ENV_VERSIONS_SECTION",
+    "HOSTING_NOT_VERIFIED",
+    "HUB_NAMES",
+    "INSTALL_HINT",
+    "LAB_ROW_FLAG",
+    "NO_DATA_PROVIDED",
+    "NO_DATA_YET",
+    "NO_FINDINGS",
+    "NO_HEAD_LABELS",
+    "PROBING_PLACEHOLDER",
+    "QUIT_HINT",
+    "SELECT_MODEL_HINT",
+    "SUITABILITY_CHECK_ACTION",
+    "SUITABILITY_FAILED",
+    "SUITABILITY_INTENT_FINETUNE",
+    "SUITABILITY_INTENT_PREDICT",
+    "SUITABILITY_LISTING_COLUMNS",
+    "SUITABILITY_LISTING_HEADING",
+    "SUITABILITY_MODELS_PROMPT",
+    "SUITABILITY_PANEL_TITLE",
+    "SUITABILITY_READY",
+    "SUITABILITY_TASK_LEGEND",
+    "SUITABILITY_TASK_PROMPT",
+    "SUITABILITY_VERDICTS_HEADING",
+    "SUITABILITY_VERDICT_COLUMNS",
+    "SUMMARY_CONFIG_MISSING",
+    "SUMMARY_HEADINGS",
+    "SUMMARY_MODEL_SKIPPED",
+    "SUMMARY_MODEL_STOPPED",
+    "SUMMARY_PANEL_TITLE",
+    "SUMMARY_QUIT_ACTION",
+    "TASK_TYPE_GLOSSES",
+    "THIRD_PARTY_ROW_FLAG",
+    "UNKNOWN_STILL_DOWNLOADABLE",
+    "USE_MODEL_ACTION",
+    "USE_MODEL_CONFIRMED",
+    "config_error_message",
+]
+
+APP_TITLE = "DNALLM pre-flight check"
+
+# ── Entry choice (D-07) ─────────────────────────────────────────────────────
+# Two doors: the new user starts from their data, the returning user opens the
+# file they already have. Exported by the entry panel, skipped by --config.
+
+ENTRY_PANEL_TITLE = "Where would you like to start?"
+
+ENTRY_BLURB = (
+    "Start from your own data and we will suggest models and build a config, "
+    "or open a config file you already have."
+)
+
+ENTRY_START_FROM_DATA = "Start from my data"
+
+ENTRY_EDIT_CONFIG = "Edit an existing config file"
+
+ENTRY_CONFIG_PROMPT = "Paste the full path to an existing config file (.yaml)."
+
+ENTRY_CONFIG_EMPTY = (
+    'Type the full path to the config file first, then press "Edit an existing config file".'
+)
+
+INSTALL_HINT = (
+    "The terminal wizard needs an optional package that is not installed yet. "
+    'Install it with: pip install "dnallm[tui]"'
+)
+
+QUIT_HINT = "Press q at any time to quit."
+
+CHECKING_PLACEHOLDER = "checking…"
+
+ENV_PANEL_TITLE = "What this computer can do"
+
+ENV_VERSIONS_SECTION = "Software versions"
+
+ENV_DEVICE_SECTION = "Graphics card and memory"
+
+ENV_DISK_SECTION = "Free disk space for model downloads"
+
+# Labels for the two placeholder rows the env panel paints before its worker
+# reports. The real rows carry their own labels from dnallm.utils.env_info.
+ENV_ROW_LABELS = {
+    "device": ENV_DEVICE_SECTION,
+    "disk": ENV_DISK_SECTION,
+}
+
+ENV_CHECK_FAILED = (
+    "We could not finish checking the graphics card and the free disk space. "
+    "The rest of this page still works and you can keep going."
+)
+
+ENV_CONTINUE_ACTION = "Continue to your data"
+
+# ── Data panel (TUI-04) ──────────────────────────────────────────────────────
+# Plain language for a biologist; the technical identifiers the panel shows
+# beside these sentences (reason codes, file paths, characters) stay verbatim.
+
+DATA_PANEL_TITLE = "Your data"
+
+DATA_PATH_PROMPT = "Paste the full path to your data file (CSV, TSV, JSON, FASTA or TXT)."
+
+DATA_CHECK_ACTION = "Check this data"
+
+# The step is optional (D-08), but the way forward must always be one click away.
+DATA_CONTINUE_ACTION = "Continue to models"
+
+DATA_SKIP_ACTION = "I don't have data yet"
+
+# D-08: the step is optional, and skipping states the consequence plainly.
+DATA_SKIP_NOTE = (
+    "No data is fine. The next page will judge models from the model and your "
+    "task alone. The length and character checks stay empty until you add data."
+)
+
+NO_DATA_PROVIDED = "No data provided yet."
+
+EMPTY_PATH_PROMPT = 'Type the full path to your data file first, then press "Check this data".'
+
+DATA_READY = "We read your data. Here is what we found."
+
+DATA_SUMMARY_HEADING = "What is in your data"
+
+DATA_CHARSET_HEADING = "Characters used"
+
+DATA_FINDINGS_HEADING = "Problems and notes"
+
+# Shown in place of the findings table when the core reported nothing at all.
+NO_FINDINGS = "No problems found in this data."
+
+# Column labels for the findings table; the reason code column stays verbatim.
+DATA_FINDINGS_COLUMNS = ("How serious", "Reason code", "What this means", "Rows affected")
+
+# Shown when a finding has no exact count (the core reports None, not zero).
+DATA_COUNT_NOT_APPLICABLE = "not counted"
+
+# One row per split. "typical" is the median length the core computed (p50).
+DATA_SPLIT_ROW = (
+    'Split "{name}": {row_count} sequences; '
+    "shortest {shortest}, typical {typical}, longest {longest}"
+)
+
+DATA_SPLIT_ROW_EMPTY = 'Split "{name}": 0 sequences; nothing to measure.'
+
+# One row per character the core counted, with the split it belongs to.
+DATA_CHARSET_ROW = 'Split "{split}": the character "{char}" appears {count} times'
+
+# ── Suitability panel (TUI-05) ───────────────────────────────────────────────
+# The two routes over the base<->finetuned axis. These are the WORDS the user
+# reads; the core's own vocabulary ("finetune" / "predict") never reaches the
+# screen, and these sentences never reach the core.
+
+SUITABILITY_PANEL_TITLE = "Which model should do the job?"
+
+SUITABILITY_INTENT_FINETUNE = "Fine-tune a base model on my data"
+
+SUITABILITY_INTENT_PREDICT = "Predict now with a ready-made model"
+
+# G-25-4: the ONE ordered source of the eight task types the core accepts and
+# one plain gloss each. Every task-type sentence and every legend line below is
+# composed from it, so the vocabulary cannot split into independent prose
+# literals again. Order is the core's pattern order (configs.py:109).
+TASK_TYPE_GLOSSES: dict[str, str] = {
+    "embedding": "a list of numbers for a whole sequence, to compare or search",
+    "mask": "fill in DNA letters that were hidden from the model",
+    "generation": "write out new DNA letters",
+    "binary": "one yes/no answer for the whole sequence",
+    "multiclass": "one answer chosen from several classes",
+    "multilabel": "several yes/no answers at once",
+    "regression": "a number, such as a measured value",
+    "token": "one label for each DNA letter",
+}
+
+# "value (gloss)", one per entry, in the mapping's locked order.
+_TASK_TYPE_CHOICES = tuple(f"{value} ({gloss})" for value, gloss in TASK_TYPE_GLOSSES.items())
+
+# The comma-separated prose every task-type sentence inserts between its own
+# punctuation, so no sentence retypes a gloss.
+_TASK_TYPE_PROSE = f"{', '.join(_TASK_TYPE_CHOICES[:-1])} or {_TASK_TYPE_CHOICES[-1]}"
+
+# One legend line per entry. Every line stays at or under 74 characters, the
+# width #suitability-body gives the legend at 80x24 once its scrollbar shows.
+_TASK_TYPE_LEGEND_LINES = tuple(
+    f"  {value} — {gloss}" for value, gloss in TASK_TYPE_GLOSSES.items()
+)
+
+SUITABILITY_TASK_PROMPT = (
+    "Task type, when you already know it — the eight choices are listed below."
+)
+
+# The static legend under the task-type input (G-25-4): a placeholder vanishes
+# on the first keystroke, so the explanation lives in its own widget.
+SUITABILITY_TASK_LEGEND = "\n".join((
+    "The eight task types:",
+    *_TASK_TYPE_LEGEND_LINES,
+    "Leave it empty if you are not sure.",
+))
+
+SUITABILITY_MODELS_PROMPT = (
+    "Optional: type model names separated by commas to check them one by one."
+)
+
+SUITABILITY_CHECK_ACTION = "Check these models"
+
+SUITABILITY_VERDICTS_HEADING = "Models you asked about"
+
+SUITABILITY_LISTING_HEADING = "Models that fit this route"
+
+# Column labels. Reason codes, task types and model names stay verbatim.
+SUITABILITY_VERDICT_COLUMNS = ("Model", "Check", "Result", "Reason code")
+
+# The support word trails Availability on purpose: the availability refresh
+# code writes column 4, so appending here never renumbers it (D-16).
+SUITABILITY_LISTING_COLUMNS = (
+    "Model",
+    "Who made it",
+    "Task type",
+    "Trained outputs",
+    "Availability",
+    "Support",
+)
+
+# Shown while the core is working out the listing and its first probes.
+PROBING_PLACEHOLDER = "probing…"
+
+SUITABILITY_READY = (
+    "Here is what fits. Use the arrow keys to pick a model, then choose "
+    '"Use this model". Press p on a row to check where that model is hosted.'
+)
+
+SUITABILITY_FAILED = (
+    "We could not work out which models fit this data. Your data is safe and "
+    "you can try again or keep going with what is already on this page."
+)
+
+# D-05: an unprobed row says exactly what is known — nothing more.
+HOSTING_NOT_VERIFIED = "hosting not verified"
+
+NO_HEAD_LABELS = "no trained outputs"
+
+LAB_ROW_FLAG = "lab model"
+
+THIRD_PARTY_ROW_FLAG = "third party"
+
+# Availability sentences. The hub name is inserted verbatim.
+AVAILABILITY_CACHED_LOCAL = "already on this computer"
+
+AVAILABILITY_CACHED_HUB = "already downloaded from {hub}"
+
+AVAILABILITY_REMOTE = "available on {hub}"
+
+# How each hub is named to a reader. Keys are the core's Hub values.
+HUB_NAMES = {
+    "modelscope": "ModelScope",
+    "huggingface": "Hugging Face",
+    "local": "this computer",
+    "none": "no hub",
+}
+
+# Prefix for the detail line that shows a probe's own reason, verbatim.
+AVAILABILITY_DETAIL_LABEL = "Note from the check:"
+
+# D-06: an unverified row is never an unavailable row. The sentence says so,
+# because a blank column would let a user read UNKNOWN as "cannot download".
+# It claims only what the seam does: ONE hub is chosen by rule and every retry
+# stays on it (``workers._choose_hub``), so it must not promise a second hub.
+UNKNOWN_STILL_DOWNLOADABLE = (
+    "We have not confirmed where this model is hosted. You can still choose "
+    "it: the download picks the most likely place for this model, and you can "
+    "try again if that does not work."
+)
+
+# D-08: the length and character checks need data; without it the state is
+# stated plainly and never shown as a failure.
+NO_DATA_YET = "no data provided yet"
+
+SELECT_MODEL_HINT = "Select a model with the arrow keys, then choose 'Use this model'."
+
+USE_MODEL_ACTION = "Use this model"
+
+USE_MODEL_CONFIRMED = 'You chose "{model}". The next step builds its config.'
+
+# ── Config panel (TUI-06) ───────────────────────────────────────────────────
+# D-13: the form builds a validated config, and no invalid file is ever
+# written. Every sentence a user reads is here; the identifiers the core
+# reports (section paths, field values) stay verbatim.
+
+CONFIG_PANEL_TITLE = "Your config"
+
+CONFIG_BUILDING = "building your config…"
+
+CONFIG_READY = "This config is ready. You can save it when you are happy with it."
+
+CONFIG_HAS_ERRORS = (
+    "This config needs a fix first. The list on the right says what to change; "
+    "saving stays switched off until the list is empty."
+)
+
+CONFIG_ERRORS_HEADING = "What needs fixing"
+
+# One error line: the exact field path, then the plain sentence from
+# :func:`config_error_message`.
+CONFIG_ERROR_LINE = "{field} → {message}"
+
+# GAP A: the core's own message is never lost. The plain sentence is what the
+# pane shows; the raw text is one press away and appears only when it differs
+# from the plain sentence, so nothing is printed twice.
+CONFIG_ERROR_DETAILS_SHOW = "Show details from the check"
+
+CONFIG_ERROR_DETAILS_HIDE = "Hide details from the check"
+
+CONFIG_ERROR_DETAIL_LINE = "    detail from the check: {message}"
+
+CONFIG_PREVIEW_HEADING = "The file this would save"
+
+# D-12: the checkpoint decides these; an editable field would be silently
+# overridden at load time anyway (registry always wins).
+CONFIG_READONLY_FACTS_NOTE = "from the model checkpoint; loading uses this value"
+
+# D-11: a section this form does not cover rides along untouched.
+CONFIG_KEPT_AS_IS_HEADING = "Kept exactly as they are"
+
+CONFIG_KEPT_AS_IS_LINE = (
+    '"{section}" is kept exactly as it is — this form does not change it, '
+    "and saving keeps every value in it."
+)
+
+# D-13: the write is the one irreversible act in the wizard, so it is gated.
+CONFIG_SAVE_ACTION = "Save this config"
+
+CONFIG_SAVE_DISABLED_REASON = (
+    'Saving stays off until the list under "What needs fixing" is empty, '
+    "so a broken config can never be written."
+)
+
+CONFIG_OUTPUT_PATH_LABEL = "Save as:"
+
+CONFIG_DEFAULT_EXPORT_NAME = "dnallm_config.yaml"
+
+CONFIG_OUTPUT_PATH_PROMPT = 'Type the file name to save as, then press "Save this config".'
+
+CONFIG_SAVING = "saving…"
+
+# D-09: the save is the end of the config panel; the download is the optional
+# closing step, so the way on is one more click and never automatic.
+CONFIG_CONTINUE_TO_DOWNLOAD = "Continue to the download"
+
+CONFIG_SAVED = 'Saved "{path}". That file is ready to use.'
+
+CONFIG_EDITING = "reading your config…"
+
+CONFIG_NO_SOURCE = (
+    'There is nothing to configure yet. Go back to "'
+    + ENTRY_PANEL_TITLE
+    + '", start from your data, and choose a model on "'
+    + SUITABILITY_PANEL_TITLE
+    + '" — or open an existing config file.'
+)
+
+CONFIG_SECTION_TASK = "Task"
+
+CONFIG_SECTION_MODEL = "Model"
+
+CONFIG_SECTION_FINETUNE = "Training"
+
+CONFIG_SECTION_INFERENCE = "Inference (making predictions)"
+
+CONFIG_SECTION_LORA = "LoRA (lightweight fine-tuning)"
+
+# Field labels, keyed by (section, raw key). Keys not listed show their own
+# name verbatim — the core's spelling is the file's spelling.
+CONFIG_FIELD_LABELS = {
+    ("task", "task_type"): "Task type",
+    ("task", "num_labels"): "Number of outputs",
+    ("task", "label_names"): "Output names",
+    ("task", "threshold"): "Decision threshold",
+    ("model", "name"): "Model name",
+    ("finetune", "output_dir"): "Where to save the trained model",
+    ("finetune", "num_train_epochs"): "Epochs",
+    ("finetune", "per_device_train_batch_size"): "Batch size",
+    ("finetune", "learning_rate"): "Learning rate",
+    ("finetune", "weight_decay"): "Weight decay",
+    ("finetune", "warmup_ratio"): "Warm-up share",
+    ("finetune", "seed"): "Random seed",
+    ("inference", "max_length"): "Longest sequence the model reads",
+    ("inference", "batch_size"): "Sequences read at once when predicting",
+    ("inference", "device"): "Device",
+    ("lora", "r"): "LoRA rank",
+    ("lora", "lora_alpha"): "LoRA alpha",
+    ("lora", "lora_dropout"): "LoRA dropout",
+    ("lora", "target_modules"): "LoRA target modules",
+}
+
+# One plain sentence under a field whose label still carries an ML term (GAP B,
+# D-10). Keyed like CONFIG_FIELD_LABELS; a field with no entry renders no hint.
+# These explain the SETTING — the key and its value stay verbatim in the
+# preview, so what the file says is never rewritten by a label.
+CONFIG_FIELD_HINTS = {
+    ("task", "task_type"): ("What the model should do. Choose one of: " + _TASK_TYPE_PROSE + "."),
+    ("task", "threshold"): (
+        "The cut-off for calling a sequence positive: 0.5 means an even chance."
+    ),
+    ("finetune", "num_train_epochs"): (
+        "One epoch is one full pass over your training data. More passes can fit "
+        "better but take longer."
+    ),
+    ("finetune", "per_device_train_batch_size"): (
+        "How many sequences the model learns from in one step."
+    ),
+    ("finetune", "learning_rate"): (
+        "How big each learning step is. Smaller values learn more slowly but can be steadier."
+    ),
+    ("finetune", "weight_decay"): (
+        "How strongly the model is kept simple, so it memorizes less and generalizes more."
+    ),
+    ("finetune", "warmup_ratio"): (
+        "The share of training spent gently raising the learning rate at the start."
+    ),
+    ("inference", "device"): ("Which processor runs the model: cpu, or cuda for a graphics card."),
+    ("lora", "r"): ("How much detail the add-on weights can learn. Larger means more capacity."),
+    ("lora", "lora_alpha"): (
+        "How strongly the add-on weights are applied. Twice the rank is a common choice."
+    ),
+    ("lora", "lora_dropout"): (
+        "The share of add-on weights ignored in each step, to avoid memorizing the data."
+    ),
+    ("lora", "target_modules"): (
+        "Which parts get the add-on weights. An empty value uses the built-in choice "
+        "for models in a listed family. Query and value are parts of the attention "
+        "step. Names for each family: dnallm/configuration/presets/lora_targets.yaml."
+    ),
+}
+
+
+# ── Config errors in plain language (GAP A, D-10) ───────────────────────────
+# The core reports a field-level problem as a SectionError: section, field and
+# the message it produced. That message is exact but it is written in Pydantic
+# and reason-code vocabulary ("String should match pattern '^(embedding|...')"),
+# which a biologist cannot act on. These tables translate it.
+#
+# Three rules, in order — and a miss never invents:
+#
+# 1. An exact (section, field, kind) entry wins. Its sentences are the only
+#    place a specific problem is described.
+# 2. Otherwise the kind's generic sentence, filled with the field's friendly
+#    label (or the field path when the field has no label).
+# 3. Otherwise the core's own message, verbatim.
+
+# Ordered: the first fragment found in the raw message decides the kind. The
+# reason codes come first because their messages also contain ordinary words;
+# the Pydantic families follow, from the most specific to the least.
+_CONFIG_ERROR_KINDS: tuple[tuple[str, str], ...] = (
+    ("TASK_TYPE_REQUIRED:", "task_type_required"),
+    ("MODEL_NOT_IN_REGISTRY_CFG:", "model_not_in_registry"),
+    ("UNKNOWN_SECTION:", "unknown_section"),
+    ("NO_SECTIONS:", "no_sections"),
+    ("Value error, num_labels must be at least 2", "too_few_outputs"),
+    ("must be a mapping", "not_a_section"),
+    ("String should match pattern", "not_an_allowed_value"),
+    ("Input should be a valid integer", "not_a_whole_number"),
+    ("Input should be a valid number", "not_a_number"),
+    ("Input should be a valid list", "not_a_list"),
+    ("Input should be a valid boolean", "not_yes_or_no"),
+    ("Field required", "required"),
+    ("Input should be greater than", "too_small"),
+    ("Input should be less than", "too_large"),
+)
+
+# Exact sentences, keyed by (section, section-relative field, kind). The field
+# is always the section-relative form: ``_relative_field`` collapses the
+# core's dotted Pydantic path (``task.task_type``) and its bare hand-built
+# name (``task_type``) onto the same key, so neither convention can miss.
+CONFIG_ERROR_MESSAGES: dict[tuple[str, str, str], str] = {
+    ("task", "task_type", "not_an_allowed_value"): (
+        "Choose one of: "
+        + _TASK_TYPE_PROSE
+        + ". The longer spellings such as binary_classification also work."
+    ),
+    ("task", "task_type", "task_type_required"): (
+        "This model has no built-in task, so choose one: " + _TASK_TYPE_PROSE + "."
+    ),
+    ("task", "task", "too_few_outputs"): (
+        "Multiclass and multilabel training need at least 2 outputs, but this config "
+        "sets fewer. Change Number of outputs in the file."
+    ),
+    ("model", "model", "model_not_in_registry"): (
+        'This model name is not in the model list. Check the spelling, then go back to "'
+        + SUITABILITY_PANEL_TITLE
+        + '" and choose a model with "'
+        + USE_MODEL_ACTION
+        + '".'
+    ),
+}
+
+# One sentence per kind, for a field whose exact problem has no entry of its
+# own. Kinds with no template (the three reason codes with an exact entry
+# above) fall through to the core's own message rather than a guess.
+CONFIG_ERROR_GENERIC: dict[str, str] = {
+    "not_a_whole_number": "{label} needs a whole number, for example 3.",
+    "not_a_number": "{label} needs a number, for example 0.001.",
+    "not_a_list": "{label} needs a list separated by commas.",
+    "not_yes_or_no": "{label} needs yes or no.",
+    "required": "{label} cannot be empty.",
+    "too_small": "{label} is below the smallest value allowed. Raise it until this line disappears.",
+    "too_large": "{label} is above the largest value allowed. Lower it until this line disappears.",
+    "not_an_allowed_value": (
+        "{label} is not one of the allowed values. Choose one of the values this setting accepts."
+    ),
+    "not_a_section": "{label}: this part of the file should be a block of settings, not a single value.",
+    "unknown_section": 'The section "{label}" is not one this file understands. Remove it from the file.',
+    "no_sections": "This file has no config sections this wizard understands. Check that it is a DNALLM config file.",
+}
+
+
+def _relative_field(section: str, field: str) -> str:
+    """Strip a leading ``"<section>."`` from a field path, when it has one.
+
+    The core emits two shapes for the same concept: Pydantic-derived errors
+    carry the dotted path (``task.task_type``), while its hand-built errors
+    carry the bare name (``task_type``, ``model``). One normalised key serves
+    both, so a table entry cannot silently miss one convention — the check
+    includes the dot, so a field merely *named* like its section (``lora``
+    holding ``lora_alpha``) is left alone.
+
+    Args:
+        section: The config section the error belongs to.
+        field: The field path as the core reported it.
+
+    Returns:
+        The field relative to its section.
+    """
+    prefix = f"{section}."
+    if field.startswith(prefix):
+        return field[len(prefix) :]
+    return field
+
+
+def config_error_message(section: str, field: str, message: str) -> str:
+    """Say one core validation problem in words a biologist can act on.
+
+    Falls back in a fixed order — the exact sentence, then the kind's generic
+    sentence with the field's friendly label, then the core's own message
+    unchanged. It never invents a sentence for a problem it does not
+    recognise: telling a user something false is worse than showing jargon.
+
+    Args:
+        section: The config section the error belongs to.
+        field: The field path the core reported (dotted or bare).
+        message: The core's own message.
+
+    Returns:
+        The plain sentence, or *message* verbatim when nothing matches.
+    """
+    kind = next((kind for fragment, kind in _CONFIG_ERROR_KINDS if fragment in message), None)
+    if kind is None:
+        return message
+    relative = _relative_field(section, field)
+    exact = CONFIG_ERROR_MESSAGES.get((section, relative, kind))
+    if exact is not None:
+        return exact
+    template = CONFIG_ERROR_GENERIC.get(kind)
+    if template is None:
+        return message
+    label = CONFIG_FIELD_LABELS.get((section, relative), field)
+    return template.format(label=label)
+
+
+# ── Download panel (TUI-07) ────────────────────────────────────────────────
+# The one step that touches the network from the user's intent. Every sentence
+# is written for a biologist, and the cancel sentence is deliberately honest
+# about what a cooperative stop can do (RESEARCH Flag 2).
+
+DOWNLOAD_PANEL_TITLE = "Last step: get the model files"
+
+DOWNLOAD_BLURB = (
+    "Downloading is optional. Your config is already saved, so you can stop "
+    "here and use it whenever you like."
+)
+
+DOWNLOAD_MODEL_LABEL = "Model to download:"
+
+DOWNLOAD_SIZE_LABEL = "Size: {size}"
+
+# PFC-06: an unknown size is stated plainly, never guessed or divided by zero.
+DOWNLOAD_SIZE_UNKNOWN = "size not known yet"
+
+DOWNLOAD_START_ACTION = "Download this model"
+
+# Shown from the moment the download starts, before any byte count arrives.
+DOWNLOAD_PROGRESS = "Downloading {model}…"
+
+# One line per attempt, from the downloader's real callbacks (T-25-17).
+DOWNLOAD_ATTEMPT = "Download attempt {attempt} of {max_try}"
+
+DOWNLOAD_ELAPSED = "Time spent: {elapsed}"
+
+DOWNLOAD_NOT_STARTED = "Not started yet. The model files are not downloaded."
+
+DOWNLOAD_CANCEL_ACTION = "Stop the download"
+
+# The cooperative-cancel sentence (RESEARCH Flag 2, D-09): an attempt already
+# talking to the hub cannot be interrupted, and saying "cancelled" would lie.
+CANCEL_PENDING_NOTE = "Stopping — this download attempt will finish first."
+
+DOWNLOAD_CANCELLED = (
+    "The download stopped before it finished. Nothing you set up is lost: "
+    "you can try again, or finish without the model files."
+)
+
+DOWNLOAD_FAILED = "The download did not finish. Check your internet connection and try again."
+
+DOWNLOAD_RETRY_ACTION = "Try the download again"
+
+DOWNLOAD_SKIP_ACTION = "Finish without downloading"
+
+DOWNLOAD_DONE = "The model files are in place."
+
+# D-09/empty: no model was chosen, so the closing screen offers no download.
+DOWNLOAD_NO_MODEL = (
+    "No model was chosen in this run, so there is nothing to download. Here is your summary."
+)
+
+# ── Summary panel (TUI-07) ─────────────────────────────────────────────────
+
+SUMMARY_PANEL_TITLE = "All done"
+
+# Fixed order: the model files first, then the config.
+SUMMARY_HEADINGS = {
+    "model": "Where the model files are",
+    "config": "Where your config is",
+}
+
+SUMMARY_MODEL_SKIPPED = "No model files were downloaded — that step was skipped."
+
+# WR-03: the user stopped a transfer that had already started. The attempt in
+# flight finishes cooperatively, so files may be partly written; the closing
+# page must not repeat the "nothing was downloaded" claim.
+SUMMARY_MODEL_STOPPED = (
+    "You stopped the download. The model files may be incomplete — you can "
+    "download them again later; nothing you set up is lost."
+)
+
+SUMMARY_CONFIG_MISSING = "No config file was saved in this run."
+
+SUMMARY_QUIT_ACTION = "Quit the wizard"

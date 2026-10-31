@@ -33,6 +33,14 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 DNALLM-Suite supports a wide range of DNA large language models including:
 
+How well each model works depends on the model and on your transformers
+version: most work as-is, some work through DNALLM's built-in compatibility
+fixes, and a few need an extra package or are not usable with transformers 5.
+For the per-model verdict see the generated
+[Model Compatibility](docs/user_guide/model_compatibility.md) table, and for
+what each status word means plus the exact install commands see
+[Optional Dependencies and Support](docs/user_guide/optional_dependencies.md).
+
 **From-scratch baselines:** any generically-loadable supported model can also be
 loaded with genuinely random weights via `load_model_and_tokenizer(...,
 random_init=True)`. The model config and tokenizer files are fetched as usual,
@@ -175,15 +183,13 @@ uv pip install -e '.[all,cuda128]'
 
 > **Warning:** Hardware groups (`cpu`, `cuda124`, `cuda126`, `cuda128`, `cuda130`, `mamba`) must not be combined — `cpu`/`cuda*` pairs are enforced as mutually exclusive by the resolver, while `mamba` is designed to combine with a CUDA group (e.g. `.[cuda124,mamba]`). Do NOT combine multiple CUDA versions.
 
-> **Deprecation note (v1.3):** the `base` extra was renamed to `full` (same members: `dev` + `test` + `notebook` + `mcp` + isort). The old `.[base]` spelling still resolves the full member set through a one-cycle alias and will be removed in v1.4 — after that removal pip/uv only print a warning that the extra does not exist and exit 0, leaving a core-only under-install (the silent hazard the alias exists to prevent). Use `.[full]`.
-
-> Choosing a CUDA lane? The [GPU Support Matrix](docs/getting_started/gpu_support.md) maps GPU generations to extras (Pascal is cpu-only; Turing 20xx → cuda124–cuda128; 30/40xx run every extra; 50xx needs cuda128+), and the [Install Honesty Matrix](docs/getting_started/install_honesty.md) states exactly what each command delivers under uv vs plain pip — including the deprecated `base` alias rows.
+> Choosing a CUDA lane? The [GPU Support Matrix](docs/getting_started/gpu_support.md) maps GPU generations to extras (Pascal is cpu-only; Turing 20xx → cuda124–cuda128; 30/40xx run every extra; 50xx needs cuda128+), and the [Install Honesty Matrix](docs/getting_started/install_honesty.md) states exactly what each command delivers under uv vs plain pip — including the post-removal `base` row.
 
 ### Dependency Groups
 
 | Group | Purpose | Includes |
 |-------|---------|----------|
-| `all` | Install everything | `full` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` |
+| `all` | Install everything | `full` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `tui` |
 | `full` | Full dev environment | `dev` + `test` + `notebook` + `mcp` + extra tools |
 | `dev` | Development | `test` + `notebook` + linting tools |
 | `test` | Testing only | pytest and plugins |
@@ -191,18 +197,20 @@ uv pip install -e '.[all,cuda128]'
 | `docs` | Build documentation | mkdocs and plugins |
 | `ui` | Gradio web interface | Gradio |
 | `mcp` | MCP example-test clients | langchain / langchain-mcp-adapters / pydantic-ai stacks for the MCP example tests — the server runtime (`mcp`, `starlette`, `uvicorn`, `websockets`) is already in core |
-| `fla` | PlantHelixSeek KDA kernels | [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) (Triton-based, uses the installed torch — combinable with any hardware group) |
+| `tui` | Terminal pre-flight wizard (`dnallm preflight`) | Textual — optional; the rest of the toolkit works without it |
+
+**Built-in kernels:** [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) 0.5.x — PlantHelixSeek's KDA kernels — and its Windows Triton companion `triton-windows` (pulled automatically behind a `platform_system == 'Windows'` marker) are base dependencies: every DNALLM install includes them, no extra needed. The former `fla` extra has been retired.
 
 **Hardware groups (mutually exclusive, NOT included in `all`):**
 
 | Group | PyTorch | Use Case |
 |-------|---------|----------|
-| `cpu` | 2.4.0-2.11 | No GPU |
-| `cuda124` | 2.4.0-2.11 | Most modern GPUs |
-| `cuda126` | 2.6.0-2.11 | Ada/Hopper with Flash Attention |
-| `cuda128` | 2.6.0-2.11 | RTX 5090 and latest hardware |
-| `cuda130` | 2.9.0-2.11 | CUDA 13.0, Windows & Linux (driver >= 580) — recommended |
-| `mamba` | 2.6.0-2.11 | Native Mamba architecture (requires CUDA) |
+| `cpu` | 2.4.0-2.14 | No GPU |
+| `cuda124` | 2.4.0-2.14 | Most modern GPUs |
+| `cuda126` | 2.6.0-2.14 | Ada/Hopper with Flash Attention |
+| `cuda128` | 2.6.0-2.14 | RTX 5090 and latest hardware |
+| `cuda130` | 2.9.0-2.14 | CUDA 13.0, Windows & Linux (driver >= 580) — recommended |
+| `mamba` | 2.6.0-2.14 | Native Mamba architecture (requires CUDA) |
 
 Retired in v1.3: the cu121 lane (index frozen at torch 2.5.1) and the ROCm extra (never execution-tested on AMD hardware — see the [Installation Guide](docs/getting_started/installation.md) for the manual AMD restore path).
 
@@ -233,27 +241,23 @@ nvcc -V  # Verify CUDA compiler version
 # Install Mamba support
 uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation --link-mode=copy
 
-# If encounter network issue, using the special install script for mamba (optional)
-sh scripts/install_mamba.sh  # select github proxy
+# If the command above fails, build the kernels from source with this script (optional)
+sh scripts/install_mamba.sh  # checks the downloaded source against a fixed checksum; --index-url https://pypi.tuna.tsinghua.edu.cn/simple switches to the TUNA mirror
 ```
 
 > **Note**: The `nvcc` version must match your PyTorch CUDA version. For example, if you installed PyTorch with CUDA 12.8, you need `nvcc` from CUDA 12.x. Mismatched versions will cause build failures.
 
-Please ensure your machine can connect to GitHub, otherwise Mamba dependencies may fail to download.
+The script downloads the mamba source package from PyPI (or the mirror flag shown above), so your machine does not need to reach GitHub.
 
 Note that Plant DNAMamba, Caduceus, PlantCaduceus, PlantCAD2, Jamba-DNA, JanusDNA models are all based on Mamba architecture. Therefore, the training and inference of these models can be accelerated by installing the native mamba support.
 
 ### Flash-Linear-Attention (KDA) Kernels for PlantHelixSeek
 
-PlantHelixSeek-CRE and PlantHelixSeek-Anno remote code imports `fla.ops.kda.chunk.chunk_kda` from [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) for their HelixSeekDelta (KDA) layers. Install the `fla` extra (already included in `all`):
-
-```bash
-uv pip install -e '.[fla]'
-```
+PlantHelixSeek-CRE and PlantHelixSeek-Anno remote code imports `fla.ops.kda.chunk.chunk_kda` from [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) for their HelixSeekDelta (KDA) layers. No extra is needed: a normal editable install (`uv pip install -e .` or any dependency group such as `.[full]`) ships built-in flash-linear-attention 0.5.x as a base dependency — the former `fla` extra has been retired, and upgrading installs the package automatically.
 
 > **Warning:** without `flash-linear-attention` the remote code **silently falls back to a pure-PyTorch path that is not KDA math** (wrong gate formula, scalar decay, no delta-rule correction). Models still load and run, but produce positionally-uninformative outputs — e.g. measured p(CRE) 0.007 inside real DHS sites vs 0.009 outside (dead), versus 0.77 vs 0.22 with the kernels installed. Do not interpret PlantHelixSeek predictions without this package.
 
-Three install notes: install the package **bare** (`flash-linear-attention`, not its `[cuda]`/`[rocm]` extras) — since v0.5 the backend extras pin their own torch and would downgrade your environment; keep the version within `0.5.x` (`>=0.5.2,<0.6`) — `chunk_kda` semantics are not guaranteed stable across minor versions; and on **Windows** the `fla` extra declares `triton-windows` behind a `platform_system == 'Windows'` marker, so the Triton kernels work there without a separate Triton install.
+Three dependency notes: the base dependency is the **bare** package (`flash-linear-attention`, not its `[cuda]`/`[rocm]` extras) — since v0.5 the backend extras pin their own torch and would downgrade your environment; the version is kept within `0.5.x` (`>=0.5.2,<0.6`) — `chunk_kda` semantics are not guaranteed stable across minor versions; and on **Windows** the base dependency set pulls `triton-windows` behind a `platform_system == 'Windows'` marker, so the Triton kernels work there without a separate Triton install.
 
 ### Install Dependencies for Special Models
 
@@ -265,12 +269,14 @@ These models are listed below:
 | -------- | ---------- | ------ | ------------ |
 | EVO-1    | CausalLM   | [Hugging Face](https://huggingface.co/collections/togethercomputer/stripedhyena-65d8e6e77540dd1da932dbe1) | [GitHub](https://github.com/evo-design/evo) |
 | EVO2     | CausalLM   | [Hugging Face](https://huggingface.co/collections/arcinstitute/evo-68e42c1bceeb21a456330fb4) | [GitHub](https://github.com/arcinstitute/evo2) |
-| PlantHelixSeek-CRE/-Anno | Token Classification / Binary | [ModelScope](https://modelscope.cn/zhangtaolab) / [Hugging Face](https://huggingface.co/zhangtaolab) | `fla` extra ([flash-linear-attention](https://github.com/fla-org/flash-linear-attention), see warning below) |
-| FungiHelixSeek | MaskedLM | [Hugging Face](https://huggingface.co/zhangtaolab) / [ModelScope](https://modelscope.cn/zhangtaolab) | `fla` extra ([flash-linear-attention](https://github.com/fla-org/flash-linear-attention)) |
-| GPN      | MaskedLM   | [Hugging Face](https://huggingface.co/songlab) | [GitHub](https://github.com/songlab-cal/gpn) |
+| PlantHelixSeek-CRE/-Anno | Token Classification / Binary | [ModelScope](https://modelscope.cn/zhangtaolab) / [Hugging Face](https://huggingface.co/zhangtaolab) | Built-in [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) (base dependency, see warning below) |
+| FungiHelixSeek | MaskedLM | [Hugging Face](https://huggingface.co/zhangtaolab) / [ModelScope](https://modelscope.cn/zhangtaolab) | Built-in [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) (base dependency) |
+| GPN      | MaskedLM   | [Hugging Face](https://huggingface.co/songlab) | [gpn package](docs/user_guide/optional_dependencies.md) — measured caveats (Python 3.13 only, pins `transformers==5.15.0`, use a separate environment) |
 | megaDNA  | CausalLM   | [Hugging Face](https://huggingface.co/lingxusb) | [GitHub](https://github.com/lingxusb/megaDNA) |
 | LucaOne  | CausalLM   | [Hugging Face](https://huggingface.co/collections/LucaGroup/lucaone-689c4c52fc6577441093f208) | [GitHub](https://github.com/LucaOne/LucaOne) |
-| Omni-DNA | CausalLM   | [Hugging Face](https://huggingface.co/collections/zehui127/omni-dna-67a2230c352d4fd8f4d1a4bd) | [GitHub](https://github.com/Zehui127/Omni-DNA) |
+| Omni-DNA | CausalLM   | [Hugging Face](https://huggingface.co/collections/zehui127/omni-dna-67a2230c352d4fd8f4d1a4bd) | [ai2-olmo package](docs/user_guide/optional_dependencies.md) — pins `numpy<2`, use a separate environment |
+| GENA-LM-BigBird | MaskedLM | [Hugging Face](https://huggingface.co/AIRI-Institute/gena-lm-bigbird-base-sparse) | [deepspeed extra](docs/user_guide/optional_dependencies.md#gena-lm-bigbird) — required to load; predictions remain blocked upstream |
+| CrossDNA | MaskedLM | [Hugging Face](https://huggingface.co/chengCCC/CrossDNA_pretrain) | [flash-attn extra](docs/user_guide/optional_dependencies.md#crossdna) — works after installation (Linux + CUDA) |
 
 The installation method for the dependencies of these models can be found **[here](docs/getting_started/installation.md)**.
 
@@ -472,8 +478,11 @@ DNALLM/
 │   ├── datahandling/        # Dataset processing
 │   ├── finetune/            # Fine-tuning pipeline
 │   ├── inference/           # Inference & analysis tools
+│   ├── interpret/           # Motif analysis (FIMO scanner, JASPAR client)
 │   ├── models/              # Model loading & registry
+│   ├── preflight/           # Pre-flight validation core
 │   ├── tasks/               # Task definitions & metrics
+│   ├── tui/                 # Terminal pre-flight wizard (dnallm preflight)
 │   ├── utils/               # Utility functions
 │   └── mcp/                 # MCP server implementation
 ├── cli/                     # Legacy CLI scripts (deprecated)
@@ -561,20 +570,24 @@ DNALLM-Suite includes a comprehensive test suite with 2,500+ test cases:
 # Install test dependencies first (the mcp extra provides the langchain/pydantic_ai
 # imports needed by the MCP example tests)
 uv pip install -e '.[test,dev,mcp]'
+```
 
+The `--no-sync` flag reuses the environment created by the install command above.
+
+```bash
 # Run all tests
-uv run pytest
+uv run --no-sync pytest
 
 # Run the fast lane only (as CI does on every push/PR)
-uv run pytest -m "not slow"
+uv run --no-sync pytest -m "not slow"
 
 # Run specific test categories
-uv run pytest tests/inference/ -v
-uv run pytest tests/mcp/ -v
-uv run pytest tests/tasks/ -v
+uv run --no-sync pytest tests/inference/ -v
+uv run --no-sync pytest tests/mcp/ -v
+uv run --no-sync pytest tests/tasks/ -v
 
 # Run with coverage
-uv run pytest --cov=dnallm --cov-report=html
+uv run --no-sync pytest --cov=dnallm --cov-report=html
 ```
 
 CI runs the fast lane (2,522 tests) with a >=90% coverage gate on every push and pull request (Python 3.11/3.12/3.13 × numpy 2.2.0, plus a Windows leg). The slow, network-dependent suite (real-model downloads) and a nightly example-execution census that runs the `example/` notebooks and demo apps end-to-end execute on a self-hosted GPU runner (see `.github/workflows/ci.yml`).
@@ -612,6 +625,53 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Issues**: [GitHub Issues](https://github.com/zhangtaolab/DNALLM/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/zhangtaolab/DNALLM/discussions)
 - **Examples**: Check the `example/` directory for working code
+
+## 🧭 Pre-flight Wizard (TUI)
+
+Before fine-tuning, the interactive pre-flight wizard checks that your data and your
+chosen model will actually work together — then writes a ready-to-use config file for
+you. It runs in the terminal and needs no programming:
+
+```bash
+pip install "dnallm[tui]"   # Textual is the only extra dependency
+dnallm preflight            # start from your own data
+dnallm preflight --config my.yaml   # or jump straight to editing a config
+```
+
+The wizard walks through seven screens — environment, entry, your data, model
+suitability, config editing with live validation, an optional model download,
+and a summary with the exact file that was saved (animated walkthrough, loops):
+
+<p align="center">
+  <img src="docs/pic/tui/wizard.svg" alt="Pre-flight wizard — animated walkthrough of all seven screens" width="720">
+</p>
+
+Every OK / WARN / FAIL verdict comes from the core pre-flight checks
+(`dnallm.preflight`); the wizard only displays them. A full walkthrough with
+screenshots of every screen lives in the
+[Pre-flight Wizard guide](https://zhangtaolab.github.io/DNALLM/user_guide/tui/preflight_wizard/).
+
+## 📦 Preset Model Loading
+
+`load_preset_model(model_name, task_config)` loads one of the 236 registry models
+(49 pretrained + 187 finetuned) by entry name, repo id, or family name. For a
+registry entry the task type is **validated, never patched** — asking a model that
+was trained for another task type raises a clear error instead of silently
+mislabeling — and the label settings (`num_labels`, `label_names`, `threshold`)
+come from the registry entry, not from your config:
+
+```python
+from dnallm import load_config
+from dnallm.models.model import load_preset_model
+
+model, tokenizer = load_preset_model(
+    "zhangtaolab/plant-dnabert-BPE-promoter",
+    load_config("configs/finetune_config.yaml")["task"],
+)
+```
+
+Details and the two-tier name-resolution rules:
+[Preset Model Loading](https://zhangtaolab.github.io/DNALLM/user_guide/preset_loading/).
 
 ---
 

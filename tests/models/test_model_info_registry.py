@@ -1,0 +1,597 @@
+"""Fast-leg registry-integrity tests for the model registry data layer (KWT-01..04).
+
+No network: these tests parse the packaged ``model_info.yaml`` directly (same
+pattern as ``tests/models/test_plant_helixseek_registry.py``) and pin the
+pretrained tokenizer-variant checkpoints, the ``PRETRAIN_MODEL_MAPS`` task-class
+strings, the tRNA titles in ``MODEL_INFO``, and the finetuned-entry base_model
+lineage. The registry YAML has no runtime consumer inside the package, so wrong
+values mislead without any runtime error — these structure tests are the
+enforcement layer (quick task 261020-kwt).
+"""
+
+import re
+from pathlib import Path
+
+import dnallm
+import json
+import pytest
+import yaml
+from dnallm.models.modeling_auto import MODEL_INFO, PRETRAIN_MODEL_MAPS
+
+REGISTRY_PATH = Path(dnallm.__file__).parent / "models" / "model_info.yaml"
+
+# Misspelled task class ("Casual" for "Causal") and the joined title form
+# ("aDNA sequence" for "a DNA sequence") each live in exactly this module and
+# the production sources they guard against — a recurrence of either typo in
+# modeling_auto.py fails the tests below.
+MISSPELLED_TASK_CLASS = "Casual Language Model"
+JOINED_TITLE_FORM = "aDNA sequence"
+
+EXPECTED_PRETRAINED_COUNT = 49
+
+# The 15 PDLLMs tokenizer-variant pretrained checkpoints (KWT-01), pinned to
+# their task types. Architectures cross-checked at planning time: Bert/Esm/
+# ModernBert masked-LM heads -> mask; GPT2/Gemma/Mamba causal-LM heads ->
+# generation.
+VARIANT_TASK_TYPES = {
+    "zhangtaolab/plant-dnabert-6mer": "mask",
+    "zhangtaolab/plant-dnabert-singlebase": "mask",
+    "zhangtaolab/plant-nucleotide-transformer-6mer": "mask",
+    "zhangtaolab/plant-nucleotide-transformer-singlebase": "mask",
+    "zhangtaolab/plant-dnamodernbert-singlebase": "mask",
+    "zhangtaolab/plant-dnagpt-6mer": "generation",
+    "zhangtaolab/plant-dnagpt-singlebase": "generation",
+    "zhangtaolab/plant-dnagemma-6mer": "generation",
+    "zhangtaolab/plant-dnagemma-singlebase": "generation",
+    "zhangtaolab/plant-dnamamba-2mer": "generation",
+    "zhangtaolab/plant-dnamamba-3mer": "generation",
+    "zhangtaolab/plant-dnamamba-4mer": "generation",
+    "zhangtaolab/plant-dnamamba-5mer": "generation",
+    "zhangtaolab/plant-dnamamba-6mer": "generation",
+    "zhangtaolab/plant-dnamamba-singlebase": "generation",
+}
+
+# Pre-existing external base_model pointers (PlantCAD2 Medium/Large upstream
+# repos, real but not registry pretrained entries — only PlantCAD2-Small is
+# registered). Documented out of scope for the lineage backfill.
+EXTERNAL_BASE_ALLOWLIST = {
+    "kuleshov-group/PlantCAD2-Medium-l48-d1024",
+    "kuleshov-group/PlantCAD2-Large-l48-d1536",
+}
+
+# Finetuned entries intentionally lacking base_model. Empty after the KWT-03
+# backfill: the test asserts this set equals the actual entries without
+# lineage, so any future finetuned entry added without a base_model fails
+# loudly instead of silently regressing coverage.
+DERIVATION_EXEMPT: set[str] = set()
+
+# Load-bearing lineage mappings pinned explicitly (KWT-03): the two repo-alias
+# tRNA entries, two prefix-derived variant bases, and the three name-derived
+# short-alias family bases.
+SPOT_PINNED_BASE_MODELS = {
+    "zhangtaolab/tRNADetector": "zhangtaolab/plant-dnamamba-singlebase",
+    "zhangtaolab/tRNAPointer": "zhangtaolab/plant-nucleotide-transformer-singlebase",
+    "zhangtaolab/plant-dnabert-BPE-promoter": "zhangtaolab/plant-dnabert-BPE",
+    "zhangtaolab/plant-dnamamba-6mer-promoter": "zhangtaolab/plant-dnamamba-6mer",
+    "zhangtaolab/agront-1b-promoter": "InstaDeepAI/agro-nucleotide-transformer-1b",
+    "zhangtaolab/dnabert2-promoter": "zhihan1996/DNABERT-2-117M",
+    "zhangtaolab/nucleotide-transformer-v2-100m-promoter": (
+        "InstaDeepAI/nucleotide-transformer-v2-100m-multi-species"
+    ),
+}
+
+
+def _load_registry() -> dict:
+    """Parse the packaged registry with yaml.safe_load, failing with file context.
+
+    Returns:
+        The full registry mapping with ``pretrained`` and ``finetuned`` sections.
+
+    Raises:
+        pytest.fail.Failed: If the file does not parse as a YAML mapping.
+    """
+    content = REGISTRY_PATH.read_text(encoding="utf-8")
+    try:
+        data = yaml.safe_load(content)
+    except yaml.YAMLError as e:
+        pytest.fail(f"YAML error in {REGISTRY_PATH.name}: {e}")
+    assert isinstance(data, dict), "registry must parse to a mapping"
+    return data
+
+
+def _pretrained() -> list[dict]:
+    """Return the pretrained section as a list of entry mappings."""
+    section = _load_registry().get("pretrained")
+    assert isinstance(section, list), "pretrained section must be a list"
+    return section
+
+
+def _finetuned() -> list[dict]:
+    """Return the finetuned section as a list of entry mappings."""
+    section = _load_registry().get("finetuned")
+    assert isinstance(section, list), "finetuned section must be a list"
+    return section
+
+
+def test_pretrained_section_holds_49_entries() -> None:
+    """Pretrained section carries exactly 49 entries (34 original + 15 variants)."""
+    assert len(_pretrained()) == EXPECTED_PRETRAINED_COUNT
+
+
+def test_variant_checkpoints_pinned_with_task_type_and_variant_names() -> None:
+    """Each of the 15 variant checkpoints appears exactly once (KWT-01).
+
+    Pins the pretrained task_type per variant and requires both the entry name
+    and the task description to mention the tokenizer variant.
+    """
+    pretrained = _pretrained()
+    for repo, task_type in VARIANT_TASK_TYPES.items():
+        matches = [e for e in pretrained if e.get("model") == repo]
+        assert len(matches) == 1, f"expected exactly one pretrained entry for {repo}"
+        entry = matches[0]
+        assert entry["task"]["task_type"] == task_type, repo
+        variant = repo.rsplit("/", 1)[1].rsplit("-", 1)[1]
+        assert isinstance(entry.get("name"), str), repo
+        assert entry["name"], repo
+        assert variant in entry["name"], f"{repo}: name {entry['name']!r} lacks {variant!r}"
+        assert variant in entry["task"]["describe"], (
+            f"{repo}: describe {entry['task']['describe']!r} lacks {variant!r}"
+        )
+
+
+def test_plant_dnagpt_family_maps_to_causal_language_model() -> None:
+    """Plant DNAGPT checkpoints are GPT2LMHeadModel, so the family maps to Causal (KWT-02)."""
+    assert PRETRAIN_MODEL_MAPS["Plant DNAGPT"] == ["Zhangtaolab", "Causal Language Model"]
+
+
+def test_no_pretrain_family_entry_contains_misspelled_task_class() -> None:
+    """No PRETRAIN_MODEL_MAPS family entry carries the misspelled task class (KWT-02)."""
+    for family, spec in PRETRAIN_MODEL_MAPS.items():
+        for element in spec:
+            assert MISSPELLED_TASK_CLASS not in element, family
+
+
+def test_trna_titles_read_a_dna_sequence() -> None:
+    """tRNADetector/tRNAPointer titles restore the space in "a DNA sequence" (KWT-04)."""
+    for family in ("tRNADetector", "tRNAPointer"):
+        title = MODEL_INFO[family]["title"]
+        assert "a DNA sequence" in title, family
+        assert JOINED_TITLE_FORM not in title, family
+
+
+def test_every_finetuned_entry_carries_base_model() -> None:
+    """Every finetuned entry has base_model unless explicitly exempt (KWT-03).
+
+    The exempt set must equal the actual set of entries lacking lineage, so a
+    future finetuned entry added without base_model fails here even if someone
+    widens DERIVATION_EXEMPT without cleaning it up afterwards.
+    """
+    missing = {e["model"] for e in _finetuned() if "base_model" not in e}
+    assert missing == DERIVATION_EXEMPT
+
+
+def test_every_base_model_resolves_to_pretrained_or_external() -> None:
+    """Each base_model is a pretrained registry id or a documented external pointer."""
+    pretrained_ids = {e["model"] for e in _pretrained()}
+    for entry in _finetuned():
+        base = entry.get("base_model")
+        if base is None:
+            continue
+        assert base in pretrained_ids or base in EXTERNAL_BASE_ALLOWLIST, (
+            f"{entry['model']}: base_model {base!r} resolves to neither"
+        )
+
+
+def test_spot_pinned_lineage_mappings_hold() -> None:
+    """The load-bearing base_model mappings keep their pinned values (KWT-03)."""
+    by_repo = {e["model"]: e for e in _finetuned()}
+    for repo, expected_base in SPOT_PINNED_BASE_MODELS.items():
+        assert repo in by_repo, repo
+        assert by_repo[repo]["base_model"] == expected_base, repo
+
+
+def test_pretrained_entries_carry_no_base_model() -> None:
+    """base_model is a finetuned-only field — no pretrained entry carries it."""
+    offenders = [e["model"] for e in _pretrained() if "base_model" in e]
+    assert offenders == []
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 22-02 enrichment integrity (REG-02/REG-03) — extension only; nothing above
+# this section is modified. The enrichment adds tokenizer_type / max_length
+# fields via scripted text insertion and an end-of-file provenance block.
+# ─────────────────────────────────────────────────────────────────────────────
+
+EXPECTED_FINETUNED_COUNT = 187
+
+# Provenance sentinels: the kwt freeze-provenance block (2026-10-03) plus the
+# 22-02 enrichment and 27-03 census provenance blocks appended at end of file.
+# Each sentinel must appear exactly once, verbatim — the blocks are
+# unrecoverable once lost (Pitfall 3), so their presence is pinned here
+# (REG-03).
+PROVENANCE_SENTINELS = (
+    "# PlantHelixSeek finetuned checkpoints (Phase 06-01 registry freeze, 2026-10-03).",
+    "# Checkpoint commit shas (trust_remote_code provenance):",
+    "#   PlantHelixSeek-CRE  7093de3baf64bf59ac147be3971482a13238aabd",
+    "#   PlantHelixSeek-Anno 6d39386ab562b2a9a3d3581ebe28e235383c8d3c",
+    "# Freeze tooling is intentionally uncommitted (owner constraint 2026-10-02): it ran",
+    "# Registry enrichment: tokenizer_type / max_length (Phase 22-02, 2026-10-20).",
+    "# Registry compatibility census: tf_compat_status / tf_compat_evidence / tf_compat_tested (Phase 27-03, 2026-10-27).",
+)
+
+# Spot pins (T-22-05 mitigation): load-bearing enrichment values measured by
+# the one-time remote probes (D-01; recorded in the gitignored
+# .scratch/enrichment_results.json). hyenadna is pinned to the MEASURED
+# config.json max_seq_len=32770 (32k context + 2 special tokens), not the
+# repo-name 32k figure; the nucleotide-transformer pin (2050) likewise holds
+# the measured 2048+2 value.
+SPOT_PINNED_MAX_LENGTHS = {
+    "LongSafari/hyenadna-small-32k-seqlen-hf": 32770,
+    "kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16": 131072,
+    "kuleshov-group/caduceus-ps_seqlen-131k_d_model-256_n_layer-16": 131072,
+    "zhangtaolab/plant-dnabert-BPE": 512,
+    "zhangtaolab/plant-nucleotide-transformer-BPE": 2050,
+}
+
+SPOT_PINNED_TOKENIZER_TYPES = {
+    "zhangtaolab/plant-dnabert-BPE": "DebertaV2Tokenizer",
+    "zhangtaolab/plant-dnabert-6mer": "EsmTokenizer",
+    "zhangtaolab/plant-dnamamba-singlebase": "EsmTokenizer",
+}
+
+# Finetuned entries whose base_model is not a registry pretrained id — the 14
+# external-based plantcad adapters (bases: kuleshov-group/PlantCAD2-Medium /
+# -Large, per EXTERNAL_BASE_ALLOWLIST above). They cannot inherit, so D-02
+# requires an explicit committed max_length on every one of them.
+EXPECTED_EXTERNAL_BASED_COUNT = 14
+
+
+def _positive_int(value) -> bool:
+    """True for a strict positive int (bool excluded, None excluded)."""
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
+def test_all_pretrained_entries_carry_positive_int_max_length() -> None:
+    """Every pretrained entry carries max_length as a positive int (D-02, 49/49)."""
+    offenders = [e["model"] for e in _pretrained() if not _positive_int(e.get("max_length"))]
+    assert offenders == []
+
+
+def test_lab_pretrained_entries_carry_tokenizer_type() -> None:
+    """All 23 zhangtaolab pretrained entries carry a non-empty str tokenizer_type (D-03)."""
+    lab_pre = [e for e in _pretrained() if e["model"].startswith("zhangtaolab/")]
+    assert len(lab_pre) == 23
+    offenders = [
+        e["model"]
+        for e in lab_pre
+        if not isinstance(e.get("tokenizer_type"), str) or not e["tokenizer_type"]
+    ]
+    assert offenders == []
+
+
+def test_third_party_enrichment_values_present_or_absent_never_degenerate() -> None:
+    """A present enrichment field is a non-empty str / positive int — never null, empty, or 0.
+
+    Third-party gaps surface as ABSENT keys (D-03): the ``in`` checks below skip
+    absent keys and catch exactly the degenerate forms a hand-edit could
+    introduce (``tokenizer_type: null``, ``max_length: 0``).
+    """
+    for entry in _pretrained() + _finetuned():
+        if "tokenizer_type" in entry:
+            value = entry["tokenizer_type"]
+            assert isinstance(value, str), entry["model"]
+            assert value, entry["model"]
+        if "max_length" in entry:
+            assert _positive_int(entry["max_length"]), entry["model"]
+
+
+def test_finetuned_max_length_only_as_explicit_override() -> None:
+    """Committed finetuned max_length differs from the base's, or the base is external (D-02).
+
+    Identical values are inherited at query time and must never be duplicated
+    into the YAML; explicit values exist only for measured differences and for
+    the 14 external-based plantcad repos, whose bases sit outside the registry.
+    """
+    pre_max_length = {e["model"]: e.get("max_length") for e in _pretrained()}
+    for entry in _finetuned():
+        own = entry.get("max_length")
+        if own is None:
+            continue
+        base = entry.get("base_model")
+        if base in pre_max_length:
+            assert own != pre_max_length[base], (
+                f"{entry['model']}: duplicates its base's committed max_length "
+                f"{own} (D-02 forbids inheritance duplication)"
+            )
+    external = [e for e in _finetuned() if e.get("base_model") not in pre_max_length]
+    assert len(external) == EXPECTED_EXTERNAL_BASED_COUNT
+    assert all(e["model"].startswith("plantcad/") for e in external)
+    offenders = [e["model"] for e in external if not _positive_int(e.get("max_length"))]
+    assert offenders == []
+
+
+def test_provenance_blocks_present_verbatim() -> None:
+    """Each provenance sentinel appears exactly once in the file text (REG-03)."""
+    text = REGISTRY_PATH.read_text(encoding="utf-8")
+    for sentinel in PROVENANCE_SENTINELS:
+        assert text.count(sentinel) == 1, sentinel
+
+
+def test_registry_section_counts_unchanged() -> None:
+    """The enrichment is field-level insertion: counts stay 49 pretrained / 187 finetuned."""
+    assert len(_pretrained()) == EXPECTED_PRETRAINED_COUNT
+    assert len(_finetuned()) == EXPECTED_FINETUNED_COUNT
+
+
+def test_spot_pinned_enrichment_values() -> None:
+    """Load-bearing enrichment values keep their probe-measured pins (T-22-05)."""
+    by_repo = {e["model"]: e for e in _pretrained()}
+    for repo, expected in SPOT_PINNED_MAX_LENGTHS.items():
+        assert repo in by_repo, repo
+        assert by_repo[repo].get("max_length") == expected, repo
+    for repo, expected in SPOT_PINNED_TOKENIZER_TYPES.items():
+        assert repo in by_repo, repo
+        assert by_repo[repo].get("tokenizer_type") == expected, repo
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 27-03 compat census write-back integrity (D-07) — extension only; nothing
+# above this section is modified beyond the PROVENANCE_SENTINELS entry the
+# plan requires. The write-back added tf_compat_status / tf_compat_evidence /
+# tf_compat_tested to the 49 pretrained rows via
+# scripts/census_compat.py --write-registry --apply (anchored text insertion
+# only) plus a dated provenance block at end of file. Frozen evidence:
+# tests/models/compat_census.json (27-02).
+# ─────────────────────────────────────────────────────────────────────────────
+
+# The six-value verdict vocabulary (mirrors RegistryEntry's Literal).
+TF_COMPAT_VOCABULARY = {
+    "verified-tf5",
+    "import-verified-tf5",
+    "shim-required-tf5",
+    "extra-required-tf5",
+    "remote-code-broken",
+    "census-blocked",
+}
+
+# Measured distribution of the committed write-back (49 rows): 19 verified
+# (green family-representative loads), 21 import-verified (siblings), 5
+# shim-required (PlantCaduceus_l32 via rung 13; GENERanno via the 27.2-01 ROPE
+# 'default' rung; GENA-LM and MutBERT via the 27.2-01/02 load-boundary
+# repairs; DNABERT-2 via the 27.2-02 pre-construction installer), 1
+# extra-required (CrossDNA via the curated flash-attn extra, 28-02 owner
+# ruling A), 3 remote-code-broken (GPN and Omni-DNA external packages plus
+# GENA-LM-BigBird, whose deepspeed extra greens the load but whose forward
+# is blocked by the upstream-dead triton superblock API - owner ruling A
+# keeps the committed skip disposition with the split named in evidence), 0
+# census-blocked.
+EXPECTED_REMOTE_CODE_BROKEN = 3
+EXPECTED_EXTRA_REQUIRED = 1
+EXPECTED_SHIM_REQUIRED = 5
+
+# 28-02 owner ruling A pins: exactly CrossDNA flips to extra-required-tf5;
+# BigBird keeps remote-code-broken with the load-green/forward-red split
+# named in its evidence; GPN and Omni-DNA stay unchanged broken rows.
+EXTRA_REQUIRED_ROWS = {
+    "chengCCC/CrossDNA_pretrain": (
+        "hf chengCCC/CrossDNA_pretrain@cd118dc45eaa0f2debb05f03ed0290fe56a78ab1; "
+        "load+forward verified via the flash-attn extra (flash-attn 2.8.3.post2)"
+    ),
+}
+BROKEN_EVIDENCE_PINS = {
+    "AIRI-Institute/gena-lm-bigbird-base-sparse": (
+        "load works with the deepspeed extra but forward is blocked by an upstream-dead Triton API",
+        "deepspeed 0.19.6",
+        "_patch_apply_chunking_to_forward",
+        "outside dnallm's default dependency set",
+    ),
+    "songlab/gpn-brassicales": "ConvNetForMaskedLM was removed from transformers 5.x",
+    "zehui127/Omni-DNA-116M": "remote configuration_olmo.py line 8 imports olmo.config.ModelConfig",
+}
+
+COMPAT_SHIM_SOURCE = Path(dnallm.__file__).parent / "utils" / "transformers_compat.py"
+# The one handler-owned repair (D-05 locks DNABERT-2's fix in the special
+# handler, not the rung layer): its evidence names the installer, whose
+# existence is confirmed in the handler file itself.
+COMPAT_HANDLER_SOURCE = Path(dnallm.__file__).parent / "models" / "special" / "dnabert2.py"
+
+
+def test_all_pretrained_entries_carry_compat_fields() -> None:
+    """All 49 pretrained entries carry the three tf_compat_* fields with valid values."""
+    offenders = []
+    for entry in _pretrained():
+        repo = entry["model"]
+        if entry.get("tf_compat_status") not in TF_COMPAT_VOCABULARY:
+            offenders.append((repo, "status", entry.get("tf_compat_status")))
+        if entry.get("tf_compat_tested") != "5.17.0":
+            offenders.append((repo, "tested", entry.get("tf_compat_tested")))
+        evidence = entry.get("tf_compat_evidence")
+        if not isinstance(evidence, str) or not evidence:
+            offenders.append((repo, "evidence", evidence))
+    assert offenders == []
+
+
+def test_no_finetuned_entry_carries_compat_fields() -> None:
+    """tf_compat_* is a pretrained-only field — finetuned entries inherit (D-01)."""
+    offenders = [e["model"] for e in _finetuned() if any(k.startswith("tf_compat_") for k in e)]
+    assert offenders == []
+
+
+def test_remote_code_broken_evidence_names_failing_import() -> None:
+    """Every remote-code-broken evidence differs from the bare stamp and names its cause.
+
+    The detail must mention transformers or a dotted symbol/module path, so a
+    reader sees WHY the entry is broken — the exact failing import for
+    import-time failures, the structural reason for load/forward failures.
+    """
+    broken = [e for e in _pretrained() if e.get("tf_compat_status") == "remote-code-broken"]
+    assert len(broken) == EXPECTED_REMOTE_CODE_BROKEN
+    for entry in broken:
+        repo = entry["model"]
+        evidence = entry["tf_compat_evidence"]
+        assert ";" in evidence, f"{repo}: evidence carries no detail beyond the hub stamp"
+        detail = evidence.split(";", 1)[1].strip()
+        assert detail, f"{repo}: empty evidence detail"
+        assert "transformers" in detail or re.search(r"\w+\.\w+", detail), (
+            f"{repo}: evidence detail names no transformers symbol or dotted path: {detail!r}"
+        )
+
+
+def test_extra_required_evidence_pins_the_measured_extra_verdicts() -> None:
+    """28-02 owner ruling A: exactly CrossDNA carries extra-required-tf5.
+
+    The pinned evidence string is the full writer-produced triple text: the
+    measured hub/repo@revision stamp plus the flash-attn enabler naming the
+    curated extra and its pinned version.
+    """
+    extra_rows = [e for e in _pretrained() if e.get("tf_compat_status") == "extra-required-tf5"]
+    assert len(extra_rows) == EXPECTED_EXTRA_REQUIRED
+    by_repo = {entry["model"]: entry for entry in extra_rows}
+    assert set(by_repo) == set(EXTRA_REQUIRED_ROWS), sorted(by_repo)
+    for repo, expected_evidence in EXTRA_REQUIRED_ROWS.items():
+        assert by_repo[repo]["tf_compat_evidence"] == expected_evidence, repo
+
+
+def test_broken_evidence_pins_unchanged_under_ruling_a() -> None:
+    """BigBird keeps remote-code-broken with the split named; GPN/Omni-DNA unchanged.
+
+    Owner ruling A (2026-10-29): BigBird's committed skip disposition stays;
+    its evidence names the load-green/forward-red split honestly (deepspeed
+    extra greens the load; the triton superblock API is upstream-dead), and
+    the _patch_apply_chunking_to_forward rung mention survives. GPN and
+    Omni-DNA keep their 27.2 evidence substrings verbatim.
+    """
+    by_repo = {entry["model"]: entry for entry in _pretrained()}
+    for repo, needles in BROKEN_EVIDENCE_PINS.items():
+        entry = by_repo[repo]
+        assert entry["tf_compat_status"] == "remote-code-broken", repo
+        evidence = entry["tf_compat_evidence"]
+        if isinstance(needles, str):
+            needles = (needles,)
+        for needle in needles:
+            assert needle in evidence, f"{repo}: evidence lost {needle!r}"
+
+
+def test_shim_required_evidence_names_rung() -> None:
+    """Every shim-required evidence names a real repair symbol in its source.
+
+    A ``_patch_*`` rung must exist in transformers_compat.py; the one
+    handler-owned repair (DNABERT-2, D-05 owner-locked file choice) names
+    its ``_install_dnabert2_tf5_shims`` installer, which must exist in
+    dnallm/models/special/dnabert2.py. Both sources are read in the test:
+    the symbol's existence is confirmed independently of the census
+    artifact's claim, and an evidence naming neither shape still fails.
+    """
+    shim_source = COMPAT_SHIM_SOURCE.read_text(encoding="utf-8")
+    handler_source = COMPAT_HANDLER_SOURCE.read_text(encoding="utf-8")
+    shim_required = [e for e in _pretrained() if e.get("tf_compat_status") == "shim-required-tf5"]
+    assert len(shim_required) == EXPECTED_SHIM_REQUIRED
+    for entry in shim_required:
+        repo = entry["model"]
+        evidence = entry["tf_compat_evidence"]
+        rungs = re.findall(r"_patch_[a-z0-9_]+", evidence)
+        installers = re.findall(r"_install_dnabert2_tf5_shims", evidence)
+        assert rungs or installers, (
+            f"{repo}: shim-required evidence names no _patch_* rung or handler installer"
+        )
+        for rung in rungs:
+            assert f"def {rung}(" in shim_source, (
+                f"{repo}: rung {rung} does not exist in transformers_compat.py"
+            )
+        for _ in installers:
+            assert "def _install_dnabert2_tf5_shims(" in handler_source, (
+                f"{repo}: handler installer _install_dnabert2_tf5_shims does not exist "
+                "in dnallm/models/special/dnabert2.py"
+            )
+
+
+def test_compat_field_values_present_never_degenerate() -> None:
+    """A present tf_compat_* field is a non-empty str with status in the vocabulary.
+
+    Sibling of the 22-02 enrichment degenerate-value guard: gaps surface as
+    absent keys; a present key is never null/empty/out-of-vocabulary.
+    """
+    for entry in _pretrained() + _finetuned():
+        if "tf_compat_status" in entry:
+            assert entry["tf_compat_status"] in TF_COMPAT_VOCABULARY, entry["model"]
+        for field in ("tf_compat_evidence", "tf_compat_tested"):
+            if field in entry:
+                value = entry[field]
+                assert isinstance(value, str), f"{entry['model']}: {field} is {type(value)}"
+                assert value, f"{entry['model']}: {field} is empty"
+
+
+COMPAT_CENSUS_ARTIFACT = Path(__file__).parent / "compat_census.json"
+
+# The independent mirror of scripts/census_compat.py SHIM_RESTORED_LOADS: the
+# repos whose census-green load+forward passes ONLY through a compat repair
+# (the artifact records the load but not which repair it needed). 27-03:
+# PlantCaduceus_l32 (rung 13, tied-weights bookkeeping). 27.2-01: GENERanno
+# (ROPE 'default' table entry, _patch_rope_default_init). 27.2-03: the final
+# committed flips for GENA-LM (_patch_gena_token_type_ids_on_load), MutBERT
+# (_patch_mutbert_forward_on_load), and DNABERT-2 (the handler-owned
+# _install_dnabert2_tf5_shims installer, D-05 file choice).
+SHIM_RESTORED_MIRROR = {
+    "kuleshov-group/PlantCaduceus_l32",
+    "lgq12697/GENERanno-eukaryote-0.5b-base",
+    "AIRI-Institute/gena-lm-bert-base",
+    "JadenLong/MutBERT-Human-Ref",
+    "zhihan1996/DNABERT-2-117M",
+}
+
+
+def test_compat_census_artifact_matches_registry() -> None:
+    """The committed census artifact and the committed registry agree per entry.
+
+    Independent re-implementation of the artifact->status mapping (Phase 26
+    consistency-checker independence: the gate must not share the writer's
+    mapping code in scripts/census_compat.py, so a writer bug cannot
+    self-approve). Reads the frozen artifact and the TYPED registry — never a
+    second yaml parse. The facts both sides must encode are the repair
+    dependency of the five shim-restored green loads (the artifact records
+    the load but not which repair it needed; SHIM_RESTORED_MIRROR above) and
+    the 28-02 extra-before-skip-and-green branch order: a disposition.extra
+    judgment wins over a skip, over a green load (an extras-green record can
+    never publish a false works-as-is claim), and over the family-rep
+    inference, so both the extras-green seed and a future default-env
+    failure shape map to the same extra-required-tf5 verdict. An absent or
+    unparseable artifact is a test failure, never a skip (audit_skips
+    posture).
+    """
+    from dnallm.models import registry
+
+    try:
+        payload = json.loads(COMPAT_CENSUS_ARTIFACT.read_text(encoding="utf-8"))
+        records = payload["entries"]
+        assert isinstance(records, list)
+    except (OSError, ValueError, KeyError, TypeError, AssertionError) as error:
+        pytest.fail(f"census artifact unreadable (fail-closed, never a skip): {error}")
+    assert len(records) == 49, f"expected 49 census records, got {len(records)}"
+    by_repo = {record["repo"]: record for record in records}
+    pretrained = [e for e in registry.all_entries() if e.kind == "pretrained"]
+    assert {e.model for e in pretrained} == set(by_repo), "registry/artifact roster drift"
+    mismatches = []
+    for entry in pretrained:
+        record = by_repo[entry.model]
+        load = record.get("load") if isinstance(record.get("load"), dict) else {}
+        green = load.get("ok") is True and load.get("forward_ok") is True
+        disposition = (
+            record.get("disposition") if isinstance(record.get("disposition"), dict) else {}
+        )
+        skip = bool(disposition.get("skip"))
+        extra = bool(disposition.get("extra"))
+        if record["status"] == "census-blocked":
+            expected = "census-blocked"
+        elif extra:
+            expected = "extra-required-tf5"
+        elif skip:
+            expected = "remote-code-broken"
+        elif green and record["repo"] in SHIM_RESTORED_MIRROR:
+            expected = "shim-required-tf5"
+        elif green:
+            expected = "verified-tf5"
+        else:
+            expected = "import-verified-tf5"
+        if entry.tf_compat_status != expected:
+            mismatches.append((entry.model, entry.tf_compat_status, expected))
+    assert mismatches == [], f"artifact/registry status drift: {mismatches}"

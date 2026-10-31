@@ -9,6 +9,15 @@ from ..utils import get_logger
 
 logger = get_logger("dnallm.cli")
 
+# The friendly missing-extra message lives in dnallm/tui/copy.py so the wizard's
+# copy has one home. This literal is the fallback for the one case that module
+# cannot be imported (a partial checkout with no dnallm/tui package at all);
+# tests/cli/test_cli.py asserts the two strings stay identical.
+_FALLBACK_INSTALL_HINT = (
+    "The terminal wizard needs an optional package that is not installed yet. "
+    'Install it with: pip install "dnallm[tui]"'
+)
+
 
 @click.group()
 @click.version_option()
@@ -23,6 +32,7 @@ def cli():
     - In-silico mutagenesis analysis
     - Generating configuration files
     - Starting MCP (Model Context Protocol) servers
+    - Opening the pre-flight terminal wizard
     """
     pass
 
@@ -314,6 +324,45 @@ def mcp_server(config, host, port, log_level, transport):
         sys.exit(1)
     except Exception as e:
         click.echo(f"MCP server startup failed: {e}")
+        sys.exit(1)
+
+
+def _install_hint() -> str:
+    """Return the friendly missing-extra message for the terminal wizard.
+
+    The message lives in ``dnallm/tui/copy.py`` so the wizard's copy has one
+    home. The literal fallback only covers a checkout where even that
+    stdlib-only module cannot be imported.
+    """
+    try:
+        from ..tui.copy import INSTALL_HINT
+    except ImportError:
+        return _FALLBACK_INSTALL_HINT
+
+    return INSTALL_HINT
+
+
+@cli.command()
+@click.option(
+    "--config",
+    "-c",
+    type=click.Path(exists=True),
+    default=None,
+    help="Open the pre-flight wizard; jump straight to editing this config file",
+)
+def preflight(config):
+    """Open the pre-flight terminal wizard (needs the tui extra)"""
+    try:
+        # Both the import and the call sit in one try block on purpose. On a
+        # core-only install dnallm/tui/__init__.py imports cleanly (it has no
+        # module-level textual import); the ImportError that names the missing
+        # tui extra is raised by the lazy ".app" import INSIDE run_preflight,
+        # and that is still caught here (TUI-02).
+        from ..tui import run_preflight
+
+        run_preflight(config_path=config)
+    except ImportError:
+        click.echo(_install_hint())
         sys.exit(1)
 
 

@@ -1,0 +1,58 @@
+🚀 Starting pytest session with enhanced cleanup...
+============================= test session starts ==============================
+platform linux -- Python 3.13.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/forrest/Github/DNALLM
+configfile: pyproject.toml
+plugins: logfire-5.1.1, platformdirs-4.12.1, langsmith-0.14.1, progress-1.4.0, cov-7.1.0, timeout-2.4.0, anyio-4.15.1, asyncio-1.4.0
+timeout: 300.0s
+timeout method: signal
+timeout func_only: False
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 16 items
+
+tests/models/test_model_info_registry.py .........FF.FF.F                [100%]
+
+=================================== FAILURES ===================================
+__________ test_all_pretrained_entries_carry_positive_int_max_length ___________
+tests/models/test_model_info_registry.py:253: in test_all_pretrained_entries_carry_positive_int_max_length
+    assert offenders == []
+E   AssertionError: assert ['zhangtaolab...ert-BPE', ...] == []
+E     
+E     Left contains 49 more items, first extra item: 'zhangtaolab/plant-dnabert-BPE'
+E     Use -v to get more diff
+_______________ test_lab_pretrained_entries_carry_tokenizer_type _______________
+tests/models/test_model_info_registry.py:265: in test_lab_pretrained_entries_carry_tokenizer_type
+    assert offenders == []
+E   AssertionError: assert ['zhangtaolab...ert-BPE', ...] == []
+E     
+E     Left contains 23 more items, first extra item: 'zhangtaolab/plant-dnabert-BPE'
+E     Use -v to get more diff
+_____________ test_finetuned_max_length_only_as_explicit_override ______________
+tests/models/test_model_info_registry.py:305: in test_finetuned_max_length_only_as_explicit_override
+    assert offenders == []
+E   AssertionError: assert ['plantcad/ce...2_large', ...] == []
+E     
+E     Left contains 14 more items, first extra item: 'plantcad/cell_type_specific_acr_plantcad2_medium'
+E     Use -v to get more diff
+___________________ test_provenance_blocks_present_verbatim ____________________
+tests/models/test_model_info_registry.py:312: in test_provenance_blocks_present_verbatim
+    assert text.count(sentinel) == 1, sentinel
+E   AssertionError: # Registry enrichment: tokenizer_type / max_length (Phase 22-02, 2026-10-20).
+E   assert 0 == 1
+E    +  where 0 = <built-in method count of str object at 0xc5d66af51900>('# Registry enrichment: tokenizer_type / max_length (Phase 22-02, 2026-10-20).')
+E    +    where <built-in method count of str object at 0xc5d66af51900> = 'pretrained:\n  - name: "Plant DNABERT"\n    model: "zhangtaolab/plant-dnabert-BPE"\n    task:\n      describe: "Pretr...", "U-INTRON", "B-UTR5", "I-UTR5", "L-UTR5", "U-UTR5", "B-UTR3", "I-UTR3", "L-UTR3", "U-UTR3"]\n      threshold: 0.5\n'.count
+______________________ test_spot_pinned_enrichment_values ______________________
+tests/models/test_model_info_registry.py:326: in test_spot_pinned_enrichment_values
+    assert by_repo[repo].get("max_length") == expected, repo
+E   AssertionError: LongSafari/hyenadna-small-32k-seqlen-hf
+E   assert None == 32770
+E    +  where None = <built-in method get of dict object at 0xff4d88490fc0>('max_length')
+E    +    where <built-in method get of dict object at 0xff4d88490fc0> = {'name': 'HyenaDNA', 'model': 'LongSafari/hyenadna-small-32k-seqlen-hf', 'task': {'describe': 'Pretrained model for DNA sequence understanding.', 'task_type': 'generation'}}.get
+=========================== short test summary info ============================
+FAILED tests/models/test_model_info_registry.py::test_all_pretrained_entries_carry_positive_int_max_length
+FAILED tests/models/test_model_info_registry.py::test_lab_pretrained_entries_carry_tokenizer_type
+FAILED tests/models/test_model_info_registry.py::test_finetuned_max_length_only_as_explicit_override
+FAILED tests/models/test_model_info_registry.py::test_provenance_blocks_present_verbatim
+FAILED tests/models/test_model_info_registry.py::test_spot_pinned_enrichment_values
+========================= 5 failed, 11 passed in 4.65s =========================
+exitCode=1

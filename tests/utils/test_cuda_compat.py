@@ -58,6 +58,9 @@ def test_preload_tolerates_library_load_failure(monkeypatch):
 
     assert cuda_compat._preloaded is True
     # One CDLL attempt per wheel pattern for this platform (linux has a single
-    # SONAME pattern; win32 preloads four DLL families).
-    assert failing.call_count == len(cuda_compat._LIB_PATTERNS[sys.platform])
-    assert failing.call_args.args[0] == "/fake/libnvJitLink.so.13"
+    # SONAME pattern; win32 preloads four DLL families; other platforms, e.g.
+    # darwin, have no wheel patterns and preload nothing).
+    patterns = cuda_compat._LIB_PATTERNS.get(sys.platform, ())
+    assert failing.call_count == len(patterns)
+    if patterns:
+        assert failing.call_args.args[0] == "/fake/libnvJitLink.so.13"

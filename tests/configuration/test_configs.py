@@ -775,6 +775,114 @@ class TestLoadConfig:
             os.unlink(config_path)
 
 
+class TestLoadConfigDegenerateRoot:
+    """Degenerate YAML roots (empty / comment-only / list / scalar) must raise ValueError.
+
+    These inputs previously crashed at the ``config_dict["config_path"] = ...``
+    injection line with opaque TypeErrors naming interpreter internals; the
+    loader rejects them with a matchable ValueError per the repo error
+    convention (ValueError with a descriptive, matchable message).
+    """
+
+    def test_empty_file_raises_value_error(self, tmp_path):
+        """A zero-byte YAML file raises ValueError naming the NoneType root."""
+        config_file = tmp_path / "empty.yaml"
+        config_file.touch()
+
+        with pytest.raises(ValueError, match=r"must contain a YAML mapping.*got NoneType"):
+            load_config(str(config_file))
+
+    def test_comment_only_file_raises_value_error(self, tmp_path):
+        """A file containing only comments parses to None and raises ValueError."""
+        config_file = tmp_path / "comments.yaml"
+        config_file.write_text("# only a comment\n# another comment\n", encoding="utf-8")
+
+        with pytest.raises(ValueError, match=r"must contain a YAML mapping"):
+            load_config(str(config_file))
+
+    def test_list_root_raises_value_error(self, tmp_path):
+        """A YAML file whose root is a list raises ValueError naming the list root."""
+        config_file = tmp_path / "list_root.yaml"
+        config_file.write_text("- task\n- model\n", encoding="utf-8")
+
+        with pytest.raises(ValueError, match=r"must contain a YAML mapping.*got list"):
+            load_config(str(config_file))
+
+    def test_scalar_root_raises_value_error(self, tmp_path):
+        """A YAML file whose root is a bare scalar raises ValueError naming the str root."""
+        config_file = tmp_path / "scalar_root.yaml"
+        config_file.write_text("just_a_string\n", encoding="utf-8")
+
+        with pytest.raises(ValueError, match=r"must contain a YAML mapping.*got str"):
+            load_config(str(config_file))
+
+
+class TestLoadConfigLoaderContracts:
+    """Pins for loader-level contracts of load_config beyond section validation."""
+
+    def test_unknown_top_level_sections_are_dropped(self, tmp_path):
+        """Unknown top-level sections are silently dropped from the returned mapping.
+
+        This test documents the current behavior: a misspelled section name
+        (``typo_section`` below) is masked today — validate_sections copies only
+        the known sections. Any future strictness or warning must consciously
+        update this pin.
+        """
+        config_file = tmp_path / "typo_section.yaml"
+        config_file.write_text(
+            "task:\n  task_type: binary\ntypo_section:\n  anything: goes\n",
+            encoding="utf-8",
+        )
+
+        configs = load_config(str(config_file))
+
+        assert list(configs.keys()) == ["task"]
+        assert isinstance(configs["task"], TaskConfig)
+        assert configs["task"].task_type == "binary"
+
+    def test_relative_path_injected_absolute_and_consumed_by_benchmark(self, tmp_path, monkeypatch):
+        """A relative config path is injected absolute and consumed by BenchmarkConfig.
+
+        load_config injects ``config_path = os.path.abspath(...)`` into the raw
+        dict before validate_sections; BenchmarkConfig(**full raw dict) carries
+        it, and dnallm/inference/benchmark.py:149 consumes it via
+        ``os.path.dirname(benchmark_config.config_path)`` to resolve relative
+        model/dataset paths against the config's own directory. The injected
+        key never appears in the returned mapping.
+        """
+        monkeypatch.chdir(tmp_path)
+        config_data = {
+            "benchmark": {
+                "name": "RelPath Benchmark",
+                "description": "relative path injection pin",
+            },
+            "models": [{"name": "model1", "path": "/path/to/model1"}],
+            "datasets": [
+                {
+                    "name": "dataset1",
+                    "path": "/path/to/dataset1",
+                    "task": "binary_classification",
+                }
+            ],
+            "output": {"path": "/tmp/results", "format": "html"},
+        }
+        config_file = tmp_path / "bm.yaml"
+        with open(config_file, "w", encoding="utf-8") as f:
+            yaml.dump(config_data, f)
+
+        configs = load_config("bm.yaml")
+
+        assert "config_path" not in configs  # injection is internal only
+
+        benchmark_config = configs["benchmark"]
+        assert isinstance(benchmark_config, BenchmarkConfig)
+        injected = benchmark_config.config_path
+        assert os.path.isabs(injected)
+        assert Path(injected).resolve() == (tmp_path / "bm.yaml").resolve()
+        # The exact consumption at dnallm/inference/benchmark.py:149.
+        assert Path(os.path.dirname(injected)).resolve() == tmp_path.resolve()
+
+
 class TestEdgeCases:
     """Test edge cases and error conditions."""
 

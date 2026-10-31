@@ -63,6 +63,10 @@ nav:
     - Install Honesty Matrix: getting_started/install_honesty.md
   - User Guide:
     - Getting Started: user_guide/getting_started.md
+    - Pre-flight Wizard (TUI): user_guide/tui/preflight_wizard.md
+    - Preset Model Loading: user_guide/preset_loading.md
+    - Model Compatibility: user_guide/model_compatibility.md
+    - Optional Dependencies and Support: user_guide/optional_dependencies.md
     - 15-Minute Tour: guides/getting-started.md
     - Configuration Overview: configuration/configuration.md
     - Development Guide: guides/development.md

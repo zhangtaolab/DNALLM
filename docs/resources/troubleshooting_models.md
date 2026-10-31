@@ -35,9 +35,10 @@ uv pip install evo-model
 ```
 
 **Example for fla:**
+`flash-linear-attention` is a base dependency (since v1.4, when the `fla` extra was retired), so it installs with DNALLM by default. An `ImportError: No module named 'fla'` therefore indicates a broken or partial installation, not a missing optional package — reinstall DNALLM to repair it:
 ```bash
 # Activate your virtual environment first
-uv pip install flash-linear-attention
+uv pip install -e '.[full]'
 ```
 
 ### Problem: `flash_attn` installation fails

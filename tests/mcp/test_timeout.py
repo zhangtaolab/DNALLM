@@ -53,18 +53,19 @@ class TestToolTimeout:
         """Verify that a slow coroutine returns a timeout error dict."""
 
         async def slow_tool():
-            await asyncio.sleep(100)  # Will definitely timeout
+            await asyncio.sleep(1)  # Slow enough to exceed the 0.1s timeout
             return {"result": "ok"}
 
+        mock_server._tool_timeout_seconds = 0.1
         wrapper = mock_server._with_timeout_wrapper(slow_tool, "slow_tool")
         result = await wrapper()
 
         assert result["isError"] is True
         assert result["error_type"] == "timeout"
-        assert result["timeout_seconds"] == 30
+        assert result["timeout_seconds"] == 0.1
         assert result["tool_name"] == "slow_tool"
         assert "suggestion" in result
-        assert any("Timeout after 30s" in item["text"] for item in result["content"])
+        assert any("Timeout after 0.1s" in item["text"] for item in result["content"])
 
     @pytest.mark.asyncio
     async def test_tool_completes_within_timeout(self, mock_server):
@@ -129,8 +130,9 @@ class TestToolTimeout:
 
         # Create a mock coroutine that will timeout
         async def never_completes():
-            await asyncio.sleep(1000)
+            await asyncio.sleep(1)
 
+        mock_server._tool_timeout_seconds = 0.1
         wrapper = mock_server._with_timeout_wrapper(never_completes, "test_tool")
 
         # Run the wrapper and get the result
@@ -146,8 +148,8 @@ class TestToolTimeout:
 
         assert result["isError"] is True
         assert result["error_type"] == "timeout"
-        assert isinstance(result["timeout_seconds"], int)
-        assert result["timeout_seconds"] == 30
+        assert isinstance(result["timeout_seconds"], (int, float))
+        assert result["timeout_seconds"] == 0.1
         assert result["tool_name"] == "test_tool"
         assert isinstance(result["suggestion"], str)
         assert len(result["suggestion"]) > 0

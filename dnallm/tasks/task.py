@@ -17,11 +17,9 @@ by DNA large language models during fine-tuning, including:
    - Configures task type, number of labels, label names, etc.
    - Provides threshold settings for binary classification tasks
 
-3. TaskHead: Task-specific prediction heads
-   - Provides specialized neural network layers for different task types
-   - Supports feature dimensionality reduction and dropout to prevent
-     overfitting
-   - Automatically selects output dimensions based on task type
+3. Prediction heads live elsewhere: this module defines no head classes;
+   task-specific prediction heads (BasicMLPHead, BasicCNNHead, etc.) are
+   implemented in ``dnallm/models/head.py`` and attached by the model loader
 
 4. compute_metrics: Evaluation metric computation
    - Binary: accuracy, F1 score
@@ -30,7 +28,7 @@ by DNA large language models during fine-tuning, including:
 
 Usage example:
     task_config = TaskConfig(
-        task_type=TaskType.BINARY,
+        task_type="binary",  # string form; a TaskType enum member is rejected
         num_labels=2,
         label_names=["negative", "positive"]
     )

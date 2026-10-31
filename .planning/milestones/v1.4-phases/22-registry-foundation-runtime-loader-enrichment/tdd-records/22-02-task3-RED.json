@@ -1,0 +1,17 @@
+{
+  "task": "22-02 Task 3 (tests-only regression proofs; no production code)",
+  "command": ".venv/bin/python -m pytest tests/models/test_registry.py::test_effective_max_length_resolved_for_every_finetuned_entry tests/models/test_registry.py::test_pretrained_effective_max_length_is_own_value tests/models/test_registry.py::test_effective_tokenizer_type_inherits_from_base tests/models/test_registry.py::test_loader_validates_every_committed_entry tests/models/test_registry.py::test_external_based_entries_carry_explicit_max_length -q   (against the pre-enrichment YAML restored from HEAD~1 via a controlled file swap, then reverted byte-identically)",
+  "exitCode": 1,
+  "targetTests": [
+    "test_effective_max_length_resolved_for_every_finetuned_entry",
+    "test_pretrained_effective_max_length_is_own_value",
+    "test_effective_tokenizer_type_inherits_from_base",
+    "test_loader_validates_every_committed_entry",
+    "test_external_based_entries_carry_explicit_max_length"
+  ],
+  "expected": "RED against pre-enrichment data: the enrichment-dependent assertions fail (effective max_length resolves None for pretrained and external-based entries, tokenizer inheritance None, explicit 8192 absent)",
+  "actual": "4 failed, 1 passed — the four enrichment-dependent tests failed on their planned assertions (e.g. external-based plantcad entry 'assert None == 8192'); test_loader_validates_every_committed_entry passes by design (236/49/187 counts and the Pydantic load path hold both pre and post enrichment; it pins load-path validation, not enrichment)",
+  "semanticAssessment": "VALID RED via deliberate data violation (22-01 Task-3 precedent): the five tests were executed against the pre-enrichment registry file and the four enrichment-dependent ones failed for the intended reason — the enrichment data did not exist. Working tree restored byte-identically (git diff on model_info.yaml empty) before the GREEN run.",
+  "outputTail": "FAILED test_effective_max_length_resolved_for_every_finetuned_entry\nFAILED test_pretrained_effective_max_length_is_own_value\nFAILED test_effective_tokenizer_type_inherits_from_base\nFAILED test_external_based_entries_carry_explicit_max_length\n========================= 4 failed, 1 passed in 3.64s ==========================",
+  "note": "Machine classifier inapplicable (pytest console output; workflow.tdd_mode false, plan type: execute) — same as the 22-01/22-02 Task 2 records. RED/GREEN file initially missed by an &&-chain breakage during execution; content reconstructed from the captured command output before the final docs commit."
+}

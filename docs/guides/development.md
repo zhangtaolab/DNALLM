@@ -53,7 +53,7 @@ uv pip install -e '.[test,dev,mcp]'
 `scripts/setup_uv.sh` bundles the same flow (uv install, `uv venv`,
 `uv pip install -e ".[dev,notebook,mcp]"`, `uv lock`) if you prefer one command.
 GPU-specific torch lanes (`cpu`, `cuda124`, `cuda126`, `cuda128`, `cuda130`) and the
-`mamba` / `fla` kernel extras are documented in the
+`mamba`, `deepspeed`, and `flash-attn` extras are documented in the
 [Installation guide](../getting_started/installation.md) and `pyproject.toml`.
 
 **Verify the install**
@@ -69,13 +69,32 @@ Optional-dependency groups from `pyproject.toml` relevant to contributors:
 | Extra | Contains |
 |-------|----------|
 | `dev` | `test` + `notebook` + `ruff==0.17.1`, `pre-commit`, plotting/data extras (logomaker, seaborn, pyfastx, pybedtools on non-Windows) |
-| `test` | pytest stack (`pytest>=8.4`, `pytest-asyncio`, `pytest-cov`, `pytest-timeout`), `coverage[toml]`, `nbclient` |
+| `test` | pytest stack (`pytest>=8.4`, `pytest-asyncio`, `pytest-cov`, `pytest-progress`, `pytest-timeout`), `coverage[toml]`, `nbclient`; pulls in `tui` (Textual) for the preflight-wizard tests |
 | `notebook` | jupyter, marimo, `nbclient` (with the IPython < 9 and pygenometracks platform pins) |
 | `docs` | mkdocs-material, mkdocs-jupyter, mkdocstrings-python |
-| `full` | `dev` + `test` + `notebook` + `mcp` + isort (renamed from `base` in v1.3) |
-| `all` | `full` + `docs` + `ui` + `fla` |
+| `tui` | Textual, for the `dnallm preflight` terminal wizard |
+| `full` | `dev` + `test` + `notebook` + `mcp` + `isort` |
+| `all` | `full` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `tui` |
+| `mamba` | native CUDA kernels (`mamba-ssm==2.3.2.post1`, `causal_conv1d==1.7.0`), the end-user torch < 2.12 fast path |
+| `deepspeed` | `deepspeed>=0.19.6,<0.19.7` — GENA-LM-BigBird remote code; band-capped because 0.19.7 removed `deepspeed.ops.sparse_attention` upstream |
+| `flash-attn` | `flash-attn>=2.8.3.post2,<2.9` — CrossDNA attention; source installs need `--no-build-isolation` |
 
-The `dev` extra is enough for package work; `full` is the CI environment shape.
+The `dev` extra is enough for package work; `full` is the CI environment shape
+(every `ci.yml` job installs `.[full]`).
+
+Two v1.4 changes to know about:
+
+- **The `fla` extra is retired.** `flash-linear-attention` (the KDA kernels
+  PlantHelixSeek's remote code imports) is now a base dependency, so a default
+  install works out of the box — no extra suffix names it.
+- **`deepspeed` and `flash-attn` are new curated extras** for the two
+  external-package models, and they are deliberately never members of
+  `all`/`full` (Linux + CUDA compile packages; pip fails loudly where the build
+  cannot run). CI builds the kernels through the sha256-pinned installer
+  scripts (`scripts/install_mamba.sh`, `scripts/install_flash_attn.sh`) rather
+  than the extras. See
+  [Optional Dependencies](../user_guide/optional_dependencies.md) for the full
+  story.
 
 ## Repository Layout
 
@@ -90,7 +109,10 @@ DNALLM/
 │   ├── interpret/     # Model interpretation tooling
 │   ├── mcp/           # MCP server plus its packaged test suite
 │   ├── models/        # Model registry, loading, presets
+│   ├── preflight/     # Read-only pre-flight validation (data, compatibility,
+│   │                  # config generation) — torch/transformers-free
 │   ├── tasks/         # Task heads and metrics
+│   ├── tui/           # Terminal pre-flight wizard (Textual, tui extra)
 │   └── utils/         # Shared utilities
 ├── tests/             # Pytest suite mirroring the package, plus TESTING.md
 │                      # and expected_skips.yaml (the typed skip allowlist)
@@ -136,12 +158,22 @@ pytest                                   # everything, including slow tests
                                           # (network + GPU heavy)
 ```
 
-Two contract details that trip new contributors:
+Three contract details that trip new contributors:
 
 - **The 90% coverage floor applies to every `--cov` invocation**, regardless of how
   many tests ran (`fail_under = 90` in `[tool.coverage.report]`, a ratchet floor —
   the fast lane actually measures in the mid-90s). Scoped runs must drop `--cov` or
   pass `--no-cov`, or they fail on the floor.
+- **On local Python 3.13 + numpy 2.5.x stacks, pytest-cov has been observed to
+  break** (CI is unaffected — it pins `numpy==2.2.0`). The equivalent route is a
+  plain coverage run, which reads the same `[tool.coverage.*]` config and enforces
+  the same floor:
+
+  ```bash
+  coverage run -m pytest tests/ -m "not slow"
+  coverage report          # same fail_under = 90 gate
+  ```
+
 - **Skips are audited.** Any skip the suite produces is checked by
   `scripts/audit_skips.py` against the typed allowlist in
   `tests/expected_skips.yaml`; an unexpected skip fails CI. If a test starts
@@ -169,6 +201,20 @@ settings: line length 100, double quotes, Python 3.11 target, preview mode, with
 rule families E4/E7/E9/F/W/B/C4/UP/N/S/T20/PT/Q/RUF enabled. The MCP module
 additionally keeps a flake8 79-character rule via the legacy shell/batch check
 scripts; CI itself runs no flake8 step.
+
+### Pre-commit hooks
+
+`.pre-commit-config.yaml` defines exactly two local hooks, both running the venv's
+pinned ruff: `ruff-format` and `ruff-check`. Install them once per clone:
+
+```bash
+pre-commit install             # wire the hooks into git
+pre-commit run --all-files     # run both hooks over the whole tree
+```
+
+The ty type gate is deliberately **not** a pre-commit hook — it must run through
+the exact-pinned `uvx` invocation below, so it stays in `check_code.py` and CI
+only.
 
 ### ty — the type gate
 
@@ -200,6 +246,7 @@ python scripts/check_code.py --fix    # auto-fix ruff issues first
 python scripts/check_code.py --all    # include slow tests (~10 minutes)
 python scripts/check_code.py --docs   # additionally run docs code verification
 python scripts/check_code.py --ci     # exact CI simulation (no coverage extras)
+python scripts/check_code.py --verbose  # show full output from every check
 ```
 
 The four steps match the PR lane: ruff format check, ruff lint, fast tests with
@@ -215,7 +262,7 @@ The repository runs a two-branch integration model, visible in the merge history
 - **`main`** — the default branch; releases land here.
 - **`dev`** — the integration branch; feature work accumulates here and is merged
   to `main` via PR (e.g. PR #58, the v1.3.1 release train).
-- **Release branches** named `vX.Y` (currently `v1.3`) carry stabilized releases;
+- **Release branches** named `vX.Y` (currently `v1.4`) carry stabilized releases;
   tags `vX.Y.Z` mark published versions.
 - **Topic branches** for features and fixes — CONTRIBUTING.md documents
   `feature/your-feature-name` and `fix/issue-description`; dependabot branches
@@ -229,10 +276,21 @@ recent commits in the area you touch.
 ## Pull Requests
 
 Before opening a PR, `python scripts/check_code.py` must pass — it reproduces what
-CI will run on your PR (the fast pytest lane with the coverage floor on a Python
-3.11–3.13 × numpy 2.2.0 matrix plus a Windows leg, the skip audit, and the ty hard
-gate). Nightly-only lanes (`coverage-nightly`, `example-nightly`, `test-mamba`)
-never gate PRs; see
+CI will run on your PR. The push/PR-gated lanes in `ci.yml` are:
+
+- **`test`** — the hosted matrix, Python 3.11/3.12/3.13 × `numpy==2.2.0`, fast
+  lane with coverage plus the skip audit and an exit-code canary
+- **`test-windows`** — a Python 3.12 Windows leg of the same shape
+- **`test-cuda`** — a hosted Python 3.11 + CUDA 13.0 leg (`.[full,cuda130]`)
+- **`coverage-gate`** — Python 3.12: gated fast census with the coverage floor,
+  skip audit, and the pinned ty hard gate
+
+Nightly and dispatch-only lanes never gate PRs: `coverage-nightly`,
+`example-nightly`, and `test-mamba` run on the self-hosted `dnallm-nightly` GPU
+box (03:00/05:30 UTC crons), `extras_compat.yml` owns the 04:00 UTC extras lane
+(deepspeed + flash-attn probes for the two external-package models), and
+`census_compat.yml` / `feasibility.yml` are manual-dispatch-only re-verification
+lanes (the transformers 4/5 census among them). See
 [Continuous Integration](../user_guide/continuous_integration.md) for what runs
 where.
 

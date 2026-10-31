@@ -1,0 +1,16 @@
+{
+  "command": ".venv/bin/python -m pytest tests/models/test_registry.py -q --junitxml=.planning/phases/22-registry-foundation-runtime-loader-enrichment/tdd-records/22-01-task1-red.xml",
+  "exitCode": 2,
+  "output": "\ud83d\ude80 Starting pytest session with enhanced cleanup...\n============================= test session starts ==============================\nplatform linux -- Python 3.13.15, pytest-9.1.1, pluggy-1.6.0\nrootdir: /home/forrest/Github/DNALLM\nconfigfile: pyproject.toml\nplugins: logfire-5.1.1, platformdirs-4.12.1, langsmith-0.14.1, progress-1.4.0, cov-7.1.0, timeout-2.4.0, anyio-4.15.1, asyncio-1.4.0\ntimeout: 300.0s\ntimeout method: signal\ntimeout func_only: False\nasyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 0 items / 1 error\n\n==================================== ERRORS ====================================\n________________ ERROR collecting tests/models/test_registry.py ________________\nImportError while importing test module '/home/forrest/Github/DNALLM/tests/models/test_registry.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../miniconda3/envs/cuda130/lib/python3.13/importlib/__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests/models/test_registry.py:15: in <module>\n    from dnallm.models import registry\nE   ImportError: cannot import name 'registry' from 'dnallm.models' (/home/forrest/Github/DNALLM/dnallm/models/__init__.py)\n- generated xml file: /home/forrest/Github/DNALLM/.planning/phases/22-registry-foundation-runtime-loader-enrichment/tdd-records/22-01-task1-red.xml -\n=========================== short test summary info ============================\nERROR tests/models/test_registry.py\n!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n=============================== 1 error in 3.83s ===============================\n",
+  "targetTest": "test_resolve_by_entry_name_returns_typed_entry",
+  "targetFile": "tests/models/test_registry.py",
+  "expected": "resolve('Plant DNABERT BPE promoter') returns a typed frozen RegistryEntry with model 'zhangtaolab/plant-dnabert-BPE-promoter', task.task_type 'binary', num_labels 2, threshold 0.5, base_model 'zhangtaolab/plant-dnabert-BPE', kind 'finetuned'",
+  "actual": "ImportError: cannot import name 'registry' from 'dnallm.models' \u2014 module under construction does not exist; 1 error during collection",
+  "reportPath": ".planning/phases/22-registry-foundation-runtime-loader-enrichment/tdd-records/22-01-task1-red.xml",
+  "runStartedAt": "2026-10-20T10:39:40Z",
+  "reportModifiedAt": "2026-10-20T10:40:24Z",
+  "semanticAssessment": "Greenfield RED: every named target test fails because dnallm.models.registry does not exist yet, which is exactly the planned behavior being absent. Python cannot import a not-yet-written module, so the first honest RED for a new module is a collection ImportError on the target file itself (not an unrelated fixture or syntax fault). targetFile is the file under collection; no unrelated failure is present.",
+  "plan": "22-01",
+  "task": "1",
+  "phase": "22"
+}

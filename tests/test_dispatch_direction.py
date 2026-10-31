@@ -28,7 +28,7 @@ Posture (copied from tests/test_genomic_intervals.py): platform-neutral,
 no bedtools binary, no subprocess of our own, no skip machinery and no
 custom markers anywhere in this file -- it auto-runs on test-windows and
 every Linux leg. Root placement keeps the examples census triple
-(216/217) untouched.
+(222/223) untouched.
 """
 
 from __future__ import annotations

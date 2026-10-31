@@ -16,6 +16,7 @@ __author__ = "Zhangtaolab"
 from .client import DNALLMMCPClient
 from .server import DNALLMMCPServer
 from .config_manager import MCPConfigManager
+from .consistency import check_config_registry_consistency
 from .model_manager import ModelManager
 
 __all__ = [
@@ -23,4 +24,5 @@ __all__ = [
     "DNALLMMCPServer",
     "MCPConfigManager",
     "ModelManager",
+    "check_config_registry_consistency",
 ]

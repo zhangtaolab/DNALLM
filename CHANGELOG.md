@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-10-25
+
+### Overview
+
+First release cut on the v1.4 line (1.4.0 was a milestone-close bump, never tagged or published): pre-flight UX + registry-as-truth-source milestone content, plus the torch 2.12–2.14 enablement cycle.
+
+### Changed
+
+- torch ceiling raised `<2.12` → `<2.15` (base + cpu/cuda124/cuda126/cuda128/cuda130/mamba extras), verified on GB10 (GitHub run 40140203118: torch 2.14.1+cu130, full census 3215 passed)
+- `scripts/install_mamba.sh` reworked into a sha256-pinned sdist pipeline that patches mamba-ssm 2.3.2.post1's hardcoded `-std=c++17` to `-std=c++20` (upstream PR #1000 equivalent) — the only blocker for torch ≥2.12 kernels; CI test-mamba and example-nightly now build kernels through it
+- Registry-derived model loading: read-only registry loader with tokenizer/max-length enrichment, `load_preset_model` rewired through the registry, strict task-type validation
+- TUI pre-flight wizard (five-section config panel, biologist-first copy, PEP 562 lazy facades cutting preflight import 3.86s → 0.27s), `tui` extra
+- MCP consistency checker + registry-backed model listing
+- `import dnallm` again activates the transformers 5.x remote-code compat shims via a lazy meta-path hook (`dnallm/_compat_activation.py`) — restores 4.x-era `trust_remote_code` checkpoints that Phase 25's lazy facade accidentally deactivated
+
+### Fixed
+
+- `embedding_attention.ipynb`-class failures under transformers 5.x (`find_pruneable_heads_and_indices` ImportError) — see the compat-activation change above
+- README/installation docs no longer instruct mamba users through the dead GitHub-wheel path
+
 ## [1.3.3] - 2026-10-20
 
 ### Overview

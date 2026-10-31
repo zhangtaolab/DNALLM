@@ -14,6 +14,7 @@ under the CWD (FIX-04 artifact discipline).
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import pytest
 
@@ -81,6 +82,28 @@ def _fresh_logger(name: str, level: str = "INFO") -> DNALLMLogger:
 
 class TestGetLogger:
     """Singleton semantics of get_logger."""
+
+    def test_import_time_file_sink_is_outside_checkout(self):
+        """The import-time default singleton's dnallm.log sink is not the checkout.
+
+        The first dnallm import in the pytest process constructs the get_logger
+        singleton, whose file handler binds logs/dnallm.log relative to the cwd
+        at that moment. The root conftest primes that construction inside a
+        pytest-owned temporary cwd, so the default sink must never resolve to
+        the checkout's logs/dnallm.log.
+        """
+        default = get_logger()
+        checkout_sink = Path(__file__).resolve().parents[2] / "logs" / "dnallm.log"
+        file_sinks = [
+            Path(handler.baseFilename).resolve()
+            for handler in default.logger.handlers
+            if isinstance(handler, logging.FileHandler)
+            and Path(handler.baseFilename).name == "dnallm.log"
+        ]
+        # At least one dnallm.log file sink must exist, otherwise removing the
+        # file handler entirely would make this regression vacuously green.
+        assert file_sinks, "default singleton must carry a dnallm.log FileHandler"
+        assert checkout_sink not in file_sinks
 
     def test_get_logger_returns_singleton_instance(self, fresh_dnallm_singleton):
         """Repeated calls return the identical DNALLMLogger object."""

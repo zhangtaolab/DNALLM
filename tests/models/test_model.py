@@ -1,7 +1,7 @@
 """Tests for DNA model loading and management utilities.
 
 This module tests the functions for downloading, loading, and managing
-DNA language models from various sources.
+DNA large language models from various sources.
 
 """
 
@@ -1681,21 +1681,30 @@ class TestLoadPresetModel:
 
             assert result == 0
 
-    def test_load_preset_model_preset_name(self):
-        """Test loading preset model by preset name."""
-        task_config = TaskConfig(task_type="mask", num_labels=None)
+    def test_load_preset_model_registry_entry_name_patches_config(self):
+        """Tracer: a real registry entry name loads with registry values patched into a copy."""
+        task_config = TaskConfig(task_type="binary", threshold=0.9)
 
         with patch(
-            "dnallm.models.modeling_auto.MODEL_INFO",
-            {"test-model": {"preset": ["preset1", "preset2"]}},
-        ):
-            with patch(
-                "dnallm.models.model.load_model_and_tokenizer",
-                return_value=("model", "tokenizer"),
-            ):
-                result = load_preset_model("preset1", task_config)
+            "dnallm.models.model.load_model_and_tokenizer",
+            return_value=("model", "tokenizer"),
+        ) as loader_mock:
+            result = load_preset_model("PlantHelixSeek CRE", task_config)
 
-                assert result == ("model", "tokenizer")
+        assert result == ("model", "tokenizer")
+        assert loader_mock.call_count == 1
+        args = loader_mock.call_args.args
+        assert args[0] == "zhangtaolab/PlantHelixSeek-CRE"
+        assert args[2] == "modelscope"
+        assert args[3] is False
+        patched = args[1]
+        assert patched.num_labels == 2
+        assert patched.label_names == ["Not CRE", "CRE"]
+        assert patched.threshold == 0.5
+        # The caller's TaskConfig is never mutated.
+        assert task_config.num_labels == 2
+        assert task_config.label_names == ["negative", "positive"]
+        assert task_config.threshold == 0.9
 
     def test_load_preset_model_key_error(self):
         """Test loading preset model with KeyError in MODEL_INFO."""
@@ -1706,16 +1715,230 @@ class TestLoadPresetModel:
 
             assert result == 0
 
-    def test_load_preset_model_malformed_registry_returns_zero(self):
-        """A malformed MODEL_INFO registry degrades to preset_models=[]."""
+    def test_load_preset_model_registry_and_family_miss_returns_zero(self):
+        """A name in neither the packaged registry nor MODEL_INFO returns 0."""
         task_config = TaskConfig(task_type="mask", num_labels=None)
 
-        # A list registry makes MODEL_INFO[model] raise TypeError internally,
-        # which degrades to preset_models=[]; a non-member name then misses.
-        with patch("dnallm.models.modeling_auto.MODEL_INFO", ["entry"]):
-            result = load_preset_model("missing", task_config)
+        with patch("dnallm.models.modeling_auto.MODEL_INFO", {}):
+            result = load_preset_model("no-such-preset-anywhere", task_config)
 
             assert result == 0
+
+    def test_load_preset_model_repo_id_reverse_lookup(self):
+        """D-02: a raw repo id resolves the same entry with the same patch."""
+        task_config = TaskConfig(task_type="binary")
+
+        with patch(
+            "dnallm.models.model.load_model_and_tokenizer",
+            return_value=("model", "tokenizer"),
+        ) as loader_mock:
+            result = load_preset_model("zhangtaolab/PlantHelixSeek-CRE", task_config)
+
+        assert result == ("model", "tokenizer")
+        args = loader_mock.call_args.args
+        assert args[0] == "zhangtaolab/PlantHelixSeek-CRE"
+        assert args[2] == "modelscope"
+        assert args[3] is False
+        # Same patched shape as the entry-name call: only label_names differs
+        # from the default binary config (num_labels 2 == 2, threshold 0.5 == 0.5).
+        assert args[1].label_names == ["Not CRE", "CRE"]
+        assert args[1].threshold == 0.5
+        assert args[1].num_labels == 2
+
+    def test_load_preset_model_pretrained_entry_no_patch(self):
+        """D-06: a pretrained entry loads with no field patched."""
+        task_config = TaskConfig(task_type="mask")
+
+        with patch(
+            "dnallm.models.model.load_model_and_tokenizer",
+            return_value=("model", "tokenizer"),
+        ) as loader_mock:
+            result = load_preset_model("PlantHelixSeek", task_config)
+
+        assert result == ("model", "tokenizer")
+        args = loader_mock.call_args.args
+        assert args[0] == "zhangtaolab/PlantHelixSeek"
+        assert args[2] == "modelscope"
+        assert args[3] is False
+        assert args[1] == task_config
+
+    def test_load_preset_model_task_type_mismatch_raises(self):
+        """D-05: a task-type mismatch raises and the loader is never called."""
+        task_config = TaskConfig(task_type="token")
+
+        with patch("dnallm.models.model.load_model_and_tokenizer") as loader_mock:
+            with pytest.raises(
+                ValueError,
+                match=r"trained for 'binary' tasks.*configuration says 'token'",
+            ):
+                load_preset_model("PlantHelixSeek CRE", task_config)
+
+        loader_mock.assert_not_called()
+
+    def test_load_preset_model_plantcad_on_off_entries_load_as_binary(self):
+        """The former 'classification' PlantCAD2 on/off entries now load as binary.
+
+        The 2026-10-22 task-type audit canonicalised the six 'cross species leaf
+        on/off' entries to 'binary' — their own num_labels=2 / label_names
+        ["off","on"] said so all along — retiring the Phase-24 OQ-1 strict-mismatch
+        pin this test used to be.
+        """
+        task_config = TaskConfig(task_type="binary")
+
+        with patch(
+            "dnallm.models.model.load_model_and_tokenizer",
+            return_value=("model", "tokenizer"),
+        ) as loader_mock:
+            for name in (
+                "PlantCAD2 cross species leaf on off expression small",
+                "PlantCAD2 cross species leaf on off expression medium",
+                "PlantCAD2 cross species leaf on off expression large",
+                "PlantCAD2 cross species leaf on off translation small",
+                "PlantCAD2 cross species leaf on off translation medium",
+                "PlantCAD2 cross species leaf on off translation large",
+            ):
+                assert load_preset_model(name, task_config) == ("model", "tokenizer")
+
+        assert loader_mock.call_count == 6
+
+    def test_load_preset_model_alias_normalized_match_loads(self):
+        """A long-form alias compares as its short form and passes the check."""
+        task_config = TaskConfig(task_type="binary_classification")
+
+        with patch(
+            "dnallm.models.model.load_model_and_tokenizer",
+            return_value=("model", "tokenizer"),
+        ) as loader_mock:
+            result = load_preset_model("PlantHelixSeek CRE", task_config)
+
+        assert result == ("model", "tokenizer")
+        assert loader_mock.call_args.args[0] == "zhangtaolab/PlantHelixSeek-CRE"
+
+    def test_load_preset_model_alias_normalized_mismatch_raises(self):
+        """A long-form alias that mismatches still raises after normalization."""
+        task_config = TaskConfig(task_type="token_classification")
+
+        with patch("dnallm.models.model.load_model_and_tokenizer") as loader_mock:
+            with pytest.raises(
+                ValueError,
+                match=r"trained for 'binary' tasks.*configuration says 'token'",
+            ):
+                load_preset_model("PlantHelixSeek CRE", task_config)
+
+        loader_mock.assert_not_called()
+
+    def test_load_preset_model_regression_label_names_preserved(self):
+        """Pitfall 2: descriptive regression label_names reach the loader verbatim."""
+        task_config = TaskConfig(task_type="regression")
+
+        with patch(
+            "dnallm.models.model.load_model_and_tokenizer",
+            return_value=("model", "tokenizer"),
+        ) as loader_mock:
+            result = load_preset_model("Plant DNABERT BPE promoter strength leaf", task_config)
+
+        assert result == ("model", "tokenizer")
+        args = loader_mock.call_args.args
+        assert args[0] == "zhangtaolab/plant-dnabert-BPE-promoter_strength_leaf"
+        assert args[1].label_names == ["promoter strength in tobacco leaves"]
+        assert args[1].num_labels == 1
+        # The entry carries no threshold, so the configured 0.5 stays.
+        assert args[1].threshold == 0.5
+
+    def test_load_preset_model_caller_config_not_mutated(self):
+        """The caller's TaskConfig keeps its own values after a patched load."""
+        task_config = TaskConfig(task_type="binary", threshold=0.9)
+
+        with patch(
+            "dnallm.models.model.load_model_and_tokenizer",
+            return_value=("model", "tokenizer"),
+        ):
+            load_preset_model("PlantHelixSeek CRE", task_config)
+
+        assert task_config.num_labels == 2
+        assert task_config.label_names == ["negative", "positive"]
+        assert task_config.threshold == 0.9
+
+    def test_load_preset_model_logs_overrides_and_lineage(self, caplog):
+        """D-04/D-08: per-field override lines plus exactly one base-model line."""
+        task_config = TaskConfig(task_type="binary", threshold=0.9)
+
+        with patch(
+            "dnallm.models.model.load_model_and_tokenizer",
+            return_value=("model", "tokenizer"),
+        ):
+            with caplog.at_level(logging.INFO):
+                load_preset_model("PlantHelixSeek CRE", task_config)
+
+        messages = [record.getMessage() for record in caplog.records]
+        override_lines = [m for m in messages if "Registry preset overrides" in m]
+        assert any("label_names" in m and "['negative', 'positive']" in m for m in override_lines)
+        assert any("threshold" in m and "0.9" in m and "0.5" in m for m in override_lines)
+        lineage = [m for m in messages if "trained on base" in m]
+        assert lineage == [
+            "Loading preset model 'PlantHelixSeek CRE' trained on base zhangtaolab/PlantHelixSeek"
+        ]
+
+    def test_load_preset_model_registry_wins_over_family_default(self):
+        """D-01/D-03 pin: 'DNABERT-2' resolves the registry repo, not the family default."""
+        task_config = TaskConfig(task_type="mask")
+
+        with patch(
+            "dnallm.models.model.load_model_and_tokenizer",
+            return_value=("model", "tokenizer"),
+        ) as loader_mock:
+            result = load_preset_model("DNABERT-2", task_config)
+
+        assert result == ("model", "tokenizer")
+        args = loader_mock.call_args.args
+        assert args[0] == "zhihan1996/DNABERT-2-117M"
+        assert args[2] == "modelscope"
+        assert args[3] is False
+
+    def test_load_preset_model_exact_match_edges(self):
+        """D-03: the empty string and case-variants of real names return 0."""
+        task_config = TaskConfig(task_type="mask")
+
+        assert load_preset_model("", task_config) == 0
+        assert load_preset_model("plantHelixSeek CRE", task_config) == 0
+
+
+# Triples pinned from the live packaged registry + MODEL_INFO on 2026-10-21:
+# the eight families that are also registry entries resolve the same repo id
+# either way (registry value == family default), and tRNADetector / tRNAPointer
+# are not registry names (pure family path). A future registry or family-table
+# data change that breaks this test is a signal, not noise.
+@pytest.mark.parametrize(
+    ("family_name", "task_type", "expected_repo"),
+    [
+        ("Plant DNABERT", "mask", "zhangtaolab/plant-dnabert-BPE"),
+        ("Plant DNAGemma", "generation", "zhangtaolab/plant-dnagemma-BPE"),
+        ("Plant DNAGPT", "generation", "zhangtaolab/plant-dnagpt-BPE"),
+        ("Plant DNAMamba", "generation", "zhangtaolab/plant-dnamamba-BPE"),
+        ("Plant NT", "mask", "zhangtaolab/plant-nucleotide-transformer-BPE"),
+        ("Plant DNAModernBert", "mask", "zhangtaolab/plant-dnamodernbert-BPE"),
+        ("tRNADetector", "mask", "zhangtaolab/tRNADetector"),
+        ("tRNAPointer", "mask", "zhangtaolab/tRNAPointer"),
+        ("PlantHelixSeek", "mask", "zhangtaolab/PlantHelixSeek"),
+        ("FungiHelixSeek", "mask", "zhangtaolab/FungiHelixSeek"),
+    ],
+)
+def test_load_preset_model_zhangtaolab_family_regression(family_name, task_type, expected_repo):
+    """D-09: every zhangtaolab-default family resolves its default repo unchanged."""
+    task_config = TaskConfig(task_type=task_type)
+
+    with patch(
+        "dnallm.models.model.load_model_and_tokenizer",
+        return_value=("model", "tokenizer"),
+    ) as loader_mock:
+        result = load_preset_model(family_name, task_config)
+
+    assert result == ("model", "tokenizer")
+    assert loader_mock.call_count == 1
+    args = loader_mock.call_args.args
+    assert args[0] == expected_repo
+    assert args[2] == "modelscope"
+    assert args[3] is False
 
 
 @pytest.mark.parametrize(
