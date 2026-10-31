@@ -626,31 +626,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Discussions**: [GitHub Discussions](https://github.com/zhangtaolab/DNALLM/discussions)
 - **Examples**: Check the `example/` directory for working code
 
-## 🧭 Pre-flight Wizard (TUI)
-
-Before fine-tuning, the interactive pre-flight wizard checks that your data and your
-chosen model will actually work together — then writes a ready-to-use config file for
-you. It runs in the terminal and needs no programming:
-
-```bash
-pip install "dnallm[tui]"   # Textual is the only extra dependency
-dnallm preflight            # start from your own data
-dnallm preflight --config my.yaml   # or jump straight to editing a config
-```
-
-The wizard walks through seven screens — environment, entry, your data, model
-suitability, config editing with live validation, an optional model download,
-and a summary with the exact file that was saved (animated walkthrough, loops):
-
-<p align="center">
-  <img src="docs/pic/tui/wizard.svg" alt="Pre-flight wizard — animated walkthrough of all seven screens" width="720">
-</p>
-
-Every OK / WARN / FAIL verdict comes from the core pre-flight checks
-(`dnallm.preflight`); the wizard only displays them. A full walkthrough with
-screenshots of every screen lives in the
-[Pre-flight Wizard guide](https://zhangtaolab.github.io/DNALLM/user_guide/tui/preflight_wizard/).
-
 ## 📦 Preset Model Loading
 
 `load_preset_model(model_name, task_config)` loads one of the 236 registry models
