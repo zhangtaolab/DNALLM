@@ -135,7 +135,7 @@ notebook = [
     "pygenometracks>=3.9; platform_system != 'Windows'",
 ]
 docs = [
-    "mkdocs-jupyter>=0.24.0",
+    "mkdocs-jupyter>=0.26.3",
     "mkdocs-material>=9.6.1",
     "mkdocstrings-python>=1.16.10",
     "click<8.5.1",
