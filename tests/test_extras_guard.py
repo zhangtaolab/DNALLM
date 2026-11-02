@@ -52,17 +52,20 @@ EXPECTED_MCP_MEMBERS = frozenset({
 EXPECTED_NOTEBOOK_MEMBERS = frozenset({
     "jupyter>=1.1.1",
     "marimo>=0.16.3",
-    "nbclient>=0.10",
+    # 2026-11-02: floor raised 0.10 -> 0.11.0 by dependabot PR #76.
+    "nbclient>=0.11.0",
     "pygenometracks>=3.9; platform_system != 'Windows'",
 })
 
 # The tui extra's exact members (TUI-01, v1.4): the terminal pre-flight wizard
 # layer. Exact-string equality both directions -- the extra must never be
 # empty, diluted, or gain an unpinned member, and the platformdirs band must
-# stay textual's own declared >=3.6,<5 range so the resolver has one answer.
+# stay inside textual's declared >=3.6.0,<5 range with the dependabot-raised
+# >=4.14.0 floor (2026-11-02, PR #80) so the resolver has one answer.
 EXPECTED_TUI_MEMBERS = frozenset({
     "textual>=8.2,<9",
-    "platformdirs>=3.6,<5",
+    # 2026-11-02: floor raised 3.6 -> 4.14.0 by dependabot PR #80.
+    "platformdirs>=4.14.0,<5",
 })
 
 # The full extra's exact members after the 18-01 atomic rename (base -> full,
@@ -165,8 +168,8 @@ class TestTuiExtraMembers:
         missing = EXPECTED_TUI_MEMBERS - tui
         assert not missing, (
             f"tui extra lost pinned members (TUI-01): {sorted(missing)} -- "
-            f"textual drives the wizard and platformdirs is its own "
-            f">=3.6,<5 constraint made explicit"
+            f"textual drives the wizard and the platformdirs >=4.14.0,<5 band "
+            f"rides inside textual's own declared >=3.6.0,<5 constraint"
         )
         extra_members = tui - EXPECTED_TUI_MEMBERS
         assert not extra_members, (
