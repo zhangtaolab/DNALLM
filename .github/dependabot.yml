@@ -28,6 +28,25 @@ updates:
       # Re-verify duty: a transformers bump must also re-run the census lane
       # (gh workflow run census_compat.yml --ref <branch>, dispatch-only) and
       # land the refreshed tf_compat_* registry fields before merging the bump.
+      # transformers 4-to-5 floor raises (PR #78 proposed ">=5.22.0,<6")
+      # are ignored as majors: they deadlock on the same pydantic-ai and
+      # huggingface-hub constraint chain as the huggingface-hub entry
+      # below, and they abandon the declared transformers 4.49-5.x compat
+      # span (Phase 27 census plus the tf_compat_* registry fields).
+      # Dropping 4.x is a planned owner decision, not an automated one;
+      # any accepted bump still owes the mamba re-verify and census-lane
+      # re-run plus tf_compat_* refresh duties recorded in the comments
+      # above.
+      - dependency-name: "transformers"
+        update-types: ["version-update:semver-major"]
+      # huggingface-hub majors (PR #79 proposed ">=2.4.0") are unresolvable
+      # today: the mcp extra pins "pydantic-ai>=1.107.0,<2" and its
+      # pydantic-ai-slim[huggingface] (1.107.x) caps huggingface-hub
+      # ">=1.3.4,<2.0.0" (and hf-xet<1.5.0), so any hub>=2 floor fails CI
+      # at dependency resolution. Revisit when pydantic-ai ships
+      # hub-2-compatible releases.
+      - dependency-name: "huggingface-hub"
+        update-types: ["version-update:semver-major"]
       # datasets is pinned <=3.2.0 in pyproject (tokenization pipeline API);
       # the pin itself is the constraint Dependabot already respects.
       # torch: the ceiling (<2.15, mirrored across the cpu/cuda124/cuda126/
