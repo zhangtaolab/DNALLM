@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-30)
 Phase: Milestone v1.4 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-31 - Completed quick task 261030-x0d: fix two TUI races blocking PR #69 (guard + layout settle, rows 43-44)
+Last activity: 2026-11-02 - Completed quick task 261102-kh9: nbclient/platformdirs floors + guard sync, dependabot hub/transformers ignores, PR #81 vs dev
 
 ## Performance Metrics
 
@@ -209,6 +209,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/
 | 261030-uck | Fix TUI HeaderTitle mount-timing flake (WINDOWS row 41): bounded _wait_until poll in the skip-path test, 205-test TUI lane green, ledger row flipped to fixed with CI evidence chain | 2026-10-30 | c90e340 | [261030-uck-fix-tui-headertitle-mount-timing-flake-w](./quick/261030-uck-fix-tui-headertitle-mount-timing-flake-w/) |
 | 261030-uxw | Harden second TUI screen-transition race (WINDOWS row 42): _wait_until for ConfigScreen transition in edit-path test, family note recorded, TUI lane 205 green | 2026-10-30 | fc892cc | [261030-uxw-harden-second-tui-screen-transition-race](./quick/261030-uxw-harden-second-tui-screen-transition-race/) |
 | 261030-x0d | Fix two TUI races blocking PR 69 Windows check: mount-safe _refresh_availability_cells guard (TDD regression), 80x24 layout settle, WINDOWS rows 43-44 | 2026-10-31 | c327617 | [261030-x0d-fix-two-tui-races-blocking-pr-69-windows](./quick/261030-x0d-fix-two-tui-races-blocking-pr-69-windows/) |
+| 261102-kh9 | Land dependabot PRs #76/#80 manually (nbclient>=0.11.0 x2, platformdirs>=4.14.0,<5) with extras-guard literal sync + truthful band comments; add transformers/huggingface-hub semver-major ignores (PRs #78/#79 unresolvable under pydantic-ai hub<2 cap); PR #81 vs dev, RED/GREEN 20-green, repo-wide ruff clean | 2026-11-02 | a594363 | [261102-kh9-apply-dependabot-prs-76-nbclient-bump-an](./quick/261102-kh9-apply-dependabot-prs-76-nbclient-bump-an/) |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
@@ -234,8 +235,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-30T12:13:34Z
-Stopped at: Completed quick task 261030-rst — stale mkdocs strict deferred item closed
+Last session: 2026-11-02T07:14:39Z
+Stopped at: Completed quick task 261102-kh9 — deps floors + dependabot ignores on PR #81 vs dev (owner merge pending)
 Resume file: None
 
 ### Prior session record (2026-10-24, Mac side — retained)
