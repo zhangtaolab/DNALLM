@@ -166,7 +166,7 @@ mcp = [
 # mirrors textual's own declared >=3.6,<5 constraint so the resolver has one answer.
 tui = [
     "textual>=8.2,<9",
-    "platformdirs>=3.6,<5",
+    "platformdirs>=4.14.0,<5",
 ]
 full = [
     "dnallm[dev,test,notebook,mcp]",
