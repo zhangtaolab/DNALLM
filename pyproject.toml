@@ -76,7 +76,7 @@ dependencies = [
     "tokenizers>=0.21.0",
     "torch>=2.4.0,<2.15",
     "tqdm>=4.67.1",
-    "transformers>=4.49.0,<6",
+    "transformers>=5.22.0,<6",
     # WPAR-07 (18-01): torch Windows wheels declare no triton, but fla's
     # fla.ops.* kernels need it -- declare the triton-lang-org fork wheel,
     # Windows-only, exact band (no floating). Linux resolvers see the marker
