@@ -84,7 +84,7 @@ dependencies = [
     # retired fla extra into the base dependency set.
     "triton-windows>=3.7.1.post27,<3.8; platform_system == 'Windows'",
     "umap-learn>=0.5.7",
-    "uvicorn>=0.24.0",
+    "uvicorn>=0.54.0",
     "wandb>=0.19.8",
     "websockets>=17.3",
     "wheel>=0.45.0",
