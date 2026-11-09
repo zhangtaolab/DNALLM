@@ -48,7 +48,7 @@ dependencies = [
     "mcp>=1.3.0,<2",
     "modelscope[framework]>=1.23.2",
     "oss2>=2.18.0",
-    "nbstripout>=0.8.1",
+    "nbstripout>=0.9.1",
     "ninja>1",
     "numba>0.56.2",
     # numpy 1.x retired 2026-10-10; 1.x users stay on the 0.8.x series
