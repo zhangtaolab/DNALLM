@@ -29,7 +29,7 @@ dependencies = [
     "captum>=0.7.0",
     "colorama>=0.4.6",
     "datasets<=5.1.0",
-    "einops>=0.7.0",
+    "einops>=0.8.2",
     "evaluate>=0.4.3",
     # KDA kernels for PlantHelixSeek remote code (HelixSeekDelta layers). Bare
     # install: rides the already-installed torch/triton — do NOT use fla's own
