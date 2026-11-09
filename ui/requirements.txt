@@ -4,7 +4,7 @@
 gradio>=4.0.0
 
 # YAML configuration file support
-pyyaml>=6.0
+pyyaml>=6.0.3
 
 # Core DNALLM dependencies (if not already installed)
 torch>=1.12.0
