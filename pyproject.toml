@@ -45,7 +45,7 @@ dependencies = [
     "jax>=0.10.2",
     "loguru>=0.7.0",
     "mambapy>=1.2.0",
-    "mcp>=1.3.0,<2",
+    "mcp>=1.30.0,<2",
     "modelscope[framework]>=1.23.2",
     "oss2>=2.18.0",
     "nbstripout>=0.8.1",
@@ -144,7 +144,7 @@ ui = [
     "gradio>=4.0.0",
 ]
 mcp = [
-    "mcp>=1.0.0,<2",
+    "mcp>=1.30.0,<2",
     "langchain>=1.3.6",
     "langchain_mcp_adapters>=0.2.1",
     # REPAIR-04 (08-01): the langchain mcp notebook's ollama cell runs
