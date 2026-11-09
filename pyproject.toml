@@ -57,7 +57,7 @@ dependencies = [
     # once per process (numpy double-init guard). The CI matrix pins numpy
     # 2.2.0 and the 1.26.4 leg was retired 2026-10. Lift the <2.6 ceiling only
     # after coverage compatibility with numpy 2.6+ is verified.
-    "numpy>=2.0.0,<2.6",
+    "numpy>=2.4.6,<2.6",
     "optuna>=3.6.0",
     "openpyxl>=3.1.5",
     "pandas>=2.2.3",
