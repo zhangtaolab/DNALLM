@@ -37,7 +37,7 @@ dependencies = [
     # ([cuda]/[rocm]), they pin their own torch and would downgrade this environment.
     # D-09 (28-01): promoted from the retired fla extra to a base dependency —
     # PlantHelixSeek works out-of-the-box on a default install.
-    "flash-linear-attention>=0.5.2,<0.6",
+    "flash-linear-attention>=0.6.0,<0.7",
     "huggingface-hub>=0.29.0",
     "ipykernel>=6.29.5",
     "ipywidgets>=8.1.9",
