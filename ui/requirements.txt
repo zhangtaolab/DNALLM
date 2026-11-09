@@ -10,7 +10,7 @@ pyyaml>=6.0
 torch>=1.12.0
 transformers>=4.20.0
 datasets>=2.0.0
-numpy>=1.21.0
+numpy>=2.4.6
 pandas>=1.3.0
 
 # Optional dependencies for enhanced functionality
